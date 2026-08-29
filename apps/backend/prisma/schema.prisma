@@ -1,0 +1,1148 @@
+// Sunseekers Travel Platform — Foundation schema
+// Phase 0: Users, Roles, Permissions, Refresh Tokens, Password Resets, Audit Log
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  INVITED
+  ACTIVE
+  SUSPENDED
+  DISABLED
+}
+
+enum AuditableAction {
+  AUTH_LOGIN
+  AUTH_LOGOUT
+  AUTH_LOGIN_FAILED
+  AUTH_PASSWORD_RESET_REQUESTED
+  AUTH_PASSWORD_RESET_COMPLETED
+  AUTH_REFRESH
+  USER_CREATED
+  USER_UPDATED
+  USER_STATUS_CHANGED
+  USER_ROLE_ASSIGNED
+  USER_ROLE_REMOVED
+  CUSTOMER_CREATED
+  CUSTOMER_UPDATED
+  CUSTOMER_DELETED
+  COMPANY_CREATED
+  COMPANY_UPDATED
+  COMPANY_DELETED
+  CONTACT_CREATED
+  CONTACT_UPDATED
+  CONTACT_DELETED
+  LEAD_CREATED
+  LEAD_UPDATED
+  LEAD_STAGE_CHANGED
+  LEAD_CONVERTED
+  LEAD_DELETED
+  DEAL_CREATED
+  DEAL_UPDATED
+  DEAL_STAGE_CHANGED
+  DEAL_DELETED
+  ACTIVITY_CREATED
+  ACTIVITY_DELETED
+  TASK_CREATED
+  TASK_UPDATED
+  TASK_COMPLETED
+  TASK_DELETED
+  NOTE_CREATED
+  NOTE_UPDATED
+  NOTE_DELETED
+  DESTINATION_CREATED
+  DESTINATION_UPDATED
+  DESTINATION_DELETED
+  TOUR_CREATED
+  TOUR_UPDATED
+  TOUR_PUBLISHED
+  TOUR_ARCHIVED
+  TOUR_DELETED
+  DEPARTURE_CREATED
+  DEPARTURE_UPDATED
+  DEPARTURE_STATUS_CHANGED
+  DEPARTURE_DELETED
+  TRAVELER_CREATED
+  TRAVELER_UPDATED
+  TRAVELER_DELETED
+  BOOKING_CREATED
+  BOOKING_UPDATED
+  BOOKING_STATUS_CHANGED
+  BOOKING_CANCELLED
+  BOOKING_DELETED
+  QUOTE_CREATED
+  QUOTE_UPDATED
+  QUOTE_ACCEPTED
+  QUOTE_CONVERTED
+  QUOTE_DELETED
+  INVOICE_CREATED
+  INVOICE_UPDATED
+  INVOICE_STATUS_CHANGED
+  INVOICE_DELETED
+  PAYMENT_CREATED
+  PAYMENT_REFUNDED
+  PAYMENT_DELETED
+  SUPPLIER_CREATED
+  SUPPLIER_UPDATED
+  SUPPLIER_DELETED
+  HOTEL_CREATED
+  HOTEL_UPDATED
+  HOTEL_DELETED
+  VEHICLE_CREATED
+  VEHICLE_UPDATED
+  VEHICLE_DELETED
+  GUIDE_CREATED
+  GUIDE_UPDATED
+  GUIDE_DELETED
+  DRIVER_CREATED
+  DRIVER_UPDATED
+  DRIVER_DELETED
+  TRIP_ASSIGNED
+  TRIP_UNASSIGNED
+  CHECKLIST_CREATED
+  CHECKLIST_UPDATED
+  CHECKLIST_COMPLETED
+  CHECKLIST_DELETED
+  AUTOMATION_TRIGGERED
+  NOTIFICATION_CREATED
+}
+
+model User {
+  id              String     @id @default(uuid())
+  email           String     @unique
+  passwordHash    String
+  firstName       String?
+  lastName        String?
+  phone           String?
+  status          UserStatus @default(INVITED)
+  emailVerifiedAt DateTime?
+  lastLoginAt     DateTime?
+
+  roles               UserRole[]
+  refreshTokens       RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
+  auditLogs           AuditLog[]           @relation("AuditTarget")
+
+  assignedCustomers  Customer[]      @relation("AssignedCustomers")
+  managedCompanies   Company[]       @relation("ManagedCompanies")
+  assignedLeads      Lead[]          @relation("AssignedLeads")
+  ownedDeals         Deal[]          @relation("DealOwner")
+  authoredActivities Activity[]      @relation("ActivityAuthor")
+  assignedTasks      Task[]          @relation("AssignedTasks")
+  createdTasks       Task[]          @relation("TaskAuthor")
+  authoredNotes      Note[]          @relation("NoteAuthor")
+  createdTours       Tour[]          @relation("TourCreatedBy")
+  timelineEvents     TimelineEvent[] @relation("TimelineActor")
+  createdBookings    Booking[]       @relation("BookingCreatedBy")
+  createdQuotes      Quote[]         @relation("QuoteCreatedBy")
+  createdInvoices    Invoice[]       @relation("InvoiceCreatedBy")
+  recordedPayments   Payment[]       @relation("PaymentRecordedBy")
+
+  notifications            Notification[]
+  notificationPreferences NotificationPreference[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@map("users")
+}
+
+model Role {
+  id          String           @id @default(uuid())
+  name        String           @unique
+  description String?
+  isSystem    Boolean          @default(false)
+  users       UserRole[]
+  permissions RolePermission[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String           @id @default(uuid())
+  key         String           @unique
+  description String?
+  roles       RolePermission[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("permissions")
+}
+
+model UserRole {
+  userId     String
+  roleId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role       Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  assignedAt DateTime @default(now())
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model RefreshToken {
+  id                String    @id @default(uuid())
+  userId            String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash         String    @unique
+  expiresAt         DateTime
+  revokedAt         DateTime?
+  replacedByTokenId String?
+  userAgent         String?
+  ipAddress         String?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+model AuditLog {
+  id         String          @id @default(uuid())
+  userId     String?
+  user       User?           @relation("AuditTarget", fields: [userId], references: [id])
+  action     AuditableAction
+  entityType String?
+  entityId   String?
+  before     Json?
+  after      Json?
+  ipAddress  String?
+  userAgent  String?
+  requestId  String?
+  createdAt  DateTime        @default(now())
+
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([action])
+  @@map("audit_logs")
+}
+
+// ============================================================================
+// CRM CORE (Phase 2 / Task 3)
+// PRD: Customers §22, Companies §23, Contacts, Leads §25-26, Deals §27-28,
+//      Activities §29, Tasks §30, Notes, Timeline §24/§96, Search §63
+// ============================================================================
+
+enum CustomerStatus {
+  ACTIVE
+  INACTIVE
+  BLOCKED
+}
+
+enum LeadStage {
+  NEW
+  CONTACTED
+  QUALIFIED
+  PROPOSAL
+  NEGOTIATION
+  WON
+  LOST
+}
+
+enum LeadSource {
+  WEBSITE
+  FACEBOOK
+  INSTAGRAM
+  WHATSAPP
+  PHONE
+  EMAIL
+  REFERRAL
+  WALK_IN
+  GOOGLE
+  PARTNER
+  MANUAL
+  IMPORT
+  OTHER
+}
+
+enum DealStage {
+  NEW
+  QUALIFIED
+  PROPOSAL
+  NEGOTIATION
+  DEPOSIT
+  WON
+  LOST
+}
+
+enum ActivityType {
+  CALL
+  EMAIL
+  WHATSAPP
+  SMS
+  MEETING
+  NOTE
+  QUOTE
+  PAYMENT
+  BOOKING
+  TASK
+  DOCUMENT
+  SYSTEM_EVENT
+  OTHER
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum TaskPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+/// A commercial relationship (PRD §22, §28-131: Customer != Traveler)
+model Customer {
+  id                     String         @id @default(uuid())
+  firstName              String
+  lastName               String
+  email                  String?
+  phone                  String?
+  whatsapp               String?
+  nationality            String?
+  country                String?
+  address                String?
+  dateOfBirth            DateTime?
+  preferredLanguage      String?
+  preferredCommunication String?
+  leadSource             LeadSource?
+  status                 CustomerStatus @default(ACTIVE)
+  assignedStaffId        String?
+  assignedStaff          User?          @relation("AssignedCustomers", fields: [assignedStaffId], references: [id])
+  tags                   String[]       @default([])
+  notes                  Note[]
+  companyId              String?
+  company                Company?       @relation(fields: [companyId], references: [id])
+  leads                  Lead[]
+  deals                  Deal[]
+  activities             Activity[]
+  tasks                  Task[]
+  bookings               Booking[]
+  quotes                 Quote[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@index([assignedStaffId])
+  @@index([companyId])
+  @@map("customers")
+}
+
+/// A corporate entity; customers may belong to a company (§23)
+model Company {
+  id               String     @id @default(uuid())
+  name             String
+  website          String?
+  phone            String?
+  email            String?
+  address          String?
+  country          String?
+  accountManagerId String?
+  accountManager   User?      @relation("ManagedCompanies", fields: [accountManagerId], references: [id])
+  industry         String?
+  notes            String?
+  contacts         Contact[]
+  customers        Customer[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deals     Deal[]    @relation("CompanyDeals")
+
+  @@index([name])
+  @@map("companies")
+}
+
+/// A contact person within a company (§23)
+model Contact {
+  id        String  @id @default(uuid())
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  firstName String
+  lastName  String
+  email     String?
+  phone     String?
+  whatsapp  String?
+  position  String?
+  isPrimary Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId])
+  @@map("contacts")
+}
+
+/// A potential customer before conversion (§25-26, §28-133: Lead != Customer)
+model Lead {
+  id             String     @id @default(uuid())
+  customerId     String?
+  customer       Customer?  @relation(fields: [customerId], references: [id])
+  firstName      String?
+  lastName       String?
+  email          String?
+  phone          String?
+  whatsapp       String?
+  source         LeadSource
+  campaign       String?
+  destination    String?
+  interestedTour String?
+  estimatedValue Decimal?   @db.Decimal(12, 2)
+  currency       String?    @default("GHS")
+  leadScore      Int?       @default(0)
+  assignedUserId String?
+  assignedUser   User?      @relation("AssignedLeads", fields: [assignedUserId], references: [id])
+  stage          LeadStage  @default(NEW)
+  nextAction     String?
+  lastContactAt  DateTime?
+  tags           String[]   @default([])
+  notes          Note[]
+  deals          Deal[]
+  activities     Activity[]
+  tasks          Task[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@index([assignedUserId])
+  @@index([stage])
+  @@map("leads")
+}
+
+/// A sales opportunity (§27-28)
+model Deal {
+  id                String      @id @default(uuid())
+  name              String
+  customerId        String?
+  customer          Customer?   @relation(fields: [customerId], references: [id])
+  companyId         String?
+  company           Company?    @relation("CompanyDeals", fields: [companyId], references: [id])
+  leadId            String?
+  lead              Lead?       @relation(fields: [leadId], references: [id])
+  salespersonId     String?
+  salesperson       User?       @relation("DealOwner", fields: [salespersonId], references: [id])
+  tour              String?
+  destination       String?
+  value             Decimal?    @db.Decimal(12, 2)
+  currency          String?     @default("GHS")
+  probability       Int?        @default(20)
+  stage             DealStage   @default(NEW)
+  expectedCloseDate DateTime?
+  source            LeadSource?
+  notes             String?
+  tags              String[]    @default([])
+  activities        Activity[]
+  tasks             Task[]
+  recordedNotes     Note[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([customerId])
+  @@index([salespersonId])
+  @@index([stage])
+  @@map("deals")
+}
+
+/// A logged interaction on a customer/lead/deal/booking (§29, §140)
+model Activity {
+  id          String       @id @default(uuid())
+  type        ActivityType
+  subject     String?
+  description String?
+  customerId  String?
+  customer    Customer?    @relation(fields: [customerId], references: [id])
+  leadId      String?
+  lead        Lead?        @relation(fields: [leadId], references: [id])
+  dealId      String?
+  deal        Deal?        @relation(fields: [dealId], references: [id])
+  createdById String?
+  createdBy   User?        @relation("ActivityAuthor", fields: [createdById], references: [id])
+  occurredAt  DateTime     @default(now())
+
+  createdAt DateTime @default(now())
+
+  @@index([customerId])
+  @@index([leadId])
+  @@index([dealId])
+  @@map("activities")
+}
+
+/// A follow-up / to-do item (§30)
+model Task {
+  id           String       @id @default(uuid())
+  title        String
+  description  String?
+  assignedToId String?
+  assignedTo   User?        @relation("AssignedTasks", fields: [assignedToId], references: [id])
+  createdById  String?
+  createdBy    User?        @relation("TaskAuthor", fields: [createdById], references: [id])
+  dueDate      DateTime?
+  priority     TaskPriority @default(NORMAL)
+  status       TaskStatus   @default(PENDING)
+  completedAt  DateTime?
+  sortOrder    Int?         @default(0)
+  customerId   String?
+  customer     Customer?    @relation(fields: [customerId], references: [id])
+  leadId       String?
+  lead         Lead?        @relation(fields: [leadId], references: [id])
+  dealId       String?
+  deal         Deal?        @relation(fields: [dealId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([assignedToId])
+  @@index([status])
+  @@index([dueDate])
+  @@map("tasks")
+}
+
+/// Free-form notes attached to CRM records
+model Note {
+  id          String    @id @default(uuid())
+  content     String
+  customerId  String?
+  customer    Customer? @relation(fields: [customerId], references: [id])
+  leadId      String?
+  lead        Lead?     @relation(fields: [leadId], references: [id])
+  dealId      String?
+  deal        Deal?     @relation(fields: [dealId], references: [id])
+  createdById String?
+  createdBy   User?     @relation("NoteAuthor", fields: [createdById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([customerId])
+  @@index([leadId])
+  @@index([dealId])
+  @@map("notes")
+}
+
+/// Customer 360 timeline events (§24, §96)
+model TimelineEvent {
+  id          String   @id @default(uuid())
+  entityType  String // CUSTOMER | LEAD | DEAL
+  entityId    String
+  type        String // e.g. note.created, activity.created, lead.stage_changed
+  title       String
+  description String?
+  actorId     String?
+  actor       User?    @relation("TimelineActor", fields: [actorId], references: [id])
+  data        Json?
+  occurredAt  DateTime @default(now())
+
+  createdAt DateTime @default(now())
+
+  @@index([entityType, entityId, occurredAt])
+  @@map("timeline_events")
+}
+
+// ============================================================================
+// TRAVEL CORE (Phase 2 / Task 4)
+// PRD: Destinations, Tours, Itineraries, Departures, Pricing, Availability (§111)
+// ============================================================================
+
+enum TourStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum DepartureStatus {
+  SCHEDULED
+  OPEN
+  GUARANTEED
+  LOCKED
+  COMPLETED
+  CANCELLED
+}
+
+/// A place that tours visit/reference (PRD §Destination)
+model Destination {
+  id          String   @id @default(uuid())
+  name        String
+  country     String?
+  region      String?
+  slug        String   @unique
+  summary     String?
+  description String?
+  highlights  String[] @default([])
+  coverImage  String?
+  isActive    Boolean  @default(true)
+  tours       TourDestination[]
+  tourDays    TourDay[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([country])
+  @@map("destinations")
+}
+
+/// A sellable tour package (PRD §Tour). Tour != Departure (PRD 131).
+model Tour {
+  id           String          @id @default(uuid())
+  name         String
+  slug         String          @unique
+  summary      String?
+  description  String?
+  durationDays Int             @default(0)
+  type         String?
+  difficulty   String?
+  minPax       Int             @default(1)
+  maxPax       Int?
+  inclusions   String[]        @default([])
+  exclusions   String[]        @default([])
+  highlights   String[]        @default([])
+  coverImage   String?
+  currency     String          @default("GHS")
+  basePrice    Decimal?        @db.Decimal(12, 2)
+  status       TourStatus      @default(DRAFT)
+  createdById  String?
+  createdBy    User?           @relation("TourCreatedBy", fields: [createdById], references: [id])
+  destinations TourDestination[]
+  days         TourDay[]
+  departures   Departure[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@map("tours")
+}
+
+/// Many-to-many link between tours and destinations
+model TourDestination {
+  tourId        String
+  destinationId String
+  tour          Tour         @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  destination   Destination  @relation(fields: [destinationId], references: [id], onDelete: Cascade)
+
+  @@id([tourId, destinationId])
+  @@map("tour_destinations")
+}
+
+/// A day within a tour itinerary (§Itinerary)
+model TourDay {
+  id            String       @id @default(uuid())
+  tourId        String
+  tour          Tour         @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  dayNumber     Int
+  title         String?
+  description   String?
+  meals         String[]     @default([])
+  accommodation String?
+  destinationId String?
+  destination   Destination? @relation(fields: [destinationId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tourId, dayNumber])
+  @@map("tour_days")
+}
+
+/// A fixed-date run of a tour (PRD §Departure).
+model Departure {
+  id          String           @id @default(uuid())
+  tourId      String
+  tour        Tour             @relation(fields: [tourId], references: [id])
+  startDate   DateTime
+  endDate     DateTime
+  status      DepartureStatus  @default(SCHEDULED)
+  minPax      Int              @default(1)
+  maxPax      Int?
+  bookedCount Int              @default(0)
+  price       Decimal?         @db.Decimal(12, 2)
+  currency    String           @default("GHS")
+  note        String?
+  pricing     DeparturePricing[]
+  bookings    Booking[]  @relation("DepartureBookings")
+  quotes      Quote[]    @relation("DepartureQuotes")
+  assignments TripAssignment[]
+  checklists  ChecklistItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tourId])
+  @@index([startDate])
+  @@map("departures")
+}
+
+/// Pricing tiers for a departure (e.g. Adult, Child, Private, Single supplement)
+model DeparturePricing {
+  id          String    @id @default(uuid())
+  departureId String
+  departure   Departure @relation(fields: [departureId], references: [id], onDelete: Cascade)
+  name        String
+  price       Decimal?  @db.Decimal(12, 2)
+  currency    String    @default("GHS")
+
+  @@index([departureId])
+  @@map("departure_pricing")
+}
+
+// ============================================================================
+// BOOKINGS & PAYMENTS (Task 5)
+// PRD: Bookings §112/§152, Travelers §131 (Traveler != Customer), Quotes,
+//      Invoices, Payments
+// ============================================================================
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
+enum QuoteStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  DECLINED
+  EXPIRED
+  CONVERTED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  BANK_TRANSFER
+  MOBILE_MONEY
+  CHEQUE
+  OTHER
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+/// An individual passenger on a booking (distinct from the booking Customer; §131)
+model Traveler {
+  id              String   @id @default(uuid())
+  firstName       String
+  lastName        String
+  email           String?
+  phone           String?
+  dateOfBirth     DateTime?
+  nationality     String?
+  passportNumber  String?
+  passportExpiry  DateTime?
+  bookings        BookingTraveler[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([lastName])
+  @@map("travelers")
+}
+
+/// A confirmed-or-pending reservation against a tour departure
+model Booking {
+  id            String        @id @default(uuid())
+  bookingNumber String        @unique
+  customerId    String
+  customer      Customer      @relation(fields: [customerId], references: [id])
+  departureId   String?
+  departure     Departure?    @relation("DepartureBookings", fields: [departureId], references: [id])
+  tourId        String?
+  tourName      String?
+  startDate     DateTime?
+  status        BookingStatus @default(PENDING)
+  paxCount      Int           @default(1)
+  totalPrice    Decimal?      @db.Decimal(12, 2)
+  currency      String        @default("GHS")
+  bookedAt      DateTime      @default(now())
+  notes         String?
+  createdById   String?
+  createdBy     User?         @relation("BookingCreatedBy", fields: [createdById], references: [id])
+  travelers     BookingTraveler[]
+  quotes        Quote[]
+  invoices      Invoice[]
+  payments      Payment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([customerId])
+  @@index([departureId])
+  @@index([status])
+  @@map("bookings")
+}
+
+/// Join table linking travelers to a booking
+model BookingTraveler {
+  bookingId   String
+  booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  travelerId  String
+  traveler    Traveler @relation(fields: [travelerId], references: [id])
+  isLead      Boolean  @default(false)
+  seatNumber  String?
+
+  @@id([bookingId, travelerId])
+  @@map("booking_travelers")
+}
+
+/// A formal price proposal that may convert into a Booking
+model Quote {
+  id            String      @id @default(uuid())
+  quoteNumber   String      @unique
+  customerId    String?
+  customer      Customer?   @relation(fields: [customerId], references: [id])
+  departureId   String?
+  departure     Departure?  @relation("DepartureQuotes", fields: [departureId], references: [id])
+  tourName      String?
+  status        QuoteStatus @default(DRAFT)
+  totalPrice    Decimal?    @db.Decimal(12, 2)
+  currency      String      @default("GHS")
+  validUntil    DateTime?
+  notes         String?
+  bookingId     String?
+  booking       Booking?    @relation(fields: [bookingId], references: [id])
+  createdById   String?
+  createdBy     User?       @relation("QuoteCreatedBy", fields: [createdById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([customerId])
+  @@index([status])
+  @@map("quotes")
+}
+
+/// A payment demand raised against a Booking
+model Invoice {
+  id            String        @id @default(uuid())
+  invoiceNumber String        @unique
+  bookingId     String?
+  booking       Booking?      @relation(fields: [bookingId], references: [id])
+  customerId    String?
+  amount        Decimal?      @db.Decimal(12, 2)
+  amountPaid    Decimal?      @db.Decimal(12, 2) @default(0)
+  currency      String        @default("GHS")
+  status        InvoiceStatus @default(DRAFT)
+  issueDate     DateTime?
+  dueDate       DateTime?
+  createdById   String?
+  createdBy     User?         @relation("InvoiceCreatedBy", fields: [createdById], references: [id])
+  payments      Payment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([bookingId])
+  @@index([status])
+  @@map("invoices")
+}
+
+/// A payment recorded against a Booking and/or Invoice
+model Payment {
+  id             String         @id @default(uuid())
+  paymentNumber  String         @unique
+  bookingId      String?
+  booking        Booking?       @relation(fields: [bookingId], references: [id])
+  invoiceId      String?
+  invoice        Invoice?       @relation(fields: [invoiceId], references: [id])
+  customerId     String?
+  amount         Decimal?       @db.Decimal(12, 2)
+  currency       String         @default("GHS")
+  method         PaymentMethod  @default(CASH)
+  status         PaymentStatus  @default(PENDING)
+  reference      String?
+  paidAt         DateTime?
+  recordedById   String?
+  recordedBy     User?          @relation("PaymentRecordedBy", fields: [recordedById], references: [id])
+  notes          String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([bookingId])
+  @@index([invoiceId])
+  @@map("payments")
+}
+
+// ============================================================================
+// OPERATIONS (Task 6)
+// PRD: Hotels, Vehicles, Drivers, Guides, Suppliers §35, Assignments,
+//      Checklists, Trip board §113/§153
+// ============================================================================
+
+enum SupplierType {
+  HOTEL
+  TRANSPORT
+  GUIDE
+  ACTIVITY
+  CATERING
+  AIRLINE
+  INSURANCE
+  OTHER
+}
+
+enum VehicleType {
+  VAN
+  BUS
+  SUV_4X4
+  SEDAN
+  BOAT
+  OTHER
+}
+
+/// A vendor/supplier used across trips (hotels, transport, guides, activities)
+model Supplier {
+  id            String       @id @default(uuid())
+  name          String
+  type          SupplierType @default(OTHER)
+  contactName   String?
+  email         String?
+  phone         String?
+  whatsapp      String?
+  address       String?
+  country       String?
+  paymentTerms  String?
+  notes         String?
+  isActive      Boolean      @default(true)
+  hotels        Hotel[]
+  vehicles      Vehicle[]
+  guides        Guide[]
+  drivers       Driver[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([type])
+  @@map("suppliers")
+}
+
+/// A hotel/accommodation property
+model Hotel {
+  id            String        @id @default(uuid())
+  name          String
+  supplierId    String?
+  supplier      Supplier?     @relation(fields: [supplierId], references: [id])
+  destinationId String?
+  starRating    Int?
+  address       String?
+  country       String?
+  phone         String?
+  email         String?
+  contactPerson String?
+  checkInTime   String?
+  checkOutTime  String?
+  notes         String?
+  isActive      Boolean       @default(true)
+  assignments   TripAssignment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([supplierId])
+  @@map("hotels")
+}
+
+/// A vehicle used for transport during a trip
+model Vehicle {
+  id               String      @id @default(uuid())
+  name             String
+  registrationNo   String?
+  type             VehicleType @default(VAN)
+  capacity         Int?
+  ownerSupplierId  String?
+  ownerSupplier    Supplier?   @relation(fields: [ownerSupplierId], references: [id])
+  driverId         String?
+  driver           Driver?     @relation(fields: [driverId], references: [id])
+  notes            String?
+  isActive         Boolean     @default(true)
+  assignments      TripAssignment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ownerSupplierId])
+  @@map("vehicles")
+}
+
+/// A tour guide
+model Guide {
+  id             String      @id @default(uuid())
+  firstName      String
+  lastName       String
+  email          String?
+  phone          String?
+  licenseNumber  String?
+  languages      String[]    @default([])
+  specialities   String[]    @default([])
+  supplierId     String?
+  supplier       Supplier?   @relation(fields: [supplierId], references: [id])
+  isActive       Boolean     @default(true)
+  assignments    TripAssignment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([supplierId])
+  @@map("guides")
+}
+
+/// A driver (often tied to a vehicle and supplier)
+model Driver {
+  id            String      @id @default(uuid())
+  firstName     String
+  lastName      String
+  email         String?
+  phone         String?
+  licenseNumber String?
+  supplierId    String?
+  supplier      Supplier?   @relation(fields: [supplierId], references: [id])
+  isActive      Boolean     @default(true)
+  vehicles      Vehicle[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([supplierId])
+  @@map("drivers")
+}
+
+/// Assignment of a resource (guide/hotel/vehicle) to a departure trip day
+model TripAssignment {
+  id          String    @id @default(uuid())
+  departureId String
+  departure   Departure @relation(fields: [departureId], references: [id], onDelete: Cascade)
+  dayNumber   Int?
+  guideId     String?
+  guide       Guide?    @relation(fields: [guideId], references: [id])
+  hotelId     String?
+  hotel       Hotel?    @relation(fields: [hotelId], references: [id])
+  vehicleId   String?
+  vehicle     Vehicle?  @relation(fields: [vehicleId], references: [id])
+  notes       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([departureId])
+  @@map("trip_assignments")
+}
+
+/// A checklist item attached to a departure trip
+model ChecklistItem {
+  id            String    @id @default(uuid())
+  departureId   String?
+  departure     Departure?  @relation(fields: [departureId], references: [id], onDelete: Cascade)
+  title         String
+  description   String?
+  category      String?
+  isRequired    Boolean   @default(true)
+  isCompleted   Boolean   @default(false)
+  completedById String?
+  completedAt   DateTime?
+  sortOrder     Int       @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([departureId])
+  @@map("checklist_items")
+}
+
+enum NotificationType {
+  SYSTEM
+  DEPARTURE_REMINDER
+  PAYMENT_REMINDER
+  INVOICE_OVERDUE
+  LEAD_FOLLOW_UP
+  CHECKLIST_TODO
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  PUSH
+}
+
+model Notification {
+  id        String              @id @default(uuid())
+  userId    String
+  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType    @default(SYSTEM)
+  channel   NotificationChannel @default(IN_APP)
+  title     String
+  message   String
+  data      Json?
+  readAt    DateTime?
+  createdAt DateTime            @default(now())
+
+  @@index([userId])
+  @@index([userId, readAt])
+  @@map("notifications")
+}
+
+model NotificationPreference {
+  id     String           @id @default(uuid())
+  userId String
+  user   User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type   NotificationType
+  email  Boolean          @default(true)
+  push   Boolean          @default(false)
+  inApp  Boolean          @default(true)
+
+  @@unique([userId, type])
+  @@map("notification_preferences")
+}

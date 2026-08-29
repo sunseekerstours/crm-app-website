@@ -1,0 +1,22 @@
+{
+  "name": "sunseekers-travel-platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Sunseekers Travel Management Platform - Monorepo",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspace=@sunseekers/backend",
+    "dev": "npm run dev --workspace=@sunseekers/backend",
+    "test": "npm run test --workspace=@sunseekers/backend",
+    "test:e2e": "npm run test:e2e --workspace=@sunseekers/backend",
+    "lint": "npm run lint --workspace=@sunseekers/backend",
+    "format": "npm run format --workspace=@sunseekers/backend",
+    "prisma:generate": "npm run prisma:generate --workspace=@sunseekers/backend",
+    "prisma:migrate": "npm run prisma:migrate --workspace=@sunseekers/backend",
+    "docker:up": "docker compose -f docker/compose.yml up -d",
+    "docker:down": "docker compose -f docker/compose.yml down",
+    "docker:logs": "docker compose -f docker/compose.yml logs -f"
+  }
+}

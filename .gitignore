@@ -1,0 +1,53 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Test output
+coverage/
+.nyc_output/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Prisma
+apps/backend/prisma/*.db
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Compiled TS scripts (from ts-node)
+apps/backend/scripts/*.js
+apps/backend/scripts/*.d.ts
+apps/backend/scripts/*.map
+
+# Transient dev/debug artifacts
+web_err.txt
+web_out.txt
+boot*.txt
+boot*.txt.err
+boot*.log
+smoke-*.txt
+smoke-*.log
+e2e-*.log
+bk*.txt
+
+# Local PRD spec (kept out of public repo)
+TRAVEL OPERATIONS PLATFORM.docx
