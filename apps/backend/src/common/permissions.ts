@@ -141,6 +141,14 @@ export const Permission = {
 
   AUTOMATION_VIEW: 'automation.view',
   AUTOMATION_RUN: 'automation.run',
+
+  PAGE_VIEW: 'pages.view',
+  PAGE_CREATE: 'pages.create',
+  PAGE_UPDATE: 'pages.update',
+  PAGE_DELETE: 'pages.delete',
+
+  SITE_SETTING_VIEW: 'site_settings.view',
+  SITE_SETTING_UPDATE: 'site_settings.update',
 } as const;
 
 export type PermissionKey = (typeof Permission)[keyof typeof Permission];

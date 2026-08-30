@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@app/prisma/prisma.service';
 import { ApiNotFoundException, ErrorCode } from '@app/common/errors';
-import { DepartureStatus, TourStatus } from '@prisma/client';
+import { DepartureStatus, TourStatus, PageStatus } from '@prisma/client';
 
 const ACTIVE_TOUR_STATUSES: TourStatus[] = [TourStatus.ACTIVE];
 
@@ -135,5 +135,56 @@ export class PublicService {
       },
     });
     return destinations;
+  }
+
+  async listPublicPages() {
+    return this.prisma.page.findMany({
+      where: { status: PageStatus.PUBLISHED },
+      orderBy: { publishedAt: 'asc' },
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        excerpt: true,
+        body: true,
+        metaTitle: true,
+        metaDescription: true,
+        publishedAt: true,
+        updatedAt: true,
+      },
+    });
+  }
+
+  async getPublicPageBySlug(slug: string) {
+    const page = await this.prisma.page.findUnique({
+      where: { slug },
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        excerpt: true,
+        body: true,
+        metaTitle: true,
+        metaDescription: true,
+        status: true,
+        publishedAt: true,
+        updatedAt: true,
+      },
+    });
+    if (!page || page.status !== PageStatus.PUBLISHED) {
+      throw new ApiNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, 'Page not found');
+    }
+    return page;
+  }
+
+  async listPublicSettings() {
+    const settings = await this.prisma.siteSetting.findMany({
+      where: { isPublic: true },
+      select: { key: true, value: true, valueJson: true },
+    });
+    return settings.reduce<Record<string, unknown>>((acc, s) => {
+      acc[s.key] = s.valueJson !== null && s.valueJson !== undefined ? s.valueJson : s.value;
+      return acc;
+    }, {});
   }
 }

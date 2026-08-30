@@ -69,6 +69,12 @@ export const SYSTEM_ROLES: RolePreset[] = [
       Permission.NOTIFICATION_MANAGE,
       Permission.AUTOMATION_VIEW,
       Permission.AUTOMATION_RUN,
+      Permission.PAGE_VIEW,
+      Permission.PAGE_CREATE,
+      Permission.PAGE_UPDATE,
+      Permission.PAGE_DELETE,
+      Permission.SITE_SETTING_VIEW,
+      Permission.SITE_SETTING_UPDATE,
     ],
   },
   {
@@ -113,6 +119,8 @@ export const SYSTEM_ROLES: RolePreset[] = [
       Permission.NOTIFICATION_MANAGE,
       Permission.AUTOMATION_VIEW,
       Permission.AUTOMATION_RUN,
+      Permission.PAGE_VIEW,
+      Permission.SITE_SETTING_VIEW,
     ],
   },
   {

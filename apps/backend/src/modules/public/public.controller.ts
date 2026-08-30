@@ -25,4 +25,22 @@ export class PublicController {
   listDestinations() {
     return this.publicService.listDestinations();
   }
+
+  @Public()
+  @Get('pages')
+  listPages() {
+    return this.publicService.listPublicPages();
+  }
+
+  @Public()
+  @Get('pages/:slug')
+  getPage(@Param('slug') slug: string) {
+    return this.publicService.getPublicPageBySlug(slug);
+  }
+
+  @Public()
+  @Get('settings')
+  listSettings() {
+    return this.publicService.listPublicSettings();
+  }
 }
