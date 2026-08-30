@@ -43,4 +43,43 @@ export class AuditService {
       this.logger.error('Failed to write audit log', err as Error);
     }
   }
+
+  async findAll(params: { page: number; limit: number; action?: string; userId?: string }) {
+    const where = {
+      ...(params.action ? { action: params.action as AuditableAction } : {}),
+      ...(params.userId ? { userId: params.userId } : {}),
+    };
+    const [items, total] = await Promise.all([
+      this.prisma.auditLog.findMany({
+        where,
+        skip: (params.page - 1) * params.limit,
+        take: params.limit,
+        orderBy: { createdAt: 'desc' },
+        include: { user: { select: { id: true, email: true } } },
+      }),
+      this.prisma.auditLog.count({ where }),
+    ]);
+
+    return {
+      items: items.map((i) => ({
+        id: i.id,
+        userId: i.userId,
+        userEmail: i.user?.email ?? null,
+        action: i.action,
+        entityType: i.entityType,
+        entityId: i.entityId,
+        before: i.before,
+        after: i.after,
+        ipAddress: i.ipAddress,
+        userAgent: i.userAgent,
+        requestId: i.requestId,
+        createdAt: i.createdAt,
+      })),
+      total,
+      page: params.page,
+      limit: params.limit,
+      totalPages: Math.ceil(total / params.limit),
+      paginated: true as const,
+    };
+  }
 }
