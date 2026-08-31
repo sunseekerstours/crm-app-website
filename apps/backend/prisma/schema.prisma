@@ -377,6 +377,8 @@ model Customer {
   tasks                  Task[]
   bookings               Booking[]
   quotes                 Quote[]
+  invoices               Invoice[]
+  payments               Payment[]
   products               CustomerProduct[]
 
   createdAt DateTime @default(now())
@@ -525,6 +527,9 @@ model Deal {
   activities        Activity[]
   tasks             Task[]
   recordedNotes     Note[]
+  quotes            Quote[]
+  invoices          Invoice[]
+  payments          Payment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -976,14 +981,20 @@ model Quote {
   quoteNumber   String      @unique
   customerId    String?
   customer      Customer?   @relation(fields: [customerId], references: [id])
+  dealId        String?
+  deal          Deal?       @relation(fields: [dealId], references: [id])
   departureId   String?
   departure     Departure?  @relation("DepartureQuotes", fields: [departureId], references: [id])
   tourName      String?
   status        QuoteStatus @default(DRAFT)
   totalPrice    Decimal?    @db.Decimal(12, 2)
-  currency      String      @default("GHS")
+  currency      String      @default("USD")
   validUntil    DateTime?
+  items         Json?       @default("[]")
+  tax           Decimal?    @db.Decimal(12, 2)
+  discount      Decimal?    @db.Decimal(12, 2)
   notes         String?
+  terms         String?
   bookingId     String?
   booking       Booking?    @relation(fields: [bookingId], references: [id])
   createdById   String?
@@ -993,6 +1004,7 @@ model Quote {
   updatedAt DateTime @updatedAt
 
   @@index([customerId])
+  @@index([dealId])
   @@index([status])
   @@map("quotes")
 }
@@ -1004,12 +1016,20 @@ model Invoice {
   bookingId     String?
   booking       Booking?      @relation(fields: [bookingId], references: [id])
   customerId    String?
+  customer      Customer?     @relation(fields: [customerId], references: [id])
+  dealId        String?
+  deal          Deal?         @relation(fields: [dealId], references: [id])
   amount        Decimal?      @db.Decimal(12, 2)
   amountPaid    Decimal?      @db.Decimal(12, 2) @default(0)
-  currency      String        @default("GHS")
+  currency      String        @default("USD")
   status        InvoiceStatus @default(DRAFT)
   issueDate     DateTime?
   dueDate       DateTime?
+  items         Json?         @default("[]")
+  tax           Decimal?      @db.Decimal(12, 2)
+  discount      Decimal?      @db.Decimal(12, 2)
+  notes         String?
+  terms         String?
   createdById   String?
   createdBy     User?         @relation("InvoiceCreatedBy", fields: [createdById], references: [id])
   payments      Payment[]
@@ -1018,6 +1038,8 @@ model Invoice {
   updatedAt DateTime @updatedAt
 
   @@index([bookingId])
+  @@index([customerId])
+  @@index([dealId])
   @@index([status])
   @@map("invoices")
 }
@@ -1026,13 +1048,17 @@ model Invoice {
 model Payment {
   id             String         @id @default(uuid())
   paymentNumber  String         @unique
+  receiptNumber  String?
   bookingId      String?
   booking        Booking?       @relation(fields: [bookingId], references: [id])
   invoiceId      String?
   invoice        Invoice?       @relation(fields: [invoiceId], references: [id])
   customerId     String?
+  customer       Customer?      @relation(fields: [customerId], references: [id])
+  dealId         String?
+  deal           Deal?          @relation(fields: [dealId], references: [id])
   amount         Decimal?       @db.Decimal(12, 2)
-  currency       String         @default("GHS")
+  currency       String         @default("USD")
   method         PaymentMethod  @default(CASH)
   status         PaymentStatus  @default(PENDING)
   reference      String?
@@ -1046,6 +1072,8 @@ model Payment {
 
   @@index([bookingId])
   @@index([invoiceId])
+  @@index([customerId])
+  @@index([dealId])
   @@map("payments")
 }
 

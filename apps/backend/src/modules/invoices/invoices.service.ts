@@ -31,20 +31,38 @@ export class InvoicesService {
       if (!dto.customerId) dto.customerId = booking.customerId;
     }
 
+    let calculatedAmount = dto.amount;
+    if (calculatedAmount == null && Array.isArray(dto.items) && dto.items.length > 0) {
+      const subtotal = dto.items.reduce((sum, it) => sum + (Number(it.total) || (Number(it.quantity) * Number(it.unitPrice)) || 0), 0);
+      const tax = Number(dto.tax) || 0;
+      const discount = Number(dto.discount) || 0;
+      calculatedAmount = Math.max(0, subtotal + tax - discount);
+    }
+
     const invoice = await this.prisma.invoice.create({
       data: {
         invoiceNumber: await this.nextNumber('INV'),
         bookingId: dto.bookingId,
         customerId: dto.customerId,
-        amount: dto.amount,
-        currency: dto.currency ?? 'GHS',
+        dealId: dto.dealId,
+        amount: calculatedAmount ?? 0,
+        currency: dto.currency ?? 'USD',
         amountPaid: 0,
         status: InvoiceStatus.DRAFT,
-        issueDate: dto.issueDate ? new Date(dto.issueDate) : undefined,
+        issueDate: dto.issueDate ? new Date(dto.issueDate) : new Date(),
         dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
+        items: dto.items ?? [],
+        tax: dto.tax,
+        discount: dto.discount,
+        notes: dto.notes,
+        terms: dto.terms,
         createdById: ctx.userId,
       },
-      include: { booking: { select: { id: true, bookingNumber: true } } },
+      include: {
+        customer: true,
+        deal: true,
+        booking: { select: { id: true, bookingNumber: true, tourName: true } },
+      },
     });
 
     await this.audit.record({
@@ -71,7 +89,11 @@ export class InvoicesService {
     if (params.bookingId) where.bookingId = params.bookingId;
     if (params.status) where.status = params.status;
     if (params.search) {
-      where.OR = [{ invoiceNumber: { contains: params.search } }];
+      where.OR = [
+        { invoiceNumber: { contains: params.search, mode: 'insensitive' } },
+        { customer: { firstName: { contains: params.search, mode: 'insensitive' } } },
+        { customer: { lastName: { contains: params.search, mode: 'insensitive' } } },
+      ];
     }
 
     const [items, total] = await Promise.all([
@@ -80,7 +102,12 @@ export class InvoicesService {
         skip: (params.page - 1) * params.limit,
         take: params.limit,
         orderBy: { createdAt: 'desc' },
-        include: { booking: { select: { id: true, bookingNumber: true } }, payments: true },
+        include: {
+          customer: true,
+          deal: true,
+          booking: { select: { id: true, bookingNumber: true, tourName: true } },
+          payments: true,
+        },
       }),
       this.prisma.invoice.count({ where }),
     ]);
@@ -99,7 +126,9 @@ export class InvoicesService {
     const invoice = await this.prisma.invoice.findUnique({
       where: { id },
       include: {
-        booking: { select: { id: true, bookingNumber: true, tourName: true } },
+        customer: true,
+        deal: true,
+        booking: { select: { id: true, bookingNumber: true, tourName: true, customer: true } },
         payments: true,
       },
     });
@@ -112,14 +141,36 @@ export class InvoicesService {
     if (!existing)
       throw new ApiNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, 'Invoice not found');
 
+    let calculatedAmount = dto.amount;
+    if (calculatedAmount == null && Array.isArray(dto.items) && dto.items.length > 0) {
+      const subtotal = dto.items.reduce((sum, it) => sum + (Number(it.total) || (Number(it.quantity) * Number(it.unitPrice)) || 0), 0);
+      const tax = Number(dto.tax ?? existing.tax) || 0;
+      const discount = Number(dto.discount ?? existing.discount) || 0;
+      calculatedAmount = Math.max(0, subtotal + tax - discount);
+    }
+
     const updated = await this.prisma.invoice.update({
       where: { id },
       data: {
-        amount: dto.amount,
+        amount: calculatedAmount !== undefined ? calculatedAmount : existing.amount,
         currency: dto.currency,
+        customerId: dto.customerId,
+        bookingId: dto.bookingId,
+        dealId: dto.dealId,
         issueDate: dto.issueDate ? new Date(dto.issueDate) : undefined,
         dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
+        items: dto.items !== undefined ? dto.items : undefined,
+        tax: dto.tax !== undefined ? dto.tax : undefined,
+        discount: dto.discount !== undefined ? dto.discount : undefined,
+        notes: dto.notes !== undefined ? dto.notes : undefined,
+        terms: dto.terms !== undefined ? dto.terms : undefined,
         ...(dto.status !== undefined ? { status: dto.status } : {}),
+      },
+      include: {
+        customer: true,
+        deal: true,
+        booking: { select: { id: true, bookingNumber: true, tourName: true } },
+        payments: true,
       },
     });
 

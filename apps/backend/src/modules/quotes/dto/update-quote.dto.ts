@@ -1,11 +1,15 @@
 import { Type } from 'class-transformer';
-import { IsDateString, IsEnum, IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsDateString, IsEnum, IsNumber, IsOptional, IsString } from 'class-validator';
 import { QuoteStatus } from '@prisma/client';
 
 export class UpdateQuoteDto {
   @IsOptional()
   @IsString()
-  departureId?: string;
+  customerId?: string;
+
+  @IsOptional()
+  @IsString()
+  dealId?: string;
 
   @IsOptional()
   @IsString()
@@ -25,10 +29,33 @@ export class UpdateQuoteDto {
   validUntil?: string;
 
   @IsOptional()
+  @IsEnum(QuoteStatus)
+  status?: QuoteStatus;
+
+  @IsOptional()
+  @IsArray()
+  items?: Array<{
+    description: string;
+    quantity: number;
+    unitPrice: number;
+    total: number;
+  }>;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  tax?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  discount?: number;
+
+  @IsOptional()
   @IsString()
   notes?: string;
 
   @IsOptional()
-  @IsEnum(QuoteStatus)
-  status?: QuoteStatus;
+  @IsString()
+  terms?: string;
 }

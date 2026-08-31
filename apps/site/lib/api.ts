@@ -57,6 +57,10 @@ export type TourPublic = {
   videoUrl?: string | null;
   currency: string;
   basePrice: number | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  availabilityNote?: string | null;
+  pricing?: any;
   status: string;
   destinations?: TourDestination[];
   futureDepartures?: ListDeparturePublic[];

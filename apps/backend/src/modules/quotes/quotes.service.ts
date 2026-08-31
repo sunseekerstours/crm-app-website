@@ -3,7 +3,6 @@ import { PrismaService } from '@app/prisma/prisma.service';
 import { AuditService } from '@app/modules/audit/audit.service';
 import {
   ApiNotFoundException,
-  ApiBadRequestException,
   ApiConflictException,
   ErrorCode,
 } from '@app/common/errors';
@@ -48,19 +47,33 @@ export class QuotesService {
       tourName = tourName ?? departure.tour.name;
     }
 
+    let calculatedTotal = dto.totalPrice;
+    if (calculatedTotal == null && Array.isArray(dto.items) && dto.items.length > 0) {
+      const subtotal = dto.items.reduce((sum, it) => sum + (Number(it.total) || (Number(it.quantity) * Number(it.unitPrice)) || 0), 0);
+      const tax = Number(dto.tax) || 0;
+      const discount = Number(dto.discount) || 0;
+      calculatedTotal = Math.max(0, subtotal + tax - discount);
+    }
+
     const quote = await this.prisma.quote.create({
       data: {
         quoteNumber: await this.nextNumber('QTE'),
         customerId: dto.customerId,
+        dealId: dto.dealId,
+        bookingId: dto.bookingId,
         departureId: dto.departureId,
         tourName,
-        totalPrice: dto.totalPrice,
-        currency: dto.currency ?? 'GHS',
+        totalPrice: calculatedTotal ?? 0,
+        currency: dto.currency ?? 'USD',
         validUntil: dto.validUntil ? new Date(dto.validUntil) : undefined,
+        items: dto.items ?? [],
+        tax: dto.tax,
+        discount: dto.discount,
         notes: dto.notes,
+        terms: dto.terms,
         createdById: ctx.userId,
       },
-      include: { customer: true, departure: true },
+      include: { customer: true, departure: true, deal: true },
     });
 
     await this.audit.record({
@@ -87,8 +100,10 @@ export class QuotesService {
     if (params.status) where.status = params.status;
     if (params.search) {
       where.OR = [
-        { quoteNumber: { contains: params.search } },
+        { quoteNumber: { contains: params.search, mode: 'insensitive' } },
         { tourName: { contains: params.search, mode: 'insensitive' } },
+        { customer: { firstName: { contains: params.search, mode: 'insensitive' } } },
+        { customer: { lastName: { contains: params.search, mode: 'insensitive' } } },
       ];
     }
 
@@ -99,8 +114,10 @@ export class QuotesService {
         take: params.limit,
         orderBy: { createdAt: 'desc' },
         include: {
-          customer: { select: { id: true, firstName: true, lastName: true } },
+          customer: true,
+          deal: true,
           departure: true,
+          booking: true,
         },
       }),
       this.prisma.quote.count({ where }),
@@ -119,7 +136,7 @@ export class QuotesService {
   async findById(id: string) {
     const quote = await this.prisma.quote.findUnique({
       where: { id },
-      include: { customer: true, departure: true, booking: true },
+      include: { customer: true, departure: true, booking: true, deal: true },
     });
     if (!quote) throw new ApiNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, 'Quote not found');
     return quote;
@@ -139,21 +156,35 @@ export class QuotesService {
     ) {
       throw new ApiConflictException(
         ErrorCode.BAD_REQUEST,
-        'Accepted quotes can only be converted',
+        'Cannot revert an accepted quote to draft or expired',
       );
+    }
+
+    let calculatedTotal = dto.totalPrice;
+    if (calculatedTotal == null && Array.isArray(dto.items) && dto.items.length > 0) {
+      const subtotal = dto.items.reduce((sum, it) => sum + (Number(it.total) || (Number(it.quantity) * Number(it.unitPrice)) || 0), 0);
+      const tax = Number(dto.tax ?? existing.tax) || 0;
+      const discount = Number(dto.discount ?? existing.discount) || 0;
+      calculatedTotal = Math.max(0, subtotal + tax - discount);
     }
 
     const updated = await this.prisma.quote.update({
       where: { id },
       data: {
-        departureId: dto.departureId,
-        tourName: dto.tourName,
-        totalPrice: dto.totalPrice,
+        totalPrice: calculatedTotal !== undefined ? calculatedTotal : existing.totalPrice,
         currency: dto.currency,
+        customerId: dto.customerId,
+        dealId: dto.dealId,
+        tourName: dto.tourName,
         validUntil: dto.validUntil ? new Date(dto.validUntil) : undefined,
-        notes: dto.notes,
-        ...(dto.status !== undefined ? { status: dto.status } : {}),
+        status: dto.status,
+        items: dto.items !== undefined ? dto.items : undefined,
+        tax: dto.tax !== undefined ? dto.tax : undefined,
+        discount: dto.discount !== undefined ? dto.discount : undefined,
+        notes: dto.notes !== undefined ? dto.notes : undefined,
+        terms: dto.terms !== undefined ? dto.terms : undefined,
       },
+      include: { customer: true, departure: true, booking: true, deal: true },
     });
 
     await this.audit.record({
@@ -202,35 +233,49 @@ export class QuotesService {
   }
 
   async convert(id: string, ctx: RequestContext) {
-    const existing = await this.prisma.quote.findUnique({ where: { id } });
-    if (!existing) throw new ApiNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, 'Quote not found');
-    if (existing.status === QuoteStatus.CONVERTED) {
-      throw new ApiConflictException(ErrorCode.BAD_REQUEST, 'Quote already converted');
+    return this.convertToBooking(id, ctx);
+  }
+
+  async convertToBooking(id: string, ctx: RequestContext) {
+    const quote = await this.prisma.quote.findUnique({
+      where: { id },
+      include: { customer: true, departure: true },
+    });
+    if (!quote) throw new ApiNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, 'Quote not found');
+
+    if (quote.status === QuoteStatus.CONVERTED) {
+      throw new ApiConflictException(ErrorCode.BAD_REQUEST, 'Quote has already been converted');
     }
-    if (existing.status === QuoteStatus.DECLINED) {
-      throw new ApiConflictException(ErrorCode.BAD_REQUEST, 'Cannot convert a declined quote');
-    }
-    if (!existing.customerId) {
-      throw new ApiBadRequestException(
+    if (quote.status !== QuoteStatus.ACCEPTED) {
+      throw new ApiConflictException(
         ErrorCode.BAD_REQUEST,
-        'Quote requires a customer to convert',
+        'Only accepted quotes can be converted to bookings',
+      );
+    }
+    if (!quote.customerId) {
+      throw new ApiConflictException(
+        ErrorCode.BAD_REQUEST,
+        'Quote must have an associated customer to convert to a booking',
       );
     }
 
     const bookingDto: CreateBookingDto = {
-      customerId: existing.customerId,
-      departureId: existing.departureId ?? undefined,
-      tourName: existing.tourName ?? undefined,
-      totalPrice: existing.totalPrice != null ? Number(existing.totalPrice.toString()) : undefined,
-      currency: existing.currency,
-      notes: existing.notes ?? undefined,
+      customerId: quote.customerId,
+      departureId: quote.departureId ?? undefined,
+      paxCount: 1,
+      totalPrice: quote.totalPrice ? Number(quote.totalPrice) : undefined,
+      currency: quote.currency ?? 'USD',
+      notes: `Converted from quote ${quote.quoteNumber}`,
     };
 
     const booking = await this.bookingsService.create(bookingDto, ctx);
 
-    const quote = await this.prisma.quote.update({
+    await this.prisma.quote.update({
       where: { id },
-      data: { status: QuoteStatus.CONVERTED, bookingId: booking.id },
+      data: {
+        status: QuoteStatus.CONVERTED,
+        bookingId: booking.id,
+      },
     });
 
     await this.audit.record({
@@ -238,14 +283,13 @@ export class QuotesService {
       action: AuditableAction.QUOTE_CONVERTED,
       entityType: 'Quote',
       entityId: id,
-      before: { status: existing.status },
-      after: { status: QuoteStatus.CONVERTED, bookingId: booking.id },
+      after: { bookingId: booking.id },
       ipAddress: ctx.ipAddress,
       userAgent: ctx.userAgent,
       requestId: ctx.requestId,
     });
 
-    return { quote, bookingId: booking.id };
+    return booking;
   }
 
   async remove(id: string, ctx: RequestContext) {
@@ -264,8 +308,6 @@ export class QuotesService {
       userAgent: ctx.userAgent,
       requestId: ctx.requestId,
     });
-
-    return { success: true };
   }
 
   private async nextNumber(prefix: string): Promise<string> {

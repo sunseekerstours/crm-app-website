@@ -22,6 +22,7 @@ const CRM_NAV = [
   { href: '/crm/deals', label: 'Deals', permission: 'deals.view' },
   { href: '/crm/departures', label: 'Departures', permission: 'departures.view' },
   { href: '/crm/bookings', label: 'Bookings', permission: 'bookings.view' },
+  { href: '/crm/invoices', label: 'Invoices & Quotes', permission: 'invoices.view' },
   { href: '/crm/payments', label: 'Payments', permission: 'payments.view' },
   { href: '/crm/operations', label: 'Trip Board', permission: 'operations.view' },
   { href: '/crm/notifications', label: 'Notifications', permission: 'notifications.view' },
@@ -85,6 +86,12 @@ function getIcon(label: string) {
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
           <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+        </svg>
+      );
+    case 'Invoices & Quotes':
+      return (
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
         </svg>
       );
     case 'Products & Services':

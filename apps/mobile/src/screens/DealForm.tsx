@@ -1,14 +1,23 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { api } from '../api';
-import { AppHeader, Button, Chip, ErrorText, Field, Screen, SectionLabel, Spinner } from '../components/ui';
+import { AppHeader, Button, Chip, Empty, ErrorText, Field, Screen, SectionLabel, Spinner } from '../components/ui';
 import { colors, spacing } from '../theme';
 
 const DEAL_STAGES = ['NEW', 'QUALIFIED', 'PROPOSAL', 'NEGOTIATION', 'DEPOSIT', 'WON', 'LOST'];
 
+interface CustomerOption {
+  id: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  email?: string | null;
+}
+
 interface DealDetail {
   id: string;
   name?: string | null;
+  customerId?: string | null;
+  customer?: CustomerOption | null;
   tour?: string | null;
   destination?: string | null;
   value?: number | null;
@@ -33,11 +42,13 @@ export default function DealFormScreen({
   hasPerm: (p: string) => boolean;
 }) {
   const [name, setName] = useState('');
+  const [customerId, setCustomerId] = useState('');
+  const [customerOptions, setCustomerOptions] = useState<CustomerOption[]>([]);
   const [tour, setTour] = useState('');
   const [destination, setDestination] = useState('');
   const [value, setValue] = useState('');
-  const [currency, setCurrency] = useState('GHS');
-  const [probability, setProbability] = useState('');
+  const [currency, setCurrency] = useState('USD');
+  const [probability, setProbability] = useState('50');
   const [stage, setStage] = useState('NEW');
   const [expectedCloseDate, setExpectedCloseDate] = useState('');
   const [source, setSource] = useState('');
@@ -50,14 +61,18 @@ export default function DealFormScreen({
   const load = useCallback(async () => {
     setError(null);
     try {
+      const custRes = await api.get<{ items: CustomerOption[] }>('/customers?limit=100').catch(() => ({ items: [] }));
+      setCustomerOptions(custRes.items ?? []);
+
       if (dealId) {
         const d = await api.get<DealDetail>(`/deals/${dealId}`);
         setName(d.name ?? '');
+        setCustomerId(d.customerId ?? d.customer?.id ?? '');
         setTour(d.tour ?? '');
         setDestination(d.destination ?? '');
         setValue(d.value != null ? String(d.value) : '');
-        setCurrency(d.currency ?? 'GHS');
-        setProbability(d.probability != null ? String(d.probability) : '');
+        setCurrency(d.currency ?? 'USD');
+        setProbability(d.probability != null ? String(d.probability) : '50');
         setStage(d.stage ?? 'NEW');
         setExpectedCloseDate(d.expectedCloseDate ?? '');
         setSource(d.source ?? '');
@@ -84,10 +99,11 @@ export default function DealFormScreen({
     setError(null);
     const body = {
       name: name.trim(),
+      customerId: customerId || undefined,
       tour: tour.trim() || undefined,
       destination: destination.trim() || undefined,
       value: value ? Number(value) : undefined,
-      currency: currency.trim() || undefined,
+      currency: currency.trim() || 'USD',
       probability: probability ? Number(probability) : undefined,
       stage: stage || undefined,
       expectedCloseDate: expectedCloseDate.trim() || undefined,
@@ -127,9 +143,27 @@ export default function DealFormScreen({
       <AppHeader title={dealId ? 'Edit Deal' : 'New Deal'} onBack={onBack} />
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
         {error ? <ErrorText text={error} /> : null}
-        <SectionLabel>Deal</SectionLabel>
-        <Field label="Name *" value={name} onChangeText={setName} />
-        <Field label="Value" value={value} onChangeText={setValue} keyboardType="numeric" />
+        <SectionLabel>Deal Information</SectionLabel>
+        <Field label="Name *" value={name} onChangeText={setName} placeholder="e.g. 10-Pax Luxury Tour" />
+
+        <View style={styles.spacer} />
+        <SectionLabel>Customer (optional)</SectionLabel>
+        {customerOptions.length > 0 ? (
+          <View style={styles.chipRow}>
+            {customerOptions.map((c) => (
+              <Chip
+                key={c.id}
+                label={`${c.firstName ?? ''} ${c.lastName ?? ''}`.trim() || c.id.slice(0, 8)}
+                selected={customerId === c.id}
+                onPress={() => setCustomerId(customerId === c.id ? '' : c.id)}
+              />
+            ))}
+          </View>
+        ) : (
+          <Empty text="No customers available." />
+        )}
+
+        <Field label="Value" value={value} onChangeText={setValue} keyboardType="numeric" placeholder="e.g. 5000" />
         <Field label="Currency" value={currency} onChangeText={setCurrency} />
         <Field label="Probability (%)" value={probability} onChangeText={setProbability} keyboardType="numeric" />
         <Field label="Tour / package" value={tour} onChangeText={setTour} />

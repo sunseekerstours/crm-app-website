@@ -15,6 +15,14 @@ export class CreatePaymentDto {
   @IsString()
   customerId?: string;
 
+  @IsOptional()
+  @IsString()
+  dealId?: string;
+
+  @IsOptional()
+  @IsString()
+  receiptNumber?: string;
+
   @Type(() => Number)
   @IsNumber()
   amount!: number;

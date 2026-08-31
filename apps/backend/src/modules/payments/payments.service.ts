@@ -26,6 +26,8 @@ export class PaymentsService {
   ) {}
 
   async create(dto: CreatePaymentDto, ctx: RequestContext) {
+    let customerId = dto.customerId;
+
     if (dto.invoiceId) {
       const invoice = await this.prisma.invoice.findUnique({ where: { id: dto.invoiceId } });
       if (!invoice)
@@ -36,27 +38,39 @@ export class PaymentsService {
           'Cannot record payment on a cancelled invoice',
         );
       }
+      if (!customerId && invoice.customerId) customerId = invoice.customerId;
     }
     if (dto.bookingId) {
       const booking = await this.prisma.booking.findUnique({ where: { id: dto.bookingId } });
       if (!booking)
         throw new ApiNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, 'Booking not found');
+      if (!customerId && booking.customerId) customerId = booking.customerId;
     }
+
+    const receiptNumber = dto.receiptNumber || (await this.nextNumber('RCT'));
 
     const payment = await this.prisma.payment.create({
       data: {
         paymentNumber: await this.nextNumber('PAY'),
+        receiptNumber,
         bookingId: dto.bookingId,
         invoiceId: dto.invoiceId,
-        customerId: dto.customerId,
+        customerId,
+        dealId: dto.dealId,
         amount: dto.amount,
-        currency: dto.currency ?? 'GHS',
+        currency: dto.currency ?? 'USD',
         method: dto.method ?? PaymentMethod.CASH,
         status: PaymentStatus.COMPLETED,
         reference: dto.reference,
         paidAt: dto.paidAt ? new Date(dto.paidAt) : new Date(),
         notes: dto.notes,
         recordedById: ctx.userId,
+      },
+      include: {
+        customer: true,
+        deal: true,
+        booking: { select: { id: true, bookingNumber: true, tourName: true } },
+        invoice: { select: { id: true, invoiceNumber: true, amount: true, amountPaid: true } },
       },
     });
 
@@ -71,6 +85,7 @@ export class PaymentsService {
       entityId: payment.id,
       after: {
         paymentNumber: payment.paymentNumber,
+        receiptNumber: payment.receiptNumber,
         amount: payment.amount?.toString(),
         invoiceId: dto.invoiceId,
       },
@@ -90,8 +105,11 @@ export class PaymentsService {
     if (params.status) where.status = params.status as PaymentStatus;
     if (params.search) {
       where.OR = [
-        { paymentNumber: { contains: params.search } },
-        { reference: { contains: params.search } },
+        { paymentNumber: { contains: params.search, mode: 'insensitive' } },
+        { receiptNumber: { contains: params.search, mode: 'insensitive' } },
+        { reference: { contains: params.search, mode: 'insensitive' } },
+        { customer: { firstName: { contains: params.search, mode: 'insensitive' } } },
+        { customer: { lastName: { contains: params.search, mode: 'insensitive' } } },
       ];
     }
 
@@ -102,8 +120,10 @@ export class PaymentsService {
         take: params.limit,
         orderBy: { createdAt: 'desc' },
         include: {
-          booking: { select: { id: true, bookingNumber: true } },
-          invoice: { select: { id: true, invoiceNumber: true } },
+          customer: true,
+          deal: true,
+          booking: { select: { id: true, bookingNumber: true, tourName: true } },
+          invoice: { select: { id: true, invoiceNumber: true, amount: true, amountPaid: true } },
         },
       }),
       this.prisma.payment.count({ where }),
@@ -123,8 +143,10 @@ export class PaymentsService {
     const payment = await this.prisma.payment.findUnique({
       where: { id },
       include: {
-        booking: { select: { id: true, bookingNumber: true } },
-        invoice: { select: { id: true, invoiceNumber: true } },
+        customer: true,
+        deal: true,
+        booking: { select: { id: true, bookingNumber: true, tourName: true, customer: true } },
+        invoice: { select: { id: true, invoiceNumber: true, amount: true, amountPaid: true, customer: true } },
       },
     });
     if (!payment) throw new ApiNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, 'Payment not found');

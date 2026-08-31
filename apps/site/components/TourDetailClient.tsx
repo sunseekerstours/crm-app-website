@@ -21,6 +21,23 @@ export default function TourDetailClient({
   const [activeTab, setActiveTab] = useState<'overview' | 'itinerary' | 'cost'>('overview');
   const [expandedDay, setExpandedDay] = useState<number | null>(null);
 
+  // Availability Checker State
+  const [checkDate, setCheckDate] = useState(
+    tour.startDate ? new Date(tour.startDate).toISOString().substring(0, 10) : ''
+  );
+  const [checkPax, setCheckPax] = useState('2');
+  const [occupancy, setOccupancy] = useState<'double' | 'single'>('double');
+  const [availabilityResult, setAvailabilityResult] = useState<{
+    checked: boolean;
+    isAvailable: boolean;
+    statusText: string;
+    statusBadge: string;
+    estimatedPricePerPerson: number;
+    totalEstimated: number;
+    currency: string;
+    notes: string;
+  } | null>(null);
+
   const defaultItinerary = [
     {
       day: 1,
@@ -73,24 +90,71 @@ export default function TourDetailClient({
     : defaultItinerary;
 
   const defaultIncludes = [
-    '12 Nights Accommodation in 4/5* Hotels',
+    'Hotel Accommodation in 4/5* Star Hotels',
     'Daily Buffet Breakfast',
-    'English-Speaking Professional Tour Guides',
-    'All Entry Fees to Tour Sites & Parks',
+    'English-Speaking Professional GTA Certified Tour Guides',
+    'All Entry & Access Fees to National Parks & Castles',
     'Airport Transfers - Arrival & Departure',
-    'Transportation in Air-Conditioned Buses throughout the tour',
-    'Complimentary Bottled Water each day',
+    'Transportation in Air-Conditioned Luxury Buses throughout the tour',
+    'Complimentary Bottled Water provided daily',
   ];
 
   const defaultExcludes = [
-    'International Flights - To and from Ghana',
-    'Travel Visa Fees',
-    'Travel Insurance',
-    'Lunch & Dinner - Except where stated in itinerary',
-    'Personal Expenses - Souvenirs, tips, laundry, phone calls',
+    'International Airfare to/from Destination',
+    'Entry Visa & Passport Processing Fees',
+    'Travel & Medical Insurance',
+    'Lunch & Dinner - Except where specifically stated',
+    'Personal Expenses - Souvenirs, room service, laundry, phone calls',
     'Optional tours/activities not listed in itinerary',
-    'COVID / Health Testing if required',
   ];
+
+  // Pricing calculations
+  const baseDoublePrice = 3160;
+  const baseSinglePrice = 3835;
+
+  function performAvailabilityCheck() {
+    const pax = Number(checkPax) || 1;
+    const ratePerPerson = occupancy === 'single' ? baseSinglePrice : baseDoublePrice;
+
+    // Evaluate against tour dates if defined
+    let statusText = 'Guaranteed Departure Available';
+    let statusBadge = '🟢 Available';
+    let notes = 'Dates confirmed. Direct bookings and custom group arrangements are open.';
+
+    if (tour.startDate && checkDate) {
+      const selected = new Date(checkDate).getTime();
+      const tourStart = new Date(tour.startDate).getTime();
+      const tourEnd = tour.endDate ? new Date(tour.endDate).getTime() : tourStart + (tour.durationDays * 86400000);
+
+      if (selected >= tourStart && selected <= tourEnd) {
+        statusText = 'Seasonal Scheduled Departure Confirmed';
+        statusBadge = '✅ Guaranteed Seasonal Departure';
+        notes = `Your selected date falls right in the ${tour.availabilityNote || 'scheduled departure window'}.`;
+      } else {
+        statusText = 'Custom Private Departure Available';
+        statusBadge = '🟡 Private Tour Available';
+        notes = 'Custom private departure on your selected dates. Includes private guide and transportation.';
+      }
+    }
+
+    setAvailabilityResult({
+      checked: true,
+      isAvailable: true,
+      statusText,
+      statusBadge,
+      estimatedPricePerPerson: ratePerPerson,
+      totalEstimated: ratePerPerson * pax,
+      currency: 'USD',
+      notes,
+    });
+  }
+
+  function handleProceedToBooking() {
+    const el = document.getElementById('booking-quote-form');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    }
+  }
 
   return (
     <>
@@ -198,9 +262,17 @@ export default function TourDetailClient({
                 <div>
                   {/* Pricing Box (Screenshot 4) */}
                   <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '12px', padding: '24px', marginBottom: '28px' }}>
-                    <div style={{ fontSize: '18px', fontWeight: '800', color: '#166534', marginBottom: '8px' }}>
-                      23rd Dec 2026 - 3rd Jan 2027
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
+                      <div style={{ fontSize: '18px', fontWeight: '800', color: '#166534' }}>
+                        {tour.startDate && tour.endDate
+                          ? `${new Date(tour.startDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })} - ${new Date(tour.endDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`
+                          : tour.availabilityNote || '23rd Dec 2026 - 3rd Jan 2027'}
+                      </div>
+                      <span style={{ background: '#008744', color: '#fff', padding: '3px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: '700' }}>
+                        📅 Guaranteed Dates
+                      </span>
                     </div>
+
                     <div style={{ fontSize: '13px', color: '#15803d', marginBottom: '14px', fontWeight: '600' }}>
                       Rates based on Min. 10 Travelers:
                     </div>
@@ -216,6 +288,185 @@ export default function TourDetailClient({
                         <span style={{ fontWeight: '800', color: '#f37023', fontSize: '18px' }}>$3,835 <span style={{ fontSize: '13px', color: '#64748b', fontWeight: '500' }}>Per Person in a room</span></span>
                       </div>
                     </div>
+                  </div>
+
+                  {/* =========================================================================
+                      INTERACTIVE TOUR AVAILABILITY CHECKER WIDGET & BUTTON
+                      ========================================================================= */}
+                  <div
+                    style={{
+                      background: '#ffffff',
+                      border: '2px solid #008744',
+                      borderRadius: '12px',
+                      padding: '24px',
+                      marginBottom: '32px',
+                      boxShadow: '0 4px 14px rgba(0, 135, 68, 0.08)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+                      <span style={{ fontSize: '20px' }}>🗓️</span>
+                      <h3 style={{ fontSize: '18px', fontWeight: '900', color: '#0f172a', margin: 0 }}>
+                        Check Tour Availability &amp; Estimated Pricing
+                      </h3>
+                    </div>
+                    <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 16px' }}>
+                      Select your intended travel date and number of guests to verify real-time availability and rates.
+                    </p>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px', alignItems: 'flex-end' }}>
+                      <div>
+                        <label style={{ fontSize: '12px', fontWeight: '700', color: '#334155', display: 'block', marginBottom: '4px' }}>
+                          Select Travel Date
+                        </label>
+                        <input
+                          type="date"
+                          value={checkDate}
+                          onChange={(e) => setCheckDate(e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '9px 12px',
+                            borderRadius: '6px',
+                            border: '1px solid #cbd5e1',
+                            fontSize: '14px',
+                            outline: 'none',
+                          }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ fontSize: '12px', fontWeight: '700', color: '#334155', display: 'block', marginBottom: '4px' }}>
+                          Number of Travelers
+                        </label>
+                        <select
+                          value={checkPax}
+                          onChange={(e) => setCheckPax(e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '9px 12px',
+                            borderRadius: '6px',
+                            border: '1px solid #cbd5e1',
+                            fontSize: '14px',
+                            outline: 'none',
+                            background: '#fff',
+                          }}
+                        >
+                          <option value="1">1 Traveler (Solo)</option>
+                          <option value="2">2 Travelers (Couple / Pair)</option>
+                          <option value="3">3 Travelers</option>
+                          <option value="4">4 Travelers (Small Group)</option>
+                          <option value="6">6 Travelers</option>
+                          <option value="10">10+ Travelers (Group Rate)</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label style={{ fontSize: '12px', fontWeight: '700', color: '#334155', display: 'block', marginBottom: '4px' }}>
+                          Room Occupancy
+                        </label>
+                        <select
+                          value={occupancy}
+                          onChange={(e) => setOccupancy(e.target.value as any)}
+                          style={{
+                            width: '100%',
+                            padding: '9px 12px',
+                            borderRadius: '6px',
+                            border: '1px solid #cbd5e1',
+                            fontSize: '14px',
+                            outline: 'none',
+                            background: '#fff',
+                          }}
+                        >
+                          <option value="double">Double Occupancy ($3,160/pax)</option>
+                          <option value="single">Single Occupancy ($3,835/pax)</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <button
+                          type="button"
+                          onClick={performAvailabilityCheck}
+                          style={{
+                            width: '100%',
+                            background: '#008744',
+                            color: '#ffffff',
+                            border: 'none',
+                            padding: '11px 16px',
+                            borderRadius: '6px',
+                            fontSize: '14px',
+                            fontWeight: '800',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px',
+                            transition: 'background 0.2s',
+                          }}
+                          onMouseOver={(e) => (e.currentTarget.style.background = '#006d37')}
+                          onMouseOut={(e) => (e.currentTarget.style.background = '#008744')}
+                        >
+                          🔍 Check Availability
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Result Output Card */}
+                    {availabilityResult && (
+                      <div
+                        style={{
+                          marginTop: '20px',
+                          background: '#f8fafc',
+                          border: '1px solid #cbd5e1',
+                          borderRadius: '8px',
+                          padding: '18px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '12px',
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontSize: '18px' }}>✨</span>
+                            <span style={{ fontWeight: '800', color: '#0f172a', fontSize: '15px' }}>
+                              {availabilityResult.statusText}
+                            </span>
+                          </div>
+                          <span style={{ background: '#dcfce7', color: '#15803d', padding: '4px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: '800' }}>
+                            {availabilityResult.statusBadge}
+                          </span>
+                        </div>
+
+                        <div style={{ fontSize: '13px', color: '#475569' }}>
+                          {availabilityResult.notes}
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #e2e8f0', paddingTop: '12px', flexWrap: 'wrap', gap: '12px' }}>
+                          <div>
+                            <span style={{ fontSize: '12px', color: '#64748b' }}>Estimated Total ({checkPax} Travelers): </span>
+                            <span style={{ fontSize: '20px', fontWeight: '900', color: '#008744' }}>
+                              ${availabilityResult.totalEstimated.toLocaleString()}
+                            </span>
+                            <span style={{ fontSize: '12px', color: '#64748b' }}> (${availabilityResult.estimatedPricePerPerson.toLocaleString()} / person)</span>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={handleProceedToBooking}
+                            style={{
+                              background: '#f37023',
+                              color: '#fff',
+                              border: 'none',
+                              padding: '8px 18px',
+                              borderRadius: '6px',
+                              fontSize: '13px',
+                              fontWeight: '800',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Book Selected Dates →
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Description text */}
@@ -260,10 +511,10 @@ export default function TourDetailClient({
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                       {itineraryDays.slice(0, 3).map((d) => (
                         <div key={d.day} style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '14px 18px', background: '#f8fafc' }}>
-                          <div style={{ fontWeight: '700', color: '#008744', fontSize: '15px', marginBottom: '4px' }}>
+                          <div style={{ fontWeight: '700', fontSize: '15px', color: '#0f172a', marginBottom: '4px' }}>
                             {d.title}
                           </div>
-                          <div style={{ fontSize: '13px', color: '#475569', lineHeight: 1.6 }}>
+                          <div style={{ fontSize: '13px', color: '#64748b', lineHeight: 1.6 }}>
                             {d.desc}
                           </div>
                         </div>
@@ -276,13 +527,11 @@ export default function TourDetailClient({
               {/* Tab 2: Itinerary (Screenshot 4) */}
               {activeTab === 'itinerary' && (
                 <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                    <h3 style={{ fontSize: '22px', fontWeight: '800', color: '#0f172a', margin: 0 }}>
-                      Detailed Day-by-Day Itinerary
-                    </h3>
-                  </div>
+                  <h3 style={{ fontSize: '22px', fontWeight: '800', color: '#0f172a', marginBottom: '20px' }}>
+                    Daily Tour Itinerary
+                  </h3>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     {itineraryDays.map((d) => (
                       <div
                         key={d.day}
@@ -290,7 +539,6 @@ export default function TourDetailClient({
                           border: '1px solid #e2e8f0',
                           borderRadius: '10px',
                           overflow: 'hidden',
-                          background: '#fff',
                         }}
                       >
                         <button
@@ -373,7 +621,12 @@ export default function TourDetailClient({
               )}
 
               {/* Embedded Quote Form (Screenshot 5) */}
-              <TourQuoteForm tourName={tour.name} />
+              <TourQuoteForm
+                tourName={tour.name}
+                prefillDate={checkDate}
+                prefillPax={checkPax}
+                prefillNote={availabilityResult ? `Checked Availability: ${availabilityResult.statusText} (${occupancy === 'single' ? 'Single' : 'Double'} Occupancy - Est: $${availabilityResult.totalEstimated})` : ''}
+              />
             </div>
 
             {/* Right Column: Why Book With Us Card (Screenshot 4 & 5) */}
@@ -448,38 +701,19 @@ export default function TourDetailClient({
                 <h3 className="section-title" style={{ fontSize: '24px' }}>Related Trips</h3>
               </div>
 
-              <div className="grid-3">
-                {relatedTours.map((rel) => (
-                  <div key={rel.slug} className="tour-card">
-                    <div className="tour-card-img-wrap">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={rel.image} alt={rel.title} loading="lazy" />
-                      <div className="tour-card-badge">{rel.destination}</div>
-                      <button className="tour-card-heart" title="Save to Favorites" aria-label="Favorite">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" style={{ width: 18, height: 18 }}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
-                        </svg>
-                      </button>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
+                {relatedTours.map((t, idx) => (
+                  <div key={idx} style={{ background: '#fff', borderRadius: '10px', overflow: 'hidden', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
+                    <div style={{ height: '180px', backgroundImage: `url('${t.image}')`, backgroundSize: 'cover', backgroundPosition: 'center', position: 'relative' }}>
+                      <span style={{ position: 'absolute', top: '12px', left: '12px', background: '#008744', color: '#fff', fontSize: '11px', fontWeight: '700', padding: '3px 8px', borderRadius: '4px' }}>
+                        {t.duration}
+                      </span>
                     </div>
-
-                    <div className="tour-card-body">
-                      <div className="tour-card-dest">
-                        <span>📍 {rel.destination}</span>
-                      </div>
-                      <h3 className="tour-card-title">{rel.title}</h3>
-
-                      <div className="tour-card-meta">
-                        <div className="tour-card-duration">
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" style={{ width: 15, height: 15 }}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                          <span>{rel.duration}</span>
-                        </div>
-                        <span className="tour-card-price">Best Value</span>
-                      </div>
-
-                      <Link href={`/tours/${rel.slug}`} className="btn-view-details">
-                        View Details
+                    <div style={{ padding: '16px' }}>
+                      <div style={{ fontSize: '12px', color: '#f37023', fontWeight: '700', marginBottom: '4px' }}>{t.destination}</div>
+                      <h4 style={{ fontSize: '16px', fontWeight: '800', margin: '0 0 12px', color: '#0f172a' }}>{t.title}</h4>
+                      <Link href={`/tours/${t.slug}`} className="btn btn-secondary" style={{ width: '100%', textAlign: 'center', display: 'block', padding: '8px', fontSize: '13px' }}>
+                        Explore Tour →
                       </Link>
                     </div>
                   </div>

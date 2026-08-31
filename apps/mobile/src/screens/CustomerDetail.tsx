@@ -11,7 +11,6 @@ import {
 import { api } from '../api';
 import { AppHeader, Badge, Button, Card, Chip, Empty, ErrorText, Field, Screen, SectionLabel, Spinner } from '../components/ui';
 import { colors, radius, spacing } from '../theme';
-import type { Route } from '../navigation';
 
 export interface CustomerDetail {
   id: string;
@@ -41,17 +40,43 @@ interface Note {
   createdBy?: { firstName?: string; lastName?: string } | null;
 }
 
+interface BookingItem {
+  id: string;
+  bookingNumber?: string;
+  tourName?: string;
+  status?: string;
+  totalPrice?: number | string;
+  currency?: string;
+}
+
+interface InvoiceItem {
+  id: string;
+  invoiceNumber: string;
+  amount: number | string;
+  amountPaid: number | string;
+  currency: string;
+  status: string;
+}
+
+interface PaymentItem {
+  id: string;
+  paymentNumber: string;
+  receiptNumber?: string;
+  amount: number | string;
+  currency: string;
+  method: string;
+}
+
 const LEAD_STAGES = ['NEW', 'CONTACTED', 'QUALIFIED', 'PROPOSAL', 'NEGOTIATION', 'WON', 'LOST'];
 const DEAL_STAGES = ['NEW', 'QUALIFIED', 'PROPOSAL', 'NEGOTIATION', 'DEPOSIT', 'WON', 'LOST'];
-
 const PRODUCT_CATEGORIES = ['GHANA_TOUR', 'INTERNATIONAL_TOUR', 'FLIGHT', 'HOTEL', 'CAR_RENTAL', 'OTHER'];
 
 function toneForStatus(s?: string) {
   if (!s) return 'info' as const;
   const v = s.toUpperCase();
-  if (v === 'LOST' || v === 'BLOCKED' || v === 'INACTIVE') return 'danger' as const;
-  if (v === 'WON' || v === 'ACTIVE') return 'primary' as const;
-  if (v === 'DEPOSIT' || v === 'NEGOTIATION') return 'warning' as const;
+  if (v === 'LOST' || v === 'BLOCKED' || v === 'INACTIVE' || v === 'CANCELLED') return 'danger' as const;
+  if (v === 'WON' || v === 'ACTIVE' || v === 'CONFIRMED' || v === 'PAID') return 'primary' as const;
+  if (v === 'DEPOSIT' || v === 'NEGOTIATION' || v === 'PARTIALLY_PAID') return 'warning' as const;
   return 'info' as const;
 }
 
@@ -66,6 +91,9 @@ export default function CustomerDetailScreen({
 }) {
   const [customer, setCustomer] = useState<CustomerDetail | null>(null);
   const [notes, setNotes] = useState<Note[]>([]);
+  const [bookings, setBookings] = useState<BookingItem[]>([]);
+  const [invoices, setInvoices] = useState<InvoiceItem[]>([]);
+  const [payments, setPayments] = useState<PaymentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -75,12 +103,18 @@ export default function CustomerDetailScreen({
   const load = useCallback(async () => {
     setError(null);
     try {
-      const [c, n] = await Promise.all([
+      const [c, n, b, inv, p] = await Promise.all([
         api.get<CustomerDetail>(`/customers/${customerId}`),
         api.get<{ items: Note[] }>(`/notes?customerId=${customerId}&limit=50`).catch(() => ({ items: [] })),
+        api.get<{ items: BookingItem[] }>(`/bookings?customerId=${customerId}&limit=50`).catch(() => ({ items: [] })),
+        api.get<{ items: InvoiceItem[] }>(`/invoices?customerId=${customerId}&limit=50`).catch(() => ({ items: [] })),
+        api.get<{ items: PaymentItem[] }>(`/payments?customerId=${customerId}&limit=50`).catch(() => ({ items: [] })),
       ]);
       setCustomer(c);
       setNotes(n.items ?? []);
+      setBookings(b.items ?? []);
+      setInvoices(inv.items ?? []);
+      setPayments(p.items ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load customer');
     } finally {
@@ -189,6 +223,60 @@ export default function CustomerDetailScreen({
           ) : null}
         </Card>
 
+        {/* Bookings & Financials */}
+        <Card title="Bookings & Invoices">
+          {bookings.length > 0 ? (
+            <View style={styles.group}>
+              <SectionLabel>Bookings ({bookings.length})</SectionLabel>
+              {bookings.map((b) => (
+                <View key={b.id} style={styles.finRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.finTitle}>{b.tourName || b.bookingNumber}</Text>
+                    <Text style={styles.finSub}>{b.bookingNumber}</Text>
+                  </View>
+                  <Text style={styles.finAmt}>${b.totalPrice ?? '0'}</Text>
+                  <Badge label={b.status ?? 'PENDING'} tone={toneForStatus(b.status)} />
+                </View>
+              ))}
+            </View>
+          ) : null}
+
+          {invoices.length > 0 ? (
+            <View style={styles.group}>
+              <SectionLabel>Invoices ({invoices.length})</SectionLabel>
+              {invoices.map((inv) => (
+                <View key={inv.id} style={styles.finRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.finTitle}>{inv.invoiceNumber}</Text>
+                    <Text style={styles.finSub}>Paid: ${inv.amountPaid ?? '0'}</Text>
+                  </View>
+                  <Text style={styles.finAmt}>${inv.amount}</Text>
+                  <Badge label={inv.status} tone={toneForStatus(inv.status)} />
+                </View>
+              ))}
+            </View>
+          ) : null}
+
+          {payments.length > 0 ? (
+            <View style={styles.group}>
+              <SectionLabel>Receipts & Payments ({payments.length})</SectionLabel>
+              {payments.map((p) => (
+                <View key={p.id} style={styles.finRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.finTitle}>{p.receiptNumber || p.paymentNumber}</Text>
+                    <Text style={styles.finSub}>{p.method}</Text>
+                  </View>
+                  <Text style={[styles.finAmt, { color: colors.primary }]}>${p.amount}</Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
+
+          {bookings.length === 0 && invoices.length === 0 && payments.length === 0 && (
+            <Text style={styles.muted}>No bookings or invoices recorded for this customer yet.</Text>
+          )}
+        </Card>
+
         <Card title="Products & Services">
           {customer.products && customer.products.length > 0 ? (
             <View>
@@ -215,7 +303,7 @@ export default function CustomerDetailScreen({
         <Card title="Sales Process">
           {(!customer.leads || customer.leads.length === 0) &&
           (!customer.deals || customer.deals.length === 0) ? (
-            <Text style={styles.muted}>No linked lead or deal. Move this customer through the sales process by updating the linked lead/deal stages.</Text>
+            <Text style={styles.muted}>No linked lead or deal.</Text>
           ) : null}
 
           {(customer.leads ?? []).map((lead) => {
@@ -226,7 +314,7 @@ export default function CustomerDetailScreen({
                   <Text style={styles.stageTitle}>Lead</Text>
                   <Badge label={lead.stage} tone={toneForStatus(lead.stage)} />
                 </View>
-                <Text style={styles.stageHint}>Update lead stage to move it through the pipeline:</Text>
+                <Text style={styles.stageHint}>Update lead stage:</Text>
                 <View style={styles.chipRow}>
                   {stages.map((st) => (
                     <Chip
@@ -247,7 +335,7 @@ export default function CustomerDetailScreen({
                 <Text style={styles.stageTitle}>Deal{deal.name ? ` · ${deal.name}` : ''}</Text>
                 <Badge label={deal.stage} tone={toneForStatus(deal.stage)} />
               </View>
-              <Text style={styles.stageHint}>Update deal stage to move it through the pipeline:</Text>
+              <Text style={styles.stageHint}>Update deal stage:</Text>
               <View style={styles.chipRow}>
                 {DEAL_STAGES.map((st) => (
                   <Chip
@@ -304,6 +392,10 @@ const styles = StyleSheet.create({
   stageTitle: { fontSize: 15, fontWeight: '700', color: colors.text, flex: 1 },
   stageHint: { fontSize: 12, color: colors.muted, marginBottom: spacing.sm },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap' },
+  finRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: spacing.xs, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
+  finTitle: { fontSize: 14, fontWeight: '700', color: colors.text },
+  finSub: { fontSize: 11, color: colors.muted },
+  finAmt: { fontSize: 14, fontWeight: '800', color: colors.text, marginHorizontal: spacing.sm },
   noteList: { marginTop: spacing.lg },
   note: {
     backgroundColor: colors.bg,
