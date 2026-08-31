@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, radius, shadow, spacing } from '../theme';
 
 export function Screen({ children }: { children: React.ReactNode }) {
@@ -27,8 +28,9 @@ export function AppHeader({
   rightLabel?: string;
   onRight?: () => void;
 }) {
+  const insets = useSafeAreaInsets();
   return (
-    <View style={styles.header}>
+    <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
       <View style={styles.headerSide}>
         {onBack ? (
           <Pressable
@@ -71,8 +73,9 @@ export function TabBar({
   active: string;
   onSelect: (key: string) => void;
 }) {
+  const insets = useSafeAreaInsets();
   return (
-    <View style={styles.tabBar}>
+    <View style={[styles.tabBar, { paddingBottom: insets.bottom + spacing.sm }]}>
       {tabs.map((tab) => {
         const isActive = tab.key === active;
         return (

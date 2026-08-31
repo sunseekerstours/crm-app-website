@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Login from './src/screens/Login';
 import { HomeScreen } from './src/screens/Home';
 import ListScreen from './src/screens/ListScreen';
@@ -16,6 +17,7 @@ import DepartureFormScreen from './src/screens/DepartureForm';
 import ProductScreen from './src/screens/ProductScreen';
 import { resourceConfig } from './src/columns';
 import { useAuth, hasPermission } from './src/useAuth';
+import { TabBar } from './src/components/ui';
 import { colors } from './src/theme';
 import type { Route } from './src/navigation';
 
@@ -25,19 +27,21 @@ export default function App() {
 
   if (loading) {
     return (
-      <View style={styles.loading}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>Loading…</Text>
-      </View>
+      <SafeAreaProvider>
+        <View style={styles.loading}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Loading…</Text>
+        </View>
+      </SafeAreaProvider>
     );
   }
 
   if (!user) {
     return (
-      <>
+      <SafeAreaProvider>
         <Login onLogin={async (e, p) => { await login(e, p); }} />
         <StatusBar style="auto" />
-      </>
+      </SafeAreaProvider>
     );
   }
 
@@ -184,15 +188,45 @@ export default function App() {
       content = <HomeScreen user={user} onOpen={setRoute} onLogout={logout} />;
   }
 
+  const activeTab =
+    route.name === 'home'
+      ? 'home'
+      : route.name === 'list' && route.resource === 'customers'
+        ? 'customers'
+        : route.name === 'list' && route.resource === 'leads'
+          ? 'leads'
+          : route.name === 'list' && route.resource === 'deals'
+            ? 'deals'
+            : '';
+
+  const onTabSelect = (key: string) => {
+    if (key === 'home') setRoute({ name: 'home' });
+    else setRoute({ name: 'list', resource: key });
+  };
+
   return (
-    <>
-      {content}
+    <SafeAreaProvider>
+      <View style={styles.shell}>
+        <View style={styles.shellContent}>{content}</View>
+        <TabBar
+          tabs={[
+            { key: 'home', label: 'Home', icon: '🏠' },
+            { key: 'customers', label: 'Customers', icon: '👥' },
+            { key: 'leads', label: 'Leads', icon: '🎯' },
+            { key: 'deals', label: 'Deals', icon: '💼' },
+          ]}
+          active={activeTab}
+          onSelect={onTabSelect}
+        />
+      </View>
       <StatusBar style="light" />
-    </>
+    </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
+  shell: { flex: 1, backgroundColor: colors.bg },
+  shellContent: { flex: 1 },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg },
   loadingText: { marginTop: 10, color: colors.muted },
 });
