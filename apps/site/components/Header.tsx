@@ -158,19 +158,19 @@ export default function Header() {
               {pathname === '/car-rentals' && <span className="active-orange-bar" />}
             </Link>
 
-            {/* Plan Your Trip / About */}
+            {/* Plan Your Trip */}
             <Link
-              href="/about"
-              className={`nav-link-item ${pathname === '/about' ? 'active' : ''}`}
+              href="/plan-your-trip"
+              className={`nav-link-item ${pathname === '/plan-your-trip' ? 'active' : ''}`}
             >
               <span>Plan your trip</span>
-              {pathname === '/about' && <span className="active-orange-bar" />}
+              {pathname === '/plan-your-trip' && <span className="active-orange-bar" />}
             </Link>
           </div>
 
           {/* CTA Button Pill (Screenshot 1 & 2) */}
           <div className="nav-right-actions">
-            <Link href="/contact" className="pill-book-btn">
+            <Link href="/plan-your-trip" className="pill-book-btn">
               <span>Book Now</span>
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" style={{ width: 16, height: 16 }}>
                 <path fillRule="evenodd" d="M3 10a.75.75 0 01.75-.75h10.638L10.23 5.29a.75.75 0 111.04-1.08l5.5 5.25a.75.75 0 010 1.08l-5.5 5.25a.75.75 0 11-1.04-1.08l4.158-3.96H3.75A.75.75 0 013 10z" clipRule="evenodd" />
@@ -223,10 +223,13 @@ export default function Header() {
             <Link href="/car-rentals" className={pathname === '/car-rentals' ? 'active' : ''} onClick={() => setMobileMenuOpen(false)}>
               Car Rentals
             </Link>
-            <Link href="/about" className={pathname === '/about' ? 'active' : ''} onClick={() => setMobileMenuOpen(false)}>
-              Plan your trip / About Us
+            <Link href="/plan-your-trip" className={pathname === '/plan-your-trip' ? 'active' : ''} onClick={() => setMobileMenuOpen(false)}>
+              Plan your trip
             </Link>
-            <Link href="/contact" className="mobile-cta-btn" onClick={() => setMobileMenuOpen(false)}>
+            <Link href="/about" className={pathname === '/about' ? 'active' : ''} onClick={() => setMobileMenuOpen(false)}>
+              About Us
+            </Link>
+            <Link href="/plan-your-trip" className="mobile-cta-btn" onClick={() => setMobileMenuOpen(false)}>
               Book Now &rarr;
             </Link>
           </div>

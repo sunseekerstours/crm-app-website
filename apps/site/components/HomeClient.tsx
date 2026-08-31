@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 
 export interface TrendingTour {
@@ -14,7 +14,7 @@ export interface TrendingTour {
 
 export interface DestinationItem {
   name: string;
-  tagline: string;
+  country: string;
   image: string;
   href: string;
 }
@@ -49,42 +49,66 @@ const HERO_SLIDES = [
   },
 ];
 
-const DESTINATIONS: DestinationItem[] = [
+const ALL_DESTINATIONS: DestinationItem[] = [
   {
     name: 'Ghana',
-    tagline: 'Culture, Heritage & Safaris',
+    country: 'West Africa',
     image: 'https://sunseekerstours.com/wp-content/uploads/2025/11/Black-star-square.png',
     href: '/tours/ghana',
   },
   {
     name: 'Dubai',
-    tagline: 'Modern Wonders & Desert Safari',
+    country: 'UAE',
     image: 'https://sunseekerstours.com/wp-content/uploads/2026/07/images-2-1.jpg',
     href: '/tours/the-ultimate-dubai-experience',
   },
   {
+    name: 'Singapore',
+    country: 'Southeast Asia',
+    image: 'https://sunseekerstours.com/wp-content/uploads/2026/07/Universal-Studios-Singapore.jpg',
+    href: '/tours/explore-singapore-malaysia',
+  },
+  {
     name: 'Namibia',
-    tagline: 'Red Dunes & Coastal Wilderness',
+    country: 'Southern Africa',
     image: 'https://sunseekerstours.com/wp-content/uploads/2026/07/Namibia.jpg',
     href: '/destinations',
   },
   {
     name: 'Rwanda',
-    tagline: 'Land of a Thousand Hills & Gorillas',
+    country: 'East Africa',
     image: 'https://sunseekerstours.com/wp-content/uploads/2026/07/Rwanda.webp',
     href: '/destinations',
   },
   {
     name: 'Seychelles',
-    tagline: 'Tropical Island Paradise',
+    country: 'Indian Ocean',
     image: 'https://sunseekerstours.com/wp-content/uploads/2026/04/images-1.jpg',
-    href: '/tours/desert-dream-getaway',
+    href: '/destinations',
   },
   {
-    name: 'Singapore & Malaysia',
-    tagline: 'Futuristic Gardens & Heritage',
-    image: 'https://sunseekerstours.com/wp-content/uploads/2026/07/Universal-Studios-Singapore.jpg',
-    href: '/tours/explore-singapore-malaysia',
+    name: 'Zanzibar',
+    country: 'Tanzania',
+    image: 'https://images.unsplash.com/photo-1586861635167-e5223aadc9fe?q=80&w=800&auto=format&fit=crop',
+    href: '/destinations',
+  },
+  {
+    name: 'South Africa',
+    country: 'Cape Town & Safari',
+    image: 'https://images.unsplash.com/photo-1580618672591-eb180b1a973f?q=80&w=800&auto=format&fit=crop',
+    href: '/destinations',
+  },
+  {
+    name: 'Cairo & Nile',
+    country: 'Egypt',
+    image: 'https://images.unsplash.com/photo-1572252009286-268acec5ca0a?q=80&w=800&auto=format&fit=crop',
+    href: '/destinations',
+  },
+  {
+    name: 'Kenya Safari',
+    country: 'Masai Mara',
+    image: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=800&auto=format&fit=crop',
+    href: '/destinations',
   },
 ];
 
@@ -95,56 +119,41 @@ export default function HomeClient({
   trendingTours: TrendingTour[];
   services: { title: string; desc: string; emoji: string; href: string }[];
 }) {
-  // Hero Carousel State
+  // Hero Carousel State (Auto transitions every 5 seconds)
   const [currentSlide, setCurrentSlide] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
 
-  // Destination Slider State
-  const [destIndex, setDestIndex] = useState(0);
+  // Automatic Destination Transition State (Cycles smoothly through destinations)
+  const [destStartIndex, setDestStartIndex] = useState(0);
 
-  // Auto advance hero slides
+  // Auto-transition hero slides every 5 seconds continuously
   useEffect(() => {
-    if (isPaused) return;
-    const interval = setInterval(() => {
+    const heroInterval = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % HERO_SLIDES.length);
-    }, 6000);
-    return () => clearInterval(interval);
-  }, [isPaused]);
-
-  // Auto rotate destinations
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setDestIndex((prev) => (prev + 1) % DESTINATIONS.length);
     }, 5000);
-    return () => clearInterval(interval);
+    return () => clearInterval(heroInterval);
   }, []);
 
-  const nextHeroSlide = () => {
-    setCurrentSlide((prev) => (prev + 1) % HERO_SLIDES.length);
-  };
+  // Auto-transition destinations every 3.5 seconds continuously (5 visible cards shift in order)
+  useEffect(() => {
+    const destInterval = setInterval(() => {
+      setDestStartIndex((prev) => (prev + 1) % ALL_DESTINATIONS.length);
+    }, 3500);
+    return () => clearInterval(destInterval);
+  }, []);
 
-  const prevHeroSlide = () => {
-    setCurrentSlide((prev) => (prev - 1 + HERO_SLIDES.length) % HERO_SLIDES.length);
-  };
-
-  const nextDest = () => {
-    setDestIndex((prev) => (prev + 1) % DESTINATIONS.length);
-  };
-
-  const prevDest = () => {
-    setDestIndex((prev) => (prev - 1 + DESTINATIONS.length) % DESTINATIONS.length);
-  };
+  // Compute the 5 visible destination cards for current window
+  const visibleDestinations = [];
+  for (let i = 0; i < 5; i++) {
+    const idx = (destStartIndex + i) % ALL_DESTINATIONS.length;
+    visibleDestinations.push({ ...ALL_DESTINATIONS[idx], uniqueKey: `${ALL_DESTINATIONS[idx].name}-${i}` });
+  }
 
   return (
     <>
       {/* =========================================================================
-          1. Hero Section with Animated Image Transitions (Screenshot 1)
+          1. Hero Section with Automatic Image Transitions
           ========================================================================= */}
-      <section
-        className="hero-slider-section"
-        onMouseEnter={() => setIsPaused(true)}
-        onMouseLeave={() => setIsPaused(false)}
-      >
+      <section className="hero-slider-section">
         {HERO_SLIDES.map((slide, idx) => (
           <div
             key={slide.id}
@@ -159,7 +168,7 @@ export default function HomeClient({
                 <Link href={slide.ctaLink} className="btn-hero-primary">
                   {slide.ctaText} &rarr;
                 </Link>
-                <Link href="/contact" className="btn-hero-ghost">
+                <Link href="/plan-your-trip" className="btn-hero-ghost">
                   Plan Custom Trip
                 </Link>
               </div>
@@ -170,7 +179,7 @@ export default function HomeClient({
         {/* Hero Navigation Arrows */}
         <button
           className="hero-slider-arrow prev"
-          onClick={prevHeroSlide}
+          onClick={() => setCurrentSlide((prev) => (prev - 1 + HERO_SLIDES.length) % HERO_SLIDES.length)}
           aria-label="Previous Slide"
         >
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
@@ -179,7 +188,7 @@ export default function HomeClient({
         </button>
         <button
           className="hero-slider-arrow next"
-          onClick={nextHeroSlide}
+          onClick={() => setCurrentSlide((prev) => (prev + 1) % HERO_SLIDES.length)}
           aria-label="Next Slide"
         >
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
@@ -201,7 +210,7 @@ export default function HomeClient({
       </section>
 
       {/* =========================================================================
-          2. Trending Tours Section (Screenshot 2)
+          2. Trending Tours Section
           ========================================================================= */}
       <section className="section">
         <div className="container">
@@ -255,7 +264,7 @@ export default function HomeClient({
             ))}
           </div>
 
-          {/* User Request: Button just under tours linking all tours together */}
+          {/* View All Tours button */}
           <div className="view-all-tours-wrapper">
             <Link href="/tours" className="btn-view-all-tours">
               <span>View All Tours &amp; Holiday Packages</span>
@@ -268,9 +277,9 @@ export default function HomeClient({
       </section>
 
       {/* =========================================================================
-          3. Explore our Destinations Section with Transitions (Screenshot 3)
+          3. Explore our Destinations with 5-Card Auto-Transition Carousel
           ========================================================================= */}
-      <section className="section" style={{ background: '#f8fafc' }}>
+      <section className="section" style={{ background: '#f8fafc', overflow: 'hidden' }}>
         <div className="container">
           <div className="section-head-center">
             <div className="section-eyebrow">Handcrafted Journeys</div>
@@ -280,58 +289,36 @@ export default function HomeClient({
             </p>
           </div>
 
-          {/* Dynamic Carousel Container */}
-          <div className="destinations-slider-wrapper">
-            <button
-              className="dest-slider-nav prev"
-              onClick={prevDest}
-              aria-label="Previous Destinations"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-              </svg>
-            </button>
-
-            <div className="destinations-gallery-container">
-              {DESTINATIONS.map((dest, idx) => {
-                const isActive = idx === destIndex;
-                return (
-                  <Link
-                    key={dest.name}
-                    href={dest.href}
-                    className={`destination-capsule-card ${isActive ? 'focused' : ''}`}
-                  >
-                    <div className="destination-capsule-img">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={dest.image}
-                        alt={dest.name}
-                        loading="lazy"
-                      />
-                    </div>
-                    <div className="destination-capsule-label">{dest.name}</div>
-                  </Link>
-                );
-              })}
+          {/* 5 Visible Auto-Transitioning Cards */}
+          <div className="destinations-auto-carousel">
+            <div className="destinations-5grid">
+              {visibleDestinations.map((dest) => (
+                <Link
+                  key={dest.uniqueKey}
+                  href={dest.href}
+                  className="destination-capsule-card animated-slide"
+                >
+                  <div className="destination-capsule-img">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={dest.image}
+                      alt={dest.name}
+                      loading="lazy"
+                    />
+                  </div>
+                  <div className="destination-capsule-label">{dest.name}</div>
+                </Link>
+              ))}
             </div>
-
-            <button
-              className="dest-slider-nav next"
-              onClick={nextDest}
-              aria-label="Next Destinations"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-              </svg>
-            </button>
           </div>
 
+          {/* Animated Indicator Dots */}
           <div className="destination-dots">
-            {DESTINATIONS.map((_, i) => (
+            {ALL_DESTINATIONS.map((_, i) => (
               <button
                 key={i}
-                className={`dest-dot ${i === destIndex ? 'active' : ''}`}
-                onClick={() => setDestIndex(i)}
+                className={`dest-dot ${i === destStartIndex ? 'active' : ''}`}
+                onClick={() => setDestStartIndex(i)}
                 aria-label={`Go to destination ${i + 1}`}
               />
             ))}
@@ -340,7 +327,7 @@ export default function HomeClient({
       </section>
 
       {/* =========================================================================
-          4. What We Offer Section (Screenshot 3)
+          4. What We Offer Section
           ========================================================================= */}
       <section className="section">
         <div className="container">
@@ -365,7 +352,7 @@ export default function HomeClient({
       </section>
 
       {/* =========================================================================
-          5. Stats Counter Banner (Screenshot / User Image)
+          5. Stats Counter Banner
           ========================================================================= */}
       <section className="stats-banner">
         <div className="container">
@@ -425,11 +412,10 @@ export default function HomeClient({
       </section>
 
       {/* =========================================================================
-          6. Our Awards & Partners Section (User Screenshot Replica)
+          6. Our Awards & Partners Section
           ========================================================================= */}
       <section className="awards-partners-section">
         <div className="container">
-          {/* Awards Header */}
           <div className="section-head-center">
             <h2 className="awards-main-title">Our Awards</h2>
             <p className="awards-main-subtitle">
@@ -437,9 +423,7 @@ export default function HomeClient({
             </p>
           </div>
 
-          {/* 5 Award Plaques Row matching screenshot */}
           <div className="awards-showcase-grid">
-            {/* Award 1: Tall Obelisk Trophy */}
             <div className="award-card-item">
               <div className="award-graphic-box obelisk-trophy">
                 <div className="trophy-gold-star">★</div>
@@ -450,7 +434,6 @@ export default function HomeClient({
               <div className="award-card-org">CIMG Ghana</div>
             </div>
 
-            {/* Award 2: Wooden Gold Certificate Plaque */}
             <div className="award-card-item">
               <div className="award-graphic-box certificate-plaque">
                 <div className="plaque-inner-frame">
@@ -463,7 +446,6 @@ export default function HomeClient({
               <div className="award-card-org">Ghana Tourism Authority</div>
             </div>
 
-            {/* Award 3: Crystal Shield Trophy */}
             <div className="award-card-item">
               <div className="award-graphic-box crystal-shield">
                 <div className="shield-seal">⭐</div>
@@ -473,7 +455,6 @@ export default function HomeClient({
               <div className="award-card-org">National Tourism Board</div>
             </div>
 
-            {/* Award 4: Triangular Pyramid Trophy */}
             <div className="award-card-item">
               <div className="award-graphic-box pyramid-trophy">
                 <div className="pyramid-cap">▲</div>
@@ -484,7 +465,6 @@ export default function HomeClient({
               <div className="award-card-org">Africa Tourism Forum</div>
             </div>
 
-            {/* Award 5: Elegant Black Crest Plaque */}
             <div className="award-card-item">
               <div className="award-graphic-box black-crest-plaque">
                 <div className="crest-seal">🏆</div>
@@ -496,14 +476,11 @@ export default function HomeClient({
             </div>
           </div>
 
-          {/* Partners Header */}
           <div className="section-head-center" style={{ marginTop: '56px' }}>
             <h2 className="awards-main-title">Our Partners</h2>
           </div>
 
-          {/* 5 Partners Row matching screenshot */}
           <div className="partners-showcase-grid">
-            {/* 1. 1DMC AFRICA */}
             <div className="partner-badge-card">
               <div className="partner-logo-art dmc-art">
                 <span className="partner-globe">🌍</span>
@@ -511,7 +488,6 @@ export default function HomeClient({
               </div>
             </div>
 
-            {/* 2. Travelife Partner */}
             <div className="partner-badge-card">
               <div className="partner-logo-art travelife-art">
                 <span className="travelife-leaf">🍃</span>
@@ -519,7 +495,6 @@ export default function HomeClient({
               </div>
             </div>
 
-            {/* 3. TOUGHA */}
             <div className="partner-badge-card">
               <div className="partner-logo-art tougha-art">
                 <span className="tougha-emblem">⌘</span>
@@ -527,7 +502,6 @@ export default function HomeClient({
               </div>
             </div>
 
-            {/* 4. Ghana Tourism Authority */}
             <div className="partner-badge-card">
               <div className="partner-logo-art gta-art">
                 <span className="gta-eagle">🦅</span>
@@ -535,7 +509,6 @@ export default function HomeClient({
               </div>
             </div>
 
-            {/* 5. Beyond The Return */}
             <div className="partner-badge-card">
               <div className="partner-logo-art btr-art">
                 <span className="btr-star">★</span>
