@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { colors, radius, spacing } from '../theme';
+import { colors, radius, shadow, spacing } from '../theme';
 
 export function Screen({ children }: { children: React.ReactNode }) {
   return <View style={styles.screen}>{children}</View>;
@@ -29,23 +29,67 @@ export function AppHeader({
 }) {
   return (
     <View style={styles.header}>
-      {onBack ? (
-        <Pressable onPress={onBack} hitSlop={8} style={styles.headerBtn}>
-          <Text style={styles.headerLink}>‹ Back</Text>
-        </Pressable>
-      ) : (
-        <View style={styles.headerBtn} />
-      )}
+      <View style={styles.headerSide}>
+        {onBack ? (
+          <Pressable
+            onPress={onBack}
+            hitSlop={10}
+            style={({ pressed }) => [styles.backBtn, pressed && styles.backBtnPressed]}
+            accessibilityRole="button"
+            accessibilityLabel="Back"
+          >
+            <Text style={styles.backIcon}>‹</Text>
+            <Text style={styles.backText}>Back</Text>
+          </Pressable>
+        ) : null}
+      </View>
       <Text style={styles.headerTitle} numberOfLines={1}>
         {title}
       </Text>
-      {right ? (
-        <Pressable onPress={onRight} hitSlop={8} style={styles.headerBtn}>
-          <Text style={styles.headerLink}>{rightLabel ?? '+'}</Text>
-        </Pressable>
-      ) : (
-        <View style={styles.headerBtn} />
-      )}
+      <View style={styles.headerSide}>
+        {right ? (
+          <Pressable
+            onPress={onRight}
+            hitSlop={10}
+            style={({ pressed }) => [styles.addBtn, pressed && styles.addBtnPressed]}
+            accessibilityRole="button"
+          >
+            <Text style={styles.addText}>{rightLabel ?? '+'}</Text>
+          </Pressable>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
+export function TabBar({
+  tabs,
+  active,
+  onSelect,
+}: {
+  tabs: { key: string; label: string; icon: string }[];
+  active: string;
+  onSelect: (key: string) => void;
+}) {
+  return (
+    <View style={styles.tabBar}>
+      {tabs.map((tab) => {
+        const isActive = tab.key === active;
+        return (
+          <Pressable
+            key={tab.key}
+            onPress={() => onSelect(tab.key)}
+            style={[styles.tabItem, isActive && styles.tabItemActive]}
+            accessibilityRole="button"
+            accessibilityState={{ selected: isActive }}
+          >
+            <Text style={styles.tabIcon}>{tab.icon}</Text>
+            <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]} numberOfLines={1}>
+              {tab.label}
+            </Text>
+          </Pressable>
+        );
+      })}
     </View>
   );
 }
@@ -205,9 +249,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
   },
-  headerBtn: { minWidth: 64 },
+  headerSide: { width: 96, alignItems: 'flex-start' },
   headerTitle: {
     color: colors.headerText,
     fontSize: 18,
@@ -215,13 +258,50 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     flex: 1,
   },
-  headerLink: { color: colors.headerText, fontSize: 15, fontWeight: '600' },
+  backBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+  },
+  backBtnPressed: { backgroundColor: 'rgba(255,255,255,0.3)' },
+  backIcon: { color: colors.headerText, fontSize: 24, lineHeight: 22, fontWeight: '700', marginRight: 2 },
+  backText: { color: colors.headerText, fontSize: 15, fontWeight: '600' },
+  addBtn: {
+    alignSelf: 'flex-end',
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+    borderRadius: 999,
+    backgroundColor: colors.accent,
+  },
+  addBtnPressed: { opacity: 0.8 },
+  addText: { color: '#ffffff', fontSize: 15, fontWeight: '800' },
+  tabBar: {
+    flexDirection: 'row',
+    backgroundColor: colors.panel,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingVertical: spacing.sm,
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  tabItem: { flex: 1, alignItems: 'center', paddingVertical: 4 },
+  tabItemActive: {},
+  tabIcon: { fontSize: 20 },
+  tabLabel: { fontSize: 11, color: colors.muted, fontWeight: '600', marginTop: 2 },
+  tabLabelActive: { color: colors.primary, fontWeight: '700' },
   btn: {
-    borderRadius: radius.md,
-    paddingVertical: 13,
+    borderRadius: radius.lg,
+    paddingVertical: 14,
     paddingHorizontal: 16,
     alignItems: 'center',
     marginVertical: spacing.xs,
+    ...shadow.lift,
   },
   btnDisabled: { opacity: 0.5 },
   btnText: { fontWeight: '700', fontSize: 15 },
@@ -230,9 +310,9 @@ const styles = StyleSheet.create({
   input: {
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.sm,
+    borderRadius: radius.md,
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 11,
     fontSize: 15,
     backgroundColor: colors.panel,
     color: colors.text,
@@ -260,11 +340,10 @@ const styles = StyleSheet.create({
   chipTextSelected: { color: '#ffffff' },
   card: {
     backgroundColor: colors.panel,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderRadius: radius.lg,
     padding: spacing.lg,
     marginBottom: spacing.lg,
+    ...shadow.card,
   },
   cardTitle: { fontSize: 13, color: colors.muted, marginBottom: spacing.md, fontWeight: '700' },
   sectionLabel: {

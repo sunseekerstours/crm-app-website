@@ -103,6 +103,9 @@ export const RESOURCES: Record<string, ResourceConfig<any>> = {
     endpoint: '/bookings?limit=50',
     title: 'Bookings',
     badgeKey: 'status',
+    addPermission: 'bookings.create',
+    addLabel: '+ Add',
+    addRoute: { name: 'bookingForm' },
     columns: [
       { key: 'bookingNumber', label: 'Booking #', render: (r: Booking) => r.bookingNumber ?? r.id.slice(0, 8) },
       { key: 'id', label: 'ID', render: (r: Booking) => r.id.slice(0, 8) },
@@ -112,6 +115,9 @@ export const RESOURCES: Record<string, ResourceConfig<any>> = {
     endpoint: '/payments?limit=50',
     title: 'Payments',
     badgeKey: 'status',
+    addPermission: 'payments.create',
+    addLabel: '+ Add',
+    addRoute: { name: 'paymentForm' },
     columns: [
       { key: 'amount', label: 'Amount', render: (r: Payment) => `${(Number(r.amount ?? 0)).toLocaleString()} ${r.currency ?? ''}` },
       { key: 'status', label: 'Status', render: (r: Payment) => r.status },

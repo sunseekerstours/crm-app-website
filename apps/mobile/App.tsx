@@ -10,6 +10,9 @@ import CustomerFormScreen from './src/screens/CustomerForm';
 import LeadFormScreen from './src/screens/LeadForm';
 import DealFormScreen from './src/screens/DealForm';
 import TourFormScreen from './src/screens/TourForm';
+import PaymentFormScreen from './src/screens/PaymentForm';
+import BookingFormScreen from './src/screens/BookingForm';
+import DepartureFormScreen from './src/screens/DepartureForm';
 import ProductScreen from './src/screens/ProductScreen';
 import { resourceConfig } from './src/columns';
 import { useAuth, hasPermission } from './src/useAuth';
@@ -138,6 +141,39 @@ export default function App() {
           tourId={route.tourId}
           onBack={() => setRoute({ name: 'list', resource: 'tours' })}
           onDone={() => setRoute({ name: 'list', resource: 'tours' })}
+          hasPerm={(p) => hasPermission(user, p)}
+        />
+      );
+      break;
+    }
+
+    case 'paymentForm': {
+      content = (
+        <PaymentFormScreen
+          onBack={() => setRoute({ name: 'list', resource: 'payments' })}
+          onDone={() => setRoute({ name: 'list', resource: 'payments' })}
+          hasPerm={(p) => hasPermission(user, p)}
+        />
+      );
+      break;
+    }
+
+    case 'bookingForm': {
+      content = (
+        <BookingFormScreen
+          onBack={() => setRoute({ name: 'list', resource: 'bookings' })}
+          onDone={() => setRoute({ name: 'list', resource: 'bookings' })}
+          hasPerm={(p) => hasPermission(user, p)}
+        />
+      );
+      break;
+    }
+
+    case 'departureForm': {
+      content = (
+        <DepartureFormScreen
+          onBack={() => setRoute({ name: 'list', resource: 'departures' })}
+          onDone={() => setRoute({ name: 'list', resource: 'departures' })}
           hasPerm={(p) => hasPermission(user, p)}
         />
       );
