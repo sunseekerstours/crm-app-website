@@ -261,6 +261,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           </div>
         ) : null}
 
+        <div className="sidebar-nav-scroll">
         {/* CRM Navigation Section */}
         <div className="nav-group">
           <div className="nav-label-wrap" onClick={() => setCrmOpen(!crmOpen)}>
@@ -298,6 +299,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           {adminOpen && NAV.filter((item) => hasUserPermission(user, item.permission)).map((item) => (
             <NavLink key={item.href} item={item} pathname={pathname} />
           ))}
+        </div>
         </div>
 
         {/* User Account / Profile Widget */}
