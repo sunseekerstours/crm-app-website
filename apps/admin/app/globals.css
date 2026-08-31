@@ -1303,3 +1303,86 @@ select.input {
     width: 100%;
   }
 }
+
+/* ==========================================================================
+   Admin Universal Responsive Enhancements
+   ========================================================================== */
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-bottom: 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.table {
+  width: 100%;
+  min-width: 580px;
+  border-collapse: collapse;
+}
+
+@media (max-width: 768px) {
+  .top-navbar {
+    padding: 0 16px;
+    height: 60px;
+  }
+  
+  .content-wrapper {
+    width: 100%;
+    overflow-x: hidden;
+  }
+
+  .main {
+    padding: 16px 12px;
+  }
+
+  .card {
+    padding: 16px;
+    border-radius: 14px;
+  }
+
+  .grid,
+  .grid-2,
+  .grid-3,
+  .grid-4 {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .tour-gallery {
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  }
+
+  .breadcrumbs {
+    font-size: 11.5px;
+  }
+
+  .modal-dialog {
+    width: 95vw !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+    padding: 16px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .top-navbar {
+    padding: 0 12px;
+  }
+}
+
