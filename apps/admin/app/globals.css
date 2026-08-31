@@ -6,10 +6,12 @@
   --border: #e2e8f0;
   --text: #0f172a;
   --muted: #64748b;
-  --primary: #059669; /* Emerald 600 */
+  --primary: #008744; /* Sunseekers Brand Green */
   --primary-light: #e6f4ea;
-  --primary-dark: #047857; /* Emerald 700 */
-  --primary-glow: rgba(16, 185, 129, 0.15);
+  --primary-dark: #006837; /* Sunseekers Dark Green */
+  --primary-glow: rgba(0, 135, 68, 0.2);
+  --brand-orange: #f37023; /* Sunseekers Brand Orange */
+  --brand-orange-hover: #e05e13;
   --danger: #ef4444; /* Red 500 */
   --danger-light: #fee2e2;
   --danger-dark: #b91c1c;

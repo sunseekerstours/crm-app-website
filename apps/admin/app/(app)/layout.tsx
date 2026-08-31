@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { ReactNode, useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth';
+import Logo from '@/components/Logo';
 
 const NAV = [
   { href: '/', label: 'Dashboard', exact: true, permission: '' },
@@ -249,7 +250,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       {/* Sidebar Panel */}
       <aside className={`sidebar ${sidebarCollapsed ? 'collapsed' : ''} ${mobileSidebarOpen ? 'mobile-open' : ''}`}>
         <div className="brand-wrap">
-          <div className="brand">Sunseekers One</div>
+          <Logo variant="light" collapsed={sidebarCollapsed} showTagline={false} />
           
           {/* Desktop Collapse Button */}
           <button

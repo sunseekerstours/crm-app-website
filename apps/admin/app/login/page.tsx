@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
+import Logo from '@/components/Logo';
 
 export default function LoginPage() {
   const { login, user, loading } = useAuth();
@@ -32,6 +33,9 @@ export default function LoginPage() {
   return (
     <div className="auth-wrap">
       <form className="auth-card" onSubmit={onSubmit}>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
+          <Logo variant="dark" showTagline={true} />
+        </div>
         <h1 className="auth-title">Sunseekers Super Admin</h1>
         <p className="auth-sub">Manage users, roles, website content and CRM oversight</p>
         {error ? <div className="auth-error">{error}</div> : null}
