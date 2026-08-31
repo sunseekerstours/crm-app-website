@@ -15,32 +15,33 @@ import {
   Table,
 } from '@/components/ui';
 
-interface CustomerItem {
+interface LeadItem {
   id: string;
   firstName?: string;
   lastName?: string;
   email?: string;
   phone?: string;
-  country?: string;
-  status?: string;
+  source?: string;
+  stage?: string;
 }
 
-const STATUSES = ['ACTIVE', 'INACTIVE', 'LEAD'];
+const SOURCES = ['WEBSITE', 'REFERRAL', 'SOCIAL_MEDIA', 'WALK_IN', 'PHONE', 'EMAIL', 'OTHER'];
+const STAGES = ['NEW', 'CONTACTED', 'QUALIFIED', 'PROPOSAL', 'WON', 'LOST'];
 
 const initialForm = {
   firstName: '',
   lastName: '',
   email: '',
   phone: '',
-  country: '',
-  status: 'ACTIVE',
+  source: 'OTHER',
+  stage: 'NEW',
 };
 
-export default function CrmCustomersPage() {
+export default function CrmLeadsPage() {
   const [page, setPage] = useState(1);
-  const [data, setData] = useState<Paginated<CustomerItem> | null>(null);
+  const [data, setData] = useState<Paginated<LeadItem> | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [editing, setEditing] = useState<CustomerItem | null>(null);
+  const [editing, setEditing] = useState<LeadItem | null>(null);
   const [form, setForm] = useState(initialForm);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -48,10 +49,10 @@ export default function CrmCustomersPage() {
   const load = useCallback(async () => {
     setError(null);
     try {
-      const res = await api.get<Paginated<CustomerItem>>(`/customers?limit=50&page=${page}`);
+      const res = await api.get<Paginated<LeadItem>>(`/leads?limit=50&page=${page}`);
       setData(res);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load customers');
+      setError(err instanceof Error ? err.message : 'Failed to load leads');
     }
   }, [page]);
 
@@ -59,16 +60,16 @@ export default function CrmCustomersPage() {
     void load();
   }, [load]);
 
-  function loadIntoForm(c: CustomerItem) {
-    setEditing(c);
+  function loadIntoForm(l: LeadItem) {
+    setEditing(l);
     setFormError(null);
     setForm({
-      firstName: c.firstName ?? '',
-      lastName: c.lastName ?? '',
-      email: c.email ?? '',
-      phone: c.phone ?? '',
-      country: c.country ?? '',
-      status: c.status ?? 'ACTIVE',
+      firstName: l.firstName ?? '',
+      lastName: l.lastName ?? '',
+      email: l.email ?? '',
+      phone: l.phone ?? '',
+      source: l.source ?? 'OTHER',
+      stage: l.stage ?? 'NEW',
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -88,14 +89,14 @@ export default function CrmCustomersPage() {
       lastName: form.lastName || undefined,
       email: form.email || undefined,
       phone: form.phone || undefined,
-      country: form.country || undefined,
-      status: form.status,
+      source: form.source || undefined,
+      stage: form.stage,
     };
     try {
       if (editing) {
-        await api.patch(`/customers/${editing.id}`, body);
+        await api.patch(`/leads/${editing.id}`, body);
       } else {
-        await api.post('/customers', body);
+        await api.post('/leads', body);
       }
       reset();
       await load();
@@ -106,11 +107,11 @@ export default function CrmCustomersPage() {
     }
   }
 
-  async function remove(c: CustomerItem) {
-    const name = `${c.firstName ?? ''} ${c.lastName ?? ''}`.trim() || c.email || 'this customer';
+  async function remove(l: LeadItem) {
+    const name = `${l.firstName ?? ''} ${l.lastName ?? ''}`.trim() || l.email || 'this lead';
     if (!window.confirm(`Delete ${name}? This cannot be undone.`)) return;
     try {
-      await api.delete(`/customers/${c.id}`);
+      await api.delete(`/leads/${l.id}`);
       await load();
     } catch (err) {
       window.alert(err instanceof Error ? err.message : 'Failed to delete');
@@ -120,8 +121,8 @@ export default function CrmCustomersPage() {
   return (
     <>
       <PageHeader
-        title="Customers"
-        subtitle={editing ? 'Edit customer details' : 'Manage your customer database'}
+        title="Leads"
+        subtitle={editing ? 'Edit lead details' : 'Manage your sales leads'}
         action={
           <div style={{ display: 'flex', gap: 8 }}>
             {editing ? (
@@ -136,26 +137,26 @@ export default function CrmCustomersPage() {
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
             >
-              New customer
+              New lead
             </Button>
           </div>
         }
       />
 
-      <Card title={editing ? `Edit: ${editing.firstName} ${editing.lastName}` : 'New customer'}>
+      <Card title={editing ? `Edit: ${editing.firstName} ${editing.lastName}` : 'New lead'}>
         <form onSubmit={submit}>
           <div className="form-grid">
             <Input label="First name" name="firstName" value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} />
             <Input label="Last name" name="lastName" value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} />
             <Input label="Email" name="email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
             <Input label="Phone" name="phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-            <Input label="Country" name="country" value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} />
-            <Select label="Status" name="status" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} options={STATUSES.map((s) => ({ value: s, label: s }))} />
+            <Select label="Source" name="source" value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value })} options={SOURCES.map((s) => ({ value: s, label: s.replace('_', ' ') }))} />
+            <Select label="Stage" name="stage" value={form.stage} onChange={(e) => setForm({ ...form, stage: e.target.value })} options={STAGES.map((s) => ({ value: s, label: s }))} />
           </div>
           {formError ? <div className="error-state" style={{ marginTop: 12 }}>{formError}</div> : null}
           <div className="form-actions">
             <Button type="submit" disabled={submitting}>
-              {submitting ? 'Saving…' : editing ? 'Save changes' : 'Create customer'}
+              {submitting ? 'Saving…' : editing ? 'Save changes' : 'Create lead'}
             </Button>
           </div>
         </form>
@@ -164,28 +165,28 @@ export default function CrmCustomersPage() {
       {error ? <ErrorState message={error} /> : null}
       {data ? (
         <>
-          <Table<CustomerItem>
-            keyOf={(c) => c.id}
+          <Table<LeadItem>
+            keyOf={(l) => l.id}
             rows={data.items}
             columns={[
               {
                 key: 'name',
                 label: 'Name',
-                render: (c) => `${c.firstName ?? ''} ${c.lastName ?? ''}`.trim() || '—',
+                render: (l) => `${l.firstName ?? ''} ${l.lastName ?? ''}`.trim() || '—',
               },
-              { key: 'email', label: 'Email', render: (c) => c.email ?? '—' },
-              { key: 'phone', label: 'Phone', render: (c) => c.phone ?? '—' },
-              { key: 'country', label: 'Country', render: (c) => c.country ?? '—' },
-              { key: 'status', label: 'Status', render: (c) => <Badge>{c.status ?? '—'}</Badge> },
+              { key: 'email', label: 'Email', render: (l) => l.email ?? '—' },
+              { key: 'phone', label: 'Phone', render: (l) => l.phone ?? '—' },
+              { key: 'source', label: 'Source', render: (l) => l.source?.replace('_', ' ') ?? '—' },
+              { key: 'stage', label: 'Stage', render: (l) => <Badge>{l.stage ?? '—'}</Badge> },
               {
                 key: 'actions',
                 label: 'Actions',
-                render: (c) => (
+                render: (l) => (
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <Button variant="secondary" onClick={() => loadIntoForm(c)}>
+                    <Button variant="secondary" onClick={() => loadIntoForm(l)}>
                       Edit
                     </Button>
-                    <Button variant="danger" onClick={() => remove(c)}>
+                    <Button variant="danger" onClick={() => remove(l)}>
                       Delete
                     </Button>
                   </div>

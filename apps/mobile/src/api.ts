@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const API_URL = 'http://localhost:3000/api/v1';
+const API_URL =
+  process.env.EXPO_PUBLIC_API_URL ?? 'https://sunseekersbackend-production.up.railway.app/api/v1';
 const TOKEN_KEY = 'sunseekers_access_token';
 
 export function getApiUrl(): string {

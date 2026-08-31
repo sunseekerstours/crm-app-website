@@ -7,17 +7,22 @@ import { useAuth } from '@/lib/auth';
 
 const NAV = [
   { href: '/', label: 'Dashboard', exact: true },
-  { href: '/users', label: 'Users' },
-  { href: '/roles', label: 'Roles' },
   { href: '/content/pages', label: 'Site Pages' },
   { href: '/settings', label: 'Site Settings' },
+  { href: '/users', label: 'Users & Roles' },
   { href: '/audit', label: 'Audit Log' },
 ];
 
 const CRM_NAV = [
-  { href: '/crm/tours', label: 'Tours' },
-  { href: '/crm/bookings', label: 'Bookings' },
+  { href: '/crm/tours', label: 'Tours & Trips' },
   { href: '/crm/customers', label: 'Customers' },
+  { href: '/crm/leads', label: 'Leads' },
+  { href: '/crm/deals', label: 'Deals' },
+  { href: '/crm/departures', label: 'Departures' },
+  { href: '/crm/bookings', label: 'Bookings' },
+  { href: '/crm/payments', label: 'Payments' },
+  { href: '/crm/operations', label: 'Trip Board' },
+  { href: '/crm/notifications', label: 'Notifications' },
 ];
 
 function NavLink({ item, pathname }: { item: { href: string; label: string; exact?: boolean }; pathname: string }) {
@@ -45,18 +50,18 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
     <div className="shell">
       <aside className="sidebar">
-        <div className="brand">Sunseekers Admin</div>
+        <div className="brand">Sunseekers One</div>
         {!isAdmin ? (
           <div style={{ fontSize: 13, color: '#f0b429', padding: '0 10px 4px' }}>
             Limited access - not SUPER_ADMIN/ADMIN
           </div>
         ) : null}
-        <div className="nav-label">Administration</div>
-        {NAV.map((item) => (
+        <div className="nav-label">CRM</div>
+        {CRM_NAV.map((item) => (
           <NavLink key={item.href} item={item} pathname={pathname} />
         ))}
-        <div className="nav-label">CRM Oversight</div>
-        {CRM_NAV.map((item) => (
+        <div className="nav-label">Website & Admin</div>
+        {NAV.map((item) => (
           <NavLink key={item.href} item={item} pathname={pathname} />
         ))}
         <div className="nav-label">Account</div>
