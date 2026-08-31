@@ -292,7 +292,7 @@ Special Requests: ${formData.specialRequests || 'None provided'}
           >
             {!submitted ? (
               <>
-                {/* Wizard Tab Navigation */}
+                {/* Wizard Tab Navigation - ALL TABS ARE CLICKABLE */}
                 <div
                   style={{
                     display: 'flex',
@@ -319,15 +319,15 @@ Special Requests: ${formData.specialRequests || 'None provided'}
                       <button
                         key={tab.s}
                         type="button"
-                        onClick={() => isDone && setStep(tab.s)}
+                        onClick={() => setStep(tab.s)}
                         style={{
                           display: 'flex',
                           alignItems: 'center',
                           gap: '8px',
                           background: isActive ? '#f0fdf4' : 'transparent',
                           border: 'none',
-                          cursor: isDone ? 'pointer' : 'default',
-                          padding: '6px 12px',
+                          cursor: 'pointer',
+                          padding: '8px 14px',
                           borderRadius: '9999px',
                           whiteSpace: 'nowrap',
                           transition: 'all 0.2s ease',
@@ -338,7 +338,7 @@ Special Requests: ${formData.specialRequests || 'None provided'}
                             width: '26px',
                             height: '26px',
                             borderRadius: '50%',
-                            background: isActive || isDone ? '#008744' : '#f1f5f9',
+                            background: isActive ? '#008744' : isDone ? '#006837' : '#e2e8f0',
                             color: isActive || isDone ? '#ffffff' : '#64748b',
                             fontSize: '12px',
                             fontWeight: '800',
@@ -353,7 +353,7 @@ Special Requests: ${formData.specialRequests || 'None provided'}
                           style={{
                             fontSize: '13.5px',
                             fontWeight: isActive ? '800' : '700',
-                            color: isActive ? '#008744' : isDone ? '#334155' : '#64748b',
+                            color: isActive ? '#008744' : isDone ? '#006837' : '#64748b',
                           }}
                         >
                           {tab.label}
@@ -410,6 +410,7 @@ Special Requests: ${formData.specialRequests || 'None provided'}
                             justifyContent: 'center',
                             flexShrink: 0,
                             boxShadow: '0 2px 6px rgba(0, 135, 68, 0.15)',
+                            fontSize: '20px',
                           }}
                         >
                           👤
@@ -419,7 +420,7 @@ Special Requests: ${formData.specialRequests || 'None provided'}
                             Personal Details
                           </h4>
                           <p style={{ fontSize: '12.5px', color: '#475569', margin: 0 }}>
-                            How can we reach you with your itinerary?
+                            How can we reach you with your customized itinerary?
                           </p>
                         </div>
                       </div>
@@ -433,7 +434,15 @@ Special Requests: ${formData.specialRequests || 'None provided'}
                             placeholder="Your full name"
                             value={formData.fullName}
                             onChange={(e) => updateField('fullName', e.target.value)}
-                            className="wizard-input"
+                            style={{
+                              width: '100%',
+                              boxSizing: 'border-box',
+                              padding: '13px 16px',
+                              borderRadius: '12px',
+                              border: '1.5px solid #cbd5e1',
+                              fontSize: '14.5px',
+                              outline: 'none',
+                            }}
                           />
                         </div>
 
@@ -445,7 +454,15 @@ Special Requests: ${formData.specialRequests || 'None provided'}
                             placeholder="+233 XX XXX XXXX"
                             value={formData.phone}
                             onChange={(e) => updateField('phone', e.target.value)}
-                            className="wizard-input"
+                            style={{
+                              width: '100%',
+                              boxSizing: 'border-box',
+                              padding: '13px 16px',
+                              borderRadius: '12px',
+                              border: '1.5px solid #cbd5e1',
+                              fontSize: '14.5px',
+                              outline: 'none',
+                            }}
                           />
                         </div>
                       </div>
@@ -459,7 +476,15 @@ Special Requests: ${formData.specialRequests || 'None provided'}
                             placeholder="your@email.com"
                             value={formData.email}
                             onChange={(e) => updateField('email', e.target.value)}
-                            className="wizard-input"
+                            style={{
+                              width: '100%',
+                              boxSizing: 'border-box',
+                              padding: '13px 16px',
+                              borderRadius: '12px',
+                              border: '1.5px solid #cbd5e1',
+                              fontSize: '14.5px',
+                              outline: 'none',
+                            }}
                           />
                         </div>
 
@@ -470,7 +495,15 @@ Special Requests: ${formData.specialRequests || 'None provided'}
                             placeholder="e.g. Ghana, USA, UK, Germany"
                             value={formData.countryOfResidence}
                             onChange={(e) => updateField('countryOfResidence', e.target.value)}
-                            className="wizard-input"
+                            style={{
+                              width: '100%',
+                              boxSizing: 'border-box',
+                              padding: '13px 16px',
+                              borderRadius: '12px',
+                              border: '1.5px solid #cbd5e1',
+                              fontSize: '14.5px',
+                              outline: 'none',
+                            }}
                           />
                         </div>
                       </div>
@@ -506,6 +539,7 @@ Special Requests: ${formData.specialRequests || 'None provided'}
                             justifyContent: 'center',
                             flexShrink: 0,
                             boxShadow: '0 2px 6px rgba(0, 135, 68, 0.15)',
+                            fontSize: '20px',
                           }}
                         >
                           🗺️
@@ -525,7 +559,15 @@ Special Requests: ${formData.specialRequests || 'None provided'}
                         <select
                           value={formData.destination}
                           onChange={(e) => updateField('destination', e.target.value)}
-                          className="wizard-input"
+                          style={{
+                            width: '100%',
+                            boxSizing: 'border-box',
+                            padding: '13px 16px',
+                            borderRadius: '12px',
+                            border: '1.5px solid #cbd5e1',
+                            fontSize: '14.5px',
+                            outline: 'none',
+                          }}
                         >
                           {POPULAR_DESTINATIONS.map((d) => (
                             <option key={d} value={d}>
@@ -545,7 +587,15 @@ Special Requests: ${formData.specialRequests || 'None provided'}
                             placeholder="e.g. Volta Region, Kumasi &amp; Cape Coast 10 Days"
                             value={formData.customDestination}
                             onChange={(e) => updateField('customDestination', e.target.value)}
-                            className="wizard-input"
+                            style={{
+                              width: '100%',
+                              boxSizing: 'border-box',
+                              padding: '13px 16px',
+                              borderRadius: '12px',
+                              border: '1.5px solid #cbd5e1',
+                              fontSize: '14.5px',
+                              outline: 'none',
+                            }}
                           />
                         </div>
                       )}
@@ -557,7 +607,15 @@ Special Requests: ${formData.specialRequests || 'None provided'}
                             type="date"
                             value={formData.startDate}
                             onChange={(e) => updateField('startDate', e.target.value)}
-                            className="wizard-input"
+                            style={{
+                              width: '100%',
+                              boxSizing: 'border-box',
+                              padding: '13px 16px',
+                              borderRadius: '12px',
+                              border: '1.5px solid #cbd5e1',
+                              fontSize: '14.5px',
+                              outline: 'none',
+                            }}
                           />
                         </div>
 
@@ -567,7 +625,15 @@ Special Requests: ${formData.specialRequests || 'None provided'}
                             type="date"
                             value={formData.endDate}
                             onChange={(e) => updateField('endDate', e.target.value)}
-                            className="wizard-input"
+                            style={{
+                              width: '100%',
+                              boxSizing: 'border-box',
+                              padding: '13px 16px',
+                              borderRadius: '12px',
+                              border: '1.5px solid #cbd5e1',
+                              fontSize: '14.5px',
+                              outline: 'none',
+                            }}
                           />
                         </div>
                       </div>
@@ -581,7 +647,15 @@ Special Requests: ${formData.specialRequests || 'None provided'}
                             max="60"
                             value={formData.durationDays}
                             onChange={(e) => updateField('durationDays', e.target.value)}
-                            className="wizard-input"
+                            style={{
+                              width: '100%',
+                              boxSizing: 'border-box',
+                              padding: '13px 16px',
+                              borderRadius: '12px',
+                              border: '1.5px solid #cbd5e1',
+                              fontSize: '14.5px',
+                              outline: 'none',
+                            }}
                           />
                         </div>
 
@@ -630,6 +704,7 @@ Special Requests: ${formData.specialRequests || 'None provided'}
                             justifyContent: 'center',
                             flexShrink: 0,
                             boxShadow: '0 2px 6px rgba(0, 135, 68, 0.15)',
+                            fontSize: '20px',
                           }}
                         >
                           👥
@@ -654,7 +729,15 @@ Special Requests: ${formData.specialRequests || 'None provided'}
                             required
                             value={formData.adults}
                             onChange={(e) => updateField('adults', e.target.value)}
-                            className="wizard-input"
+                            style={{
+                              width: '100%',
+                              boxSizing: 'border-box',
+                              padding: '13px 16px',
+                              borderRadius: '12px',
+                              border: '1.5px solid #cbd5e1',
+                              fontSize: '14.5px',
+                              outline: 'none',
+                            }}
                           />
                         </div>
 
@@ -666,7 +749,15 @@ Special Requests: ${formData.specialRequests || 'None provided'}
                             max="50"
                             value={formData.children}
                             onChange={(e) => updateField('children', e.target.value)}
-                            className="wizard-input"
+                            style={{
+                              width: '100%',
+                              boxSizing: 'border-box',
+                              padding: '13px 16px',
+                              borderRadius: '12px',
+                              border: '1.5px solid #cbd5e1',
+                              fontSize: '14.5px',
+                              outline: 'none',
+                            }}
                           />
                         </div>
 
@@ -678,7 +769,15 @@ Special Requests: ${formData.specialRequests || 'None provided'}
                             max="20"
                             value={formData.infants}
                             onChange={(e) => updateField('infants', e.target.value)}
-                            className="wizard-input"
+                            style={{
+                              width: '100%',
+                              boxSizing: 'border-box',
+                              padding: '13px 16px',
+                              borderRadius: '12px',
+                              border: '1.5px solid #cbd5e1',
+                              fontSize: '14.5px',
+                              outline: 'none',
+                            }}
                           />
                         </div>
                       </div>
@@ -688,7 +787,15 @@ Special Requests: ${formData.specialRequests || 'None provided'}
                         <select
                           value={formData.travelStyle}
                           onChange={(e) => updateField('travelStyle', e.target.value)}
-                          className="wizard-input"
+                          style={{
+                            width: '100%',
+                            boxSizing: 'border-box',
+                            padding: '13px 16px',
+                            borderRadius: '12px',
+                            border: '1.5px solid #cbd5e1',
+                            fontSize: '14.5px',
+                            outline: 'none',
+                          }}
                         >
                           {TRAVEL_STYLES.map((t) => (
                             <option key={t.id} value={t.label}>
@@ -703,7 +810,15 @@ Special Requests: ${formData.specialRequests || 'None provided'}
                         <select
                           value={formData.accommodationTier}
                           onChange={(e) => updateField('accommodationTier', e.target.value)}
-                          className="wizard-input"
+                          style={{
+                            width: '100%',
+                            boxSizing: 'border-box',
+                            padding: '13px 16px',
+                            borderRadius: '12px',
+                            border: '1.5px solid #cbd5e1',
+                            fontSize: '14.5px',
+                            outline: 'none',
+                          }}
                         >
                           {ACCOMMODATIONS.map((a) => (
                             <option key={a.id} value={a.label}>
@@ -744,6 +859,7 @@ Special Requests: ${formData.specialRequests || 'None provided'}
                             justifyContent: 'center',
                             flexShrink: 0,
                             boxShadow: '0 2px 6px rgba(0, 135, 68, 0.15)',
+                            fontSize: '20px',
                           }}
                         >
                           ✨
@@ -763,7 +879,15 @@ Special Requests: ${formData.specialRequests || 'None provided'}
                         <select
                           value={formData.estimatedBudget}
                           onChange={(e) => updateField('estimatedBudget', e.target.value)}
-                          className="wizard-input"
+                          style={{
+                            width: '100%',
+                            boxSizing: 'border-box',
+                            padding: '13px 16px',
+                            borderRadius: '12px',
+                            border: '1.5px solid #cbd5e1',
+                            fontSize: '14.5px',
+                            outline: 'none',
+                          }}
                         >
                           <option value="Under $1,000 per person">Under $1,000 per person</option>
                           <option value="$1,000 - $2,000 per person">$1,000 - $2,000 per person</option>
@@ -834,7 +958,16 @@ Special Requests: ${formData.specialRequests || 'None provided'}
                           placeholder="Tell us any specific attractions (e.g. Kakum canopy walk, Cape Coast castle, drumming workshop, wedding anniversary surprise)..."
                           value={formData.specialRequests}
                           onChange={(e) => updateField('specialRequests', e.target.value)}
-                          className="wizard-textarea"
+                          style={{
+                            width: '100%',
+                            boxSizing: 'border-box',
+                            padding: '13px 16px',
+                            borderRadius: '12px',
+                            border: '1.5px solid #cbd5e1',
+                            fontSize: '14.5px',
+                            outline: 'none',
+                            fontFamily: 'inherit',
+                          }}
                         />
                       </div>
                     </div>
@@ -879,12 +1012,14 @@ Special Requests: ${formData.specialRequests || 'None provided'}
                       {[1, 2, 3, 4].map((dot) => (
                         <div
                           key={dot}
+                          onClick={() => setStep(dot)}
                           style={{
                             width: step === dot ? '24px' : '8px',
                             height: '8px',
                             borderRadius: '9999px',
                             background: step === dot ? '#f37023' : step > dot ? '#008744' : '#e2e8f0',
                             transition: 'all 0.2s ease',
+                            cursor: 'pointer',
                           }}
                         />
                       ))}

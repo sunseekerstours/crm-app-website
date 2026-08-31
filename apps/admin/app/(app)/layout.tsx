@@ -30,16 +30,18 @@ const CRM_NAV = [
 ];
 
 const HR_NAV = [
-  { href: '/hr/employees', label: 'Staff', permission: 'staff.view' },
-  { href: '/hr/performance', label: 'Performance', permission: 'staff.view' },
-  { href: '/hr/leave', label: 'Leave', permission: 'staff.view' },
+  { href: '/hr/employees', label: 'Staff / Employees', permission: 'employees.view' },
+  { href: '/hr/performance', label: 'Performance', permission: 'performance.view' },
+  { href: '/hr/leave', label: 'Leave Management', permission: 'leave.view' },
 ];
 
-function hasUserPermission(user: { permissions?: string[] } | null | undefined, permission: string): boolean {
+function hasUserPermission(user: { permissions?: string[]; roles?: string[] } | null | undefined, permission: string): boolean {
   if (!permission) return true;
   if (!user) return false;
+  // If user is Admin or Super Admin, grant access to all menus
+  if (user.roles && (user.roles.includes('ADMIN') || user.roles.includes('SUPER_ADMIN'))) return true;
   if (!Array.isArray(user.permissions) || user.permissions.length === 0) return true;
-  return user.permissions.includes(permission);
+  return user.permissions.includes(permission) || user.permissions.includes('*') || user.permissions.includes('admin') || user.permissions.includes('staff.view');
 }
 
 // Helper to return high-quality modern SVG icons for navigation links
@@ -150,9 +152,10 @@ function getIcon(label: string) {
         </svg>
       );
     case 'Staff':
+    case 'Staff / Employees':
       return (
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.109A11.386 11.386 0 0110.089 21c-2.213 0-4.302-.63-6.085-1.73v-.109m12-3.972a4.125 4.125 0 00-7.533-2.493" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.109A11.386 11.386 0 0110.089 21c-2.213 0-4.302-.63-6.085-1.73v-.109m12-3.972a4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.109A11.386 11.386 0 0110.089 21c-2.213 0-4.302-.63-6.085-1.73v-.109m12-3.972a4.125 4.125 0 00-7.533-2.493m0 0a4.012 4.012 0 014.012-4.012c2.216 0 4.012 1.796 4.012 4.012m-8.024 0a4.012 4.012 0 00-4.012 4.012" />
         </svg>
       );
     case 'Performance':
@@ -162,6 +165,7 @@ function getIcon(label: string) {
         </svg>
       );
     case 'Leave':
+    case 'Leave Management':
       return (
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m0-10.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.75c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.57-.598-3.75h-.152c-3.196 0-6.1-1.249-8.25-3.286zm0 13.036h.008v.008H12v-.008z" />
