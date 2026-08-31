@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import FlightBookingForm from '@/components/FlightBookingForm';
-
-export const revalidate = 60;
+import PageHeroSlider from '@/components/PageHeroSlider';
 
 export const metadata: Metadata = {
   title: 'Flight Bookings & Air Ticketing | Sunseekers Tours',
@@ -9,29 +8,28 @@ export const metadata: Metadata = {
     'Domestic and international flight ticketing, group charters, and corporate travel reservations with Sunseekers Tours.',
 };
 
+const FLIGHT_HERO_SLIDES = [
+  'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?q=80&w=1920&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?q=80&w=1920&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1506015391300-4802dc74de2e?q=80&w=1920&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1464037866556-6812c9d1c72e?q=80&w=1920&auto=format&fit=crop',
+];
+
 export default function FlightsPage() {
   return (
     <>
-      {/* Hero Banner */}
-      <section
-        className="page-hero-banner"
-        style={{
-          backgroundImage:
-            "linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.7)), url('https://images.unsplash.com/photo-1436491865332-7a61a109cc05?q=80&w=1920&auto=format&fit=crop')",
-        }}
-      >
-        <div>
-          <div style={{ fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '2px', color: '#fed7aa', marginBottom: '8px' }}>
-            Seamless Global Travel
-          </div>
-          <h1>Flight Reservations &amp; Ticketing</h1>
-          <p>Competitive fares to worldwide destinations</p>
-        </div>
-      </section>
+      {/* 4-Slide Auto-Transitioning Hero Banner */}
+      <PageHeroSlider
+        slides={FLIGHT_HERO_SLIDES}
+        defaultEyebrow="SEAMLESS GLOBAL TRAVEL"
+        defaultTitle="Flight Reservations &amp; Ticketing"
+        defaultSubtitle="Competitive fares and seamless connections to domestic and worldwide destinations"
+        height="390px"
+      />
 
       {/* Flight Booking Form */}
-      <section className="section" style={{ background: '#f8fafc' }}>
-        <div className="container" style={{ maxWidth: '960px' }}>
+      <section className="section" style={{ background: '#f8fafc', padding: '60px 0 80px' }}>
+        <div className="container" style={{ maxWidth: '860px' }}>
           <FlightBookingForm />
         </div>
       </section>
@@ -47,26 +45,26 @@ export default function FlightsPage() {
             </p>
           </div>
 
-          <div className="services-grid">
-            <div className="service-box">
-              <div className="service-icon-wrap">🎫</div>
-              <h3>Corporate Air Travel</h3>
-              <p>Tailored corporate flight itineraries, invoicing, flexible date changes, and executive lounge access.</p>
+          <div className="grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>
+            <div className="card" style={{ padding: '24px', borderRadius: '16px', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: '32px', marginBottom: '12px' }}>🎫</div>
+              <h3 style={{ fontSize: '18px', fontWeight: '800', marginBottom: '6px' }}>Corporate Air Travel</h3>
+              <p style={{ fontSize: '13.5px', color: '#64748b', lineHeight: '1.5' }}>Tailored corporate flight itineraries, invoicing, flexible date changes, and executive lounge access.</p>
             </div>
-            <div className="service-box">
-              <div className="service-icon-wrap">👥</div>
-              <h3>Group Flight Bookings</h3>
-              <p>Special group rates for conferences, festival attendees, student tours, and family reunions.</p>
+            <div className="card" style={{ padding: '24px', borderRadius: '16px', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: '32px', marginBottom: '12px' }}>👥</div>
+              <h3 style={{ fontSize: '18px', fontWeight: '800', marginBottom: '6px' }}>Group Flight Bookings</h3>
+              <p style={{ fontSize: '13.5px', color: '#64748b', lineHeight: '1.5' }}>Special group rates for conferences, festival attendees, student tours, and family reunions.</p>
             </div>
-            <div className="service-box">
-              <div className="service-icon-wrap">🔄</div>
-              <h3>Changes &amp; Re-routing</h3>
-              <p>Dedicated 24/7 support for schedule changes, flight delays, seat selection, and emergency re-ticketing.</p>
+            <div className="card" style={{ padding: '24px', borderRadius: '16px', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: '32px', marginBottom: '12px' }}>🔄</div>
+              <h3 style={{ fontSize: '18px', fontWeight: '800', marginBottom: '6px' }}>Changes &amp; Re-routing</h3>
+              <p style={{ fontSize: '13.5px', color: '#64748b', lineHeight: '1.5' }}>Dedicated 24/7 support for schedule changes, flight delays, seat selection, and emergency re-ticketing.</p>
             </div>
-            <div className="service-box">
-              <div className="service-icon-wrap">🛄</div>
-              <h3>Charter Flights</h3>
-              <p>Private aircraft charter solutions across West Africa and remote destination access.</p>
+            <div className="card" style={{ padding: '24px', borderRadius: '16px', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: '32px', marginBottom: '12px' }}>🛄</div>
+              <h3 style={{ fontSize: '18px', fontWeight: '800', marginBottom: '6px' }}>Charter Flights</h3>
+              <p style={{ fontSize: '13.5px', color: '#64748b', lineHeight: '1.5' }}>Private aircraft charter solutions across West Africa and remote destination access.</p>
             </div>
           </div>
         </div>

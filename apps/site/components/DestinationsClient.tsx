@@ -3,6 +3,14 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { DestinationPublic } from '@/lib/api';
+import PageHeroSlider from './PageHeroSlider';
+
+const DESTINATION_HERO_SLIDES = [
+  'https://sunseekerstours.com/wp-content/uploads/2025/11/Black-star-square.png',
+  'https://images.unsplash.com/photo-1590523741831-ab7e8b8f9c7f?q=80&w=1920&auto=format&fit=crop',
+  'https://sunseekerstours.com/wp-content/uploads/2026/07/images-2-1.jpg',
+  'https://images.unsplash.com/photo-1488646953014-85cb44e25828?q=80&w=1920&auto=format&fit=crop',
+];
 
 const DESTINATION_FALLBACK_IMAGES: Record<string, string> = {
   ghana: 'https://sunseekerstours.com/wp-content/uploads/2025/11/Black-star-square.png',
@@ -126,18 +134,14 @@ export default function DestinationsClient({
 
   return (
     <>
-      {/* 1. Destinations Page Hero Header */}
-      <section className="destinations-hero-banner">
-        <div className="container">
-          <div className="destinations-hero-content">
-            <span className="destinations-eyebrow">WORLDWIDE DESTINATIONS</span>
-            <h1 className="destinations-hero-title">Explore Our Handcrafted Destinations</h1>
-            <p className="destinations-hero-sub">
-              From rich West African cultural kingdoms to exotic global capitals, serene savannahs and tropical islands.
-            </p>
-          </div>
-        </div>
-      </section>
+      {/* 1. 4-Slide Auto-Transitioning Hero Banner */}
+      <PageHeroSlider
+        slides={DESTINATION_HERO_SLIDES}
+        defaultEyebrow="WORLDWIDE DESTINATIONS"
+        defaultTitle="Explore Our Handcrafted Destinations"
+        defaultSubtitle="From rich West African cultural kingdoms to exotic global capitals, serene savannahs and tropical islands"
+        height="390px"
+      />
 
       {/* 2. Main Content Container */}
       <section className="section" style={{ background: '#f8fafc', minHeight: '600px' }}>

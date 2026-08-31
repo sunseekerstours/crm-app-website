@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import PageHeroSlider from '@/components/PageHeroSlider';
 
 export const revalidate = 60;
 
@@ -8,6 +9,13 @@ export const metadata: Metadata = {
   description:
     'Experience rich culture, history, and natural beauty across Ghana with Sunseekers Tours. Curated cultural festivals, historical heritage, and scenic adventures.',
 };
+
+const GHANA_HERO_SLIDES = [
+  'https://sunseekerstours.com/wp-content/uploads/2025/11/Black-star-square.png',
+  'https://sunseekerstours.com/wp-content/uploads/2026/08/Photo-by-Afronation-com-1024x576-1.jpeg',
+  'https://sunseekerstours.com/wp-content/uploads/2026/08/WhatsApp-Image-2026-08-27-at-11.14.11-AM.jpeg',
+  'https://sunseekerstours.com/wp-content/uploads/2026/08/y17gwk3vvq_independence_day.jpg',
+];
 
 export default function GhanaToursPage() {
   const GHANA_TOURS = [
@@ -57,22 +65,14 @@ export default function GhanaToursPage() {
 
   return (
     <>
-      {/* Explore Ghana Hero Banner (Screenshots 2 & 3) */}
-      <section
-        className="page-hero-banner"
-        style={{
-          backgroundImage:
-            "linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.65)), url('https://images.unsplash.com/photo-1596706488730-89196b010c79?q=80&w=1920&auto=format&fit=crop')",
-        }}
-      >
-        <div>
-          <div style={{ fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '2px', color: '#fed7aa', marginBottom: '8px' }}>
-            Discover the Heart of West Africa
-          </div>
-          <h1>Explore Ghana</h1>
-          <p>Experience rich culture, history, and natural beauty</p>
-        </div>
-      </section>
+      {/* 4-Slide Auto-Transitioning Hero Banner */}
+      <PageHeroSlider
+        slides={GHANA_HERO_SLIDES}
+        defaultEyebrow="DISCOVER THE HEART OF WEST AFRICA"
+        defaultTitle="Explore Ghana Tours"
+        defaultSubtitle="Experience rich culture, castles, ancestral heritage, and vibrant festivals"
+        height="390px"
+      />
 
       {/* Ghana Tours Grid */}
       <section className="section">

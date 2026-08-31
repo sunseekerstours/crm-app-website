@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import PageHeroSlider from '@/components/PageHeroSlider';
 
 export const revalidate = 60;
 
@@ -8,6 +9,13 @@ export const metadata: Metadata = {
   description:
     'Discover world adventure tours with Sunseekers Tours. Handcrafted international trips to Singapore, Dubai, Rwanda, Seychelles, and beyond.',
 };
+
+const INTERNATIONAL_HERO_SLIDES = [
+  'https://sunseekerstours.com/wp-content/uploads/2026/07/images.jpg',
+  'https://sunseekerstours.com/wp-content/uploads/2026/07/images-1-2.jpg',
+  'https://sunseekerstours.com/wp-content/uploads/2025/11/images-1.jpg',
+  'https://sunseekerstours.com/wp-content/uploads/2026/04/images-3.jpg',
+];
 
 export default function InternationalToursPage() {
   const INTERNATIONAL_TOURS = [
@@ -57,13 +65,14 @@ export default function InternationalToursPage() {
 
   return (
     <>
-      {/* World Adventure Hero Banner (Screenshot 5) */}
-      <section className="page-hero-banner">
-        <div>
-          <h1>World Adventure</h1>
-          <p>Find your best tours here</p>
-        </div>
-      </section>
+      {/* 4-Slide Auto-Transitioning Hero Banner */}
+      <PageHeroSlider
+        slides={INTERNATIONAL_HERO_SLIDES}
+        defaultEyebrow="WORLD ADVENTURE"
+        defaultTitle="International Holiday Packages"
+        defaultSubtitle="Curated world tours to Singapore, Dubai, Rwanda, Seychelles, and beyond"
+        height="390px"
+      />
 
       {/* Tours Grid */}
       <section className="section">

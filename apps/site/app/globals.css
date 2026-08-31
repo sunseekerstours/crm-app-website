@@ -2639,3 +2639,281 @@ img {
   flex-wrap: wrap;
 }
 
+/* ==========================================================================
+   Page Hero Slider Component (4-Slide Auto-Transitions)
+   ========================================================================== */
+.page-hero-slider-wrap {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0f172a;
+}
+
+.page-hero-slide-item {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
+  opacity: 0;
+  transform: scale(1.04);
+  transition: opacity 1s cubic-bezier(0.4, 0, 0.2, 1), transform 6s linear;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.page-hero-slide-item.active {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.page-hero-text-box {
+  max-width: 800px;
+  margin: 0 auto;
+  color: #ffffff;
+}
+
+.page-hero-eyebrow-badge {
+  display: inline-block;
+  background: var(--brand-orange);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 4px 14px;
+  border-radius: 9999px;
+  letter-spacing: 1.5px;
+  margin-bottom: 12px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.page-hero-heading {
+  font-size: 2.8rem;
+  font-weight: 900;
+  letter-spacing: -0.5px;
+  line-height: 1.15;
+  margin-bottom: 12px;
+  color: #ffffff;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+}
+
+@media (max-width: 640px) {
+  .page-hero-heading {
+    font-size: 2rem;
+  }
+}
+
+.page-hero-subheading {
+  font-size: 1.1rem;
+  color: #f8fafc;
+  line-height: 1.5;
+  font-weight: 500;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.page-hero-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  transition: all 0.2s ease;
+}
+
+.page-hero-arrow.prev {
+  left: 20px;
+}
+
+.page-hero-arrow.next {
+  right: 20px;
+}
+
+.page-hero-arrow:hover {
+  background: var(--brand-green);
+  border-color: var(--brand-green);
+  transform: translateY(-50%) scale(1.1);
+}
+
+.page-hero-arrow svg {
+  width: 22px;
+  height: 22px;
+}
+
+.page-hero-dots {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  z-index: 10;
+}
+
+.page-hero-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.4);
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.page-hero-dot.active {
+  width: 26px;
+  border-radius: 9999px;
+  background: var(--brand-orange);
+}
+
+/* ==========================================================================
+   Vehicle Rental Fleet Cards Grid (Screenshots 1 & 2)
+   ========================================================================== */
+.vehicle-fleet-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  margin-top: 20px;
+}
+
+@media (max-width: 992px) {
+  .vehicle-fleet-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .vehicle-fleet-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.vehicle-card {
+  background: #ffffff;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1.5px solid #e2e8f0;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.35s ease, box-shadow 0.35s ease, border-color 0.35s ease;
+}
+
+.vehicle-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.12);
+  border-color: var(--brand-green);
+}
+
+.vehicle-card.selected {
+  border-color: var(--brand-green);
+  box-shadow: 0 0 0 3px rgba(0, 135, 68, 0.2);
+}
+
+.vehicle-img-wrap {
+  position: relative;
+  width: 100%;
+  height: 200px;
+  overflow: hidden;
+  background: #0f172a;
+}
+
+.vehicle-img-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.6s ease;
+}
+
+.vehicle-card:hover .vehicle-img-wrap img {
+  transform: scale(1.08);
+}
+
+.vehicle-seat-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(4px);
+  color: #ffffff;
+  font-size: 11.5px;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.vehicle-banner-header {
+  background: var(--brand-green);
+  color: #ffffff;
+  padding: 12px 18px;
+  text-align: center;
+}
+
+.vehicle-name {
+  font-size: 17px;
+  font-weight: 900;
+  margin: 0;
+  letter-spacing: 0.2px;
+}
+
+.vehicle-body-content {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  background: #ffffff;
+}
+
+.vehicle-specs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.spec-item {
+  font-size: 13px;
+  color: #475569;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-book-vehicle {
+  margin-top: auto;
+  width: 100%;
+  background: #f0fdf4;
+  color: var(--brand-green);
+  border: 1.5px solid #bbf7d0;
+  padding: 10px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-book-vehicle:hover,
+.vehicle-card.selected .btn-book-vehicle {
+  background: var(--brand-green);
+  color: #ffffff;
+  border-color: var(--brand-green);
+  box-shadow: 0 4px 12px rgba(0, 135, 68, 0.25);
+}
+
+
