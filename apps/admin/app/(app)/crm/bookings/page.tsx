@@ -105,14 +105,28 @@ export default function CrmBookingsPage() {
     }
   }, [page, search]);
 
+  const loadLookups = useCallback(async () => {
+    try {
+      const custRes = await api.get<Paginated<CustomerOption>>('/customers?limit=200');
+      setCustomers(custRes.items ?? []);
+    } catch (e) {
+      console.error('Failed to load customers for bookings:', e);
+    }
+    try {
+      const depRes = await api.get<Paginated<DepartureOption>>('/departures?limit=200');
+      setDepartures(depRes.items ?? []);
+    } catch (e) {
+      console.error('Failed to load departures for bookings:', e);
+    }
+  }, []);
+
   useEffect(() => {
     void load();
   }, [load]);
 
   useEffect(() => {
-    api.get<Paginated<CustomerOption>>('/customers?limit=200').then((r) => setCustomers(r.items ?? [])).catch(() => undefined);
-    api.get<Paginated<DepartureOption>>('/departures?limit=200').then((r) => setDepartures(r.items ?? [])).catch(() => undefined);
-  }, []);
+    void loadLookups();
+  }, [loadLookups]);
 
   function loadIntoForm(b: BookingItem) {
     setEditing(b);
@@ -276,7 +290,9 @@ export default function CrmBookingsPage() {
 
   function customerLabel(c: CustomerOption) {
     const name = `${c.firstName ?? ''} ${c.lastName ?? ''}`.trim();
-    return name || c.email || c.id;
+    const contact = c.email || c.phone;
+    if (name && contact) return `${name} (${contact})`;
+    return name || contact || c.id;
   }
 
   function departureLabel(d: DepartureOption) {

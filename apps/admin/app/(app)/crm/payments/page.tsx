@@ -102,14 +102,28 @@ export default function CrmPaymentsPage() {
     }
   }, [page, search]);
 
+  const loadLookups = useCallback(async () => {
+    try {
+      const custRes = await api.get<Paginated<CustomerOption>>('/customers?limit=200');
+      setCustomers(custRes.items ?? []);
+    } catch (e) {
+      console.error('Failed to load customers for payments:', e);
+    }
+    try {
+      const bkgRes = await api.get<Paginated<BookingOption>>('/bookings?limit=200');
+      setBookings(bkgRes.items ?? []);
+    } catch (e) {
+      console.error('Failed to load bookings for payments:', e);
+    }
+  }, []);
+
   useEffect(() => {
     void load();
   }, [load]);
 
   useEffect(() => {
-    api.get<Paginated<CustomerOption>>('/customers?limit=200').then((r) => setCustomers(r.items ?? [])).catch(() => undefined);
-    api.get<Paginated<BookingOption>>('/bookings?limit=200').then((r) => setBookings(r.items ?? [])).catch(() => undefined);
-  }, []);
+    void loadLookups();
+  }, [loadLookups]);
 
   function loadIntoForm(p: PaymentItem) {
     setEditing(p);
@@ -138,16 +152,19 @@ export default function CrmPaymentsPage() {
     e.preventDefault();
     setSubmitting(true);
     setFormError(null);
+
     const body: Record<string, unknown> = {
       customerId: form.customerId || undefined,
       bookingId: form.bookingId || undefined,
-      amount: form.amount ? Number(form.amount) : undefined,
+      amount: Number(form.amount),
       currency: form.currency || 'USD',
-      method: form.method || undefined,
-      status: form.status,
+      method: form.method || 'CASH',
+      status: form.status || 'COMPLETED',
       reference: form.reference || undefined,
       paidAt: form.paidAt || undefined,
+      notes: form.notes || undefined,
     };
+
     try {
       if (editing) {
         await api.patch(`/payments/${editing.id}`, body);
@@ -175,7 +192,9 @@ export default function CrmPaymentsPage() {
 
   function customerLabel(c: CustomerOption) {
     const name = `${c.firstName ?? ''} ${c.lastName ?? ''}`.trim();
-    return name || c.email || c.id;
+    const contact = c.email || c.phone;
+    if (name && contact) return `${name} (${contact})`;
+    return name || contact || c.id;
   }
 
   return (

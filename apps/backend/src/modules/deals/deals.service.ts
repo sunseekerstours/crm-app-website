@@ -35,6 +35,10 @@ export class DealsService {
         notes: dto.notes,
         tags: dto.tags ?? [],
       },
+      include: {
+        customer: { select: { id: true, firstName: true, lastName: true, email: true, phone: true } },
+        salesperson: { select: { id: true, firstName: true, lastName: true, email: true } },
+      },
     });
 
     await this.audit.record({
@@ -72,7 +76,12 @@ export class DealsService {
   }) {
     const where: Prisma.DealWhereInput = {};
     if (params.search) {
-      where.OR = [{ name: { contains: params.search, mode: 'insensitive' } }];
+      where.OR = [
+        { name: { contains: params.search, mode: 'insensitive' } },
+        { customer: { firstName: { contains: params.search, mode: 'insensitive' } } },
+        { customer: { lastName: { contains: params.search, mode: 'insensitive' } } },
+        { customer: { email: { contains: params.search, mode: 'insensitive' } } },
+      ];
     }
     if (params.stage) where.stage = params.stage as DealStage;
     if (params.salespersonId) where.salespersonId = params.salespersonId;
@@ -84,7 +93,7 @@ export class DealsService {
         take: params.limit,
         orderBy: { createdAt: 'desc' },
         include: {
-          customer: { select: { id: true, firstName: true, lastName: true } },
+          customer: { select: { id: true, firstName: true, lastName: true, email: true, phone: true } },
           salesperson: { select: { id: true, firstName: true, lastName: true, email: true } },
         },
       }),
@@ -105,7 +114,7 @@ export class DealsService {
     const deal = await this.prisma.deal.findUnique({
       where: { id },
       include: {
-        customer: { select: { id: true, firstName: true, lastName: true } },
+        customer: { select: { id: true, firstName: true, lastName: true, email: true, phone: true } },
         company: { select: { id: true, name: true } },
         lead: { select: { id: true, firstName: true, lastName: true } },
         salesperson: { select: { id: true, firstName: true, lastName: true, email: true } },
@@ -137,6 +146,10 @@ export class DealsService {
         source: dto.source,
         notes: dto.notes,
         tags: dto.tags,
+      },
+      include: {
+        customer: { select: { id: true, firstName: true, lastName: true, email: true, phone: true } },
+        salesperson: { select: { id: true, firstName: true, lastName: true, email: true } },
       },
     });
 

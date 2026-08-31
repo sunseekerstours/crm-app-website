@@ -150,14 +150,17 @@ export default function DealFormScreen({
         <SectionLabel>Customer (optional)</SectionLabel>
         {customerOptions.length > 0 ? (
           <View style={styles.chipRow}>
-            {customerOptions.map((c) => (
-              <Chip
-                key={c.id}
-                label={`${c.firstName ?? ''} ${c.lastName ?? ''}`.trim() || c.id.slice(0, 8)}
-                selected={customerId === c.id}
-                onPress={() => setCustomerId(customerId === c.id ? '' : c.id)}
-              />
-            ))}
+            {customerOptions.map((c) => {
+              const name = `${c.firstName ?? ''} ${c.lastName ?? ''}`.trim();
+              return (
+                <Chip
+                  key={c.id}
+                  label={name || c.email || c.id.slice(0, 8)}
+                  selected={customerId === c.id}
+                  onPress={() => setCustomerId(customerId === c.id ? '' : c.id)}
+                />
+              );
+            })}
           </View>
         ) : (
           <Empty text="No customers available." />

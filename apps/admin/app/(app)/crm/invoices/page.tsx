@@ -195,11 +195,30 @@ export default function CrmInvoicesQuotesPage() {
   });
 
   // Load Lookups
-  useEffect(() => {
-    api.get<Paginated<Customer>>('/customers?limit=200').then((r) => setCustomers(r.items ?? [])).catch(() => undefined);
-    api.get<Paginated<Booking>>('/bookings?limit=200').then((r) => setBookings(r.items ?? [])).catch(() => undefined);
-    api.get<Paginated<Deal>>('/deals?limit=200').then((r) => setDeals(r.items ?? [])).catch(() => undefined);
+  const loadLookups = useCallback(async () => {
+    try {
+      const custRes = await api.get<Paginated<Customer>>('/customers?limit=200');
+      setCustomers(custRes.items ?? []);
+    } catch (e) {
+      console.error('Failed to load customers for invoices:', e);
+    }
+    try {
+      const bkgRes = await api.get<Paginated<Booking>>('/bookings?limit=200');
+      setBookings(bkgRes.items ?? []);
+    } catch (e) {
+      console.error('Failed to load bookings for invoices:', e);
+    }
+    try {
+      const dealRes = await api.get<Paginated<Deal>>('/deals?limit=200');
+      setDeals(dealRes.items ?? []);
+    } catch (e) {
+      console.error('Failed to load deals for invoices:', e);
+    }
   }, []);
+
+  useEffect(() => {
+    void loadLookups();
+  }, [loadLookups]);
 
   const loadData = useCallback(async () => {
     setLoading(true);

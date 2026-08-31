@@ -136,8 +136,11 @@ export class BookingsService {
     }
     if (params.search) {
       where.OR = [
-        { bookingNumber: { contains: params.search } },
+        { bookingNumber: { contains: params.search, mode: 'insensitive' } },
         { tourName: { contains: params.search, mode: 'insensitive' } },
+        { customer: { firstName: { contains: params.search, mode: 'insensitive' } } },
+        { customer: { lastName: { contains: params.search, mode: 'insensitive' } } },
+        { customer: { email: { contains: params.search, mode: 'insensitive' } } },
       ];
     }
 
@@ -148,7 +151,7 @@ export class BookingsService {
         take: params.limit,
         orderBy: { createdAt: 'desc' },
         include: {
-          customer: { select: { id: true, firstName: true, lastName: true, email: true } },
+          customer: { select: { id: true, firstName: true, lastName: true, email: true, phone: true } },
           departure: true,
           travelers: { include: { traveler: true } },
         },
@@ -170,7 +173,7 @@ export class BookingsService {
     const booking = await this.prisma.booking.findUnique({
       where: { id },
       include: {
-        customer: { select: { id: true, firstName: true, lastName: true, email: true } },
+        customer: { select: { id: true, firstName: true, lastName: true, email: true, phone: true } },
         departure: true,
         travelers: { include: { traveler: true } },
         invoices: true,

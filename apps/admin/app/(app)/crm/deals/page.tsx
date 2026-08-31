@@ -81,16 +81,22 @@ export default function CrmDealsPage() {
     }
   }, [page, search]);
 
+  const loadCustomers = useCallback(async () => {
+    try {
+      const r = await api.get<Paginated<CustomerOption>>('/customers?limit=200');
+      setCustomers(r.items ?? []);
+    } catch (e) {
+      console.error('Failed to load customers for deals:', e);
+    }
+  }, []);
+
   useEffect(() => {
     void load();
   }, [load]);
 
   useEffect(() => {
-    api
-      .get<Paginated<CustomerOption>>('/customers?limit=200')
-      .then((r) => setCustomers(r.items ?? []))
-      .catch(() => undefined);
-  }, []);
+    void loadCustomers();
+  }, [loadCustomers]);
 
   function loadIntoForm(d: DealItem) {
     setEditing(d);
@@ -214,7 +220,9 @@ export default function CrmDealsPage() {
 
   function customerLabel(c: CustomerOption) {
     const name = `${c.firstName ?? ''} ${c.lastName ?? ''}`.trim();
-    return name || c.email || c.id;
+    const contact = c.email || c.phone;
+    if (name && contact) return `${name} (${contact})`;
+    return name || contact || c.id;
   }
 
   return (
