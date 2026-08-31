@@ -6,6 +6,7 @@ import { ApiNotFoundException, ApiConflictException, ErrorCode } from '@app/comm
 import { RequestContext } from '@app/common/request-context';
 import { CreateTourDto } from './dto/create-tour.dto';
 import { UpdateTourDto } from './dto/update-tour.dto';
+import { CreateTourPricingDto } from './dto/create-tour-pricing.dto';
 import { Prisma, AuditableAction, TourStatus, DepartureStatus } from '@prisma/client';
 
 @Injectable()
@@ -41,6 +42,9 @@ export class ToursService {
         videoUrl: dto.videoUrl,
         currency: dto.currency ?? 'GHS',
         basePrice: dto.basePrice,
+        startDate: dto.startDate ? new Date(dto.startDate) : undefined,
+        endDate: dto.endDate ? new Date(dto.endDate) : undefined,
+        availabilityNote: dto.availabilityNote,
         status: dto.status ?? TourStatus.DRAFT,
         createdById: ctx.userId,
         destinations: dto.destinationIds?.length
@@ -49,8 +53,17 @@ export class ToursService {
             }
           : undefined,
         days: dto.days?.length ? { create: dto.days.map((d) => toDayData(d)) } : undefined,
+        pricing: dto.pricing?.length
+          ? {
+              create: dto.pricing.map((p) => toPricingData(p, dto.currency)),
+            }
+          : undefined,
       },
-      include: { destinations: { include: { destination: true } }, days: true },
+      include: {
+        destinations: { include: { destination: true } },
+        days: true,
+        pricing: { orderBy: { price: 'asc' } },
+      },
     });
 
     await this.audit.record({
@@ -91,8 +104,9 @@ export class ToursService {
         orderBy: { createdAt: 'desc' },
         include: {
           destinations: {
-            select: { destination: { select: { id: true, name: true, slug: true } } },
+            select: { destination: { select: { id: true, name: true, slug: true, country: true, region: true, coverImage: true } } },
           },
+          pricing: { orderBy: { price: 'asc' } },
           _count: { select: { departures: true, days: true } },
         },
       }),
@@ -115,6 +129,7 @@ export class ToursService {
       include: {
         destinations: { include: { destination: true } },
         days: { orderBy: { dayNumber: 'asc' }, include: { destination: true } },
+        pricing: { orderBy: { price: 'asc' } },
         departures: { orderBy: { startDate: 'asc' } },
       },
     });
@@ -151,6 +166,9 @@ export class ToursService {
         videoUrl: dto.videoUrl,
         currency: dto.currency,
         basePrice: dto.basePrice,
+        startDate: dto.startDate !== undefined ? (dto.startDate ? new Date(dto.startDate) : null) : undefined,
+        endDate: dto.endDate !== undefined ? (dto.endDate ? new Date(dto.endDate) : null) : undefined,
+        availabilityNote: dto.availabilityNote,
         status: dto.status,
         ...(dto.destinationIds !== undefined
           ? {
@@ -165,8 +183,20 @@ export class ToursService {
         ...(dto.days !== undefined
           ? { days: { deleteMany: {}, create: dto.days.map((d) => toDayData(d)) } }
           : {}),
+        ...(dto.pricing !== undefined
+          ? {
+              pricing: {
+                deleteMany: {},
+                create: dto.pricing.map((p) => toPricingData(p, dto.currency ?? existing.currency)),
+              },
+            }
+          : {}),
       },
-      include: { destinations: { include: { destination: true } }, days: true },
+      include: {
+        destinations: { include: { destination: true } },
+        days: true,
+        pricing: { orderBy: { price: 'asc' } },
+      },
     });
 
     await this.audit.record({
@@ -262,6 +292,19 @@ export class ToursService {
 
     return { success: true };
   }
+}
+
+function toPricingData(p: CreateTourPricingDto, defaultCurrency?: string): Prisma.TourPricingCreateWithoutTourInput {
+  return {
+    name: p.name,
+    persons: p.persons ?? 1,
+    price: p.price,
+    currency: p.currency || defaultCurrency || 'USD',
+    discountPercent: p.discountPercent !== undefined && p.discountPercent !== null ? p.discountPercent : undefined,
+    discountPrice: p.discountPrice !== undefined && p.discountPrice !== null ? p.discountPrice : undefined,
+    isCustom: p.isCustom ?? false,
+    note: p.note,
+  };
 }
 
 function toDayData(d: {

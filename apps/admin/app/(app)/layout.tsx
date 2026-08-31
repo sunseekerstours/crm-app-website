@@ -15,6 +15,7 @@ const NAV = [
 
 const CRM_NAV = [
   { href: '/crm/tours', label: 'Tours & Trips', permission: 'tours.view' },
+  { href: '/crm/destinations', label: 'Destinations', permission: 'destinations.view' },
   { href: '/crm/products', label: 'Products & Services', permission: 'products.view' },
   { href: '/crm/customers', label: 'Customers', permission: 'customers.view' },
   { href: '/crm/leads', label: 'Leads', permission: 'leads.view' },
@@ -77,6 +78,13 @@ function getIcon(label: string) {
       return (
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498l4.89-2.445c.385-.193.607-.586.607-1.018V3.923c0-.93-.91-1.583-1.815-1.378l-4.577 1.04a1.875 1.875 0 01-1.095 0L8.72 2.545a1.875 1.875 0 00-1.094 0L2.735 3.585C1.83 3.79 1 4.443 1 5.373v11.838c0 .432.222.825.607 1.018l4.89 2.445a1.875 1.875 0 001.503 0l4.89-2.445a1.875 1.875 0 011.503 0z" />
+        </svg>
+      );
+    case 'Destinations':
+      return (
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
         </svg>
       );
     case 'Products & Services':

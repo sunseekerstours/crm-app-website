@@ -31,10 +31,17 @@ export class PublicService {
         maxPax: true,
         highlights: true,
         coverImage: true,
+        images: true,
         currency: true,
         basePrice: true,
+        startDate: true,
+        endDate: true,
+        availabilityNote: true,
         destinations: {
-          select: { destination: { select: { id: true, name: true, slug: true, country: true } } },
+          select: { destination: { select: { id: true, name: true, slug: true, country: true, region: true, coverImage: true } } },
+        },
+        pricing: {
+          orderBy: { price: 'asc' },
         },
       },
     });
@@ -82,6 +89,7 @@ export class PublicService {
       include: {
         destinations: { include: { destination: true } },
         days: { orderBy: { dayNumber: 'asc' }, include: { destination: true } },
+        pricing: { orderBy: { price: 'asc' } },
         departures: {
           where: { status: { not: DepartureStatus.CANCELLED } },
           orderBy: { startDate: 'asc' },
@@ -125,7 +133,10 @@ export class PublicService {
         region: true,
         slug: true,
         summary: true,
+        description: true,
+        highlights: true,
         coverImage: true,
+        images: true,
         _count: {
           select: {
             tours: {

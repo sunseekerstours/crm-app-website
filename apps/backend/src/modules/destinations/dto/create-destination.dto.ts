@@ -34,6 +34,11 @@ export class CreateDestinationDto {
   coverImage?: string;
 
   @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  images?: string[];
+
+  @IsOptional()
   @IsBoolean()
   isActive?: boolean;
 }

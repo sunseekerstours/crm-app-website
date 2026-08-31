@@ -661,6 +661,7 @@ model Destination {
   description String?
   highlights  String[] @default([])
   coverImage  String?
+  images      String[] @default([])
   isActive    Boolean  @default(true)
   tours       TourDestination[]
   tourDays    TourDay[]
@@ -674,36 +675,61 @@ model Destination {
 
 /// A sellable tour package (PRD §Tour). Tour != Departure (PRD 131).
 model Tour {
-  id           String          @id @default(uuid())
-  name         String
-  slug         String          @unique
-  summary      String?
-  description  String?
-  durationDays Int             @default(0)
-  type         String?
-  difficulty   String?
-  minPax       Int             @default(1)
-  maxPax       Int?
-  inclusions   String[]        @default([])
-  exclusions   String[]        @default([])
-  highlights   String[]        @default([])
-  coverImage   String?
-  images       String[]        @default([])
-  videoUrl     String?
-  currency     String          @default("GHS")
-  basePrice    Decimal?        @db.Decimal(12, 2)
-  status       TourStatus      @default(DRAFT)
-  createdById  String?
-  createdBy    User?           @relation("TourCreatedBy", fields: [createdById], references: [id])
-  destinations TourDestination[]
-  days         TourDay[]
-  departures   Departure[]
+  id               String          @id @default(uuid())
+  name             String
+  slug             String          @unique
+  summary          String?
+  description      String?
+  durationDays     Int             @default(0)
+  type             String?
+  difficulty       String?
+  minPax           Int             @default(1)
+  maxPax           Int?
+  inclusions       String[]        @default([])
+  exclusions       String[]        @default([])
+  highlights       String[]        @default([])
+  coverImage       String?
+  images           String[]        @default([])
+  videoUrl         String?
+  currency         String          @default("GHS")
+  basePrice        Decimal?        @db.Decimal(12, 2)
+  startDate        DateTime?
+  endDate          DateTime?
+  availabilityNote String?
+  status           TourStatus      @default(DRAFT)
+  createdById      String?
+  createdBy        User?           @relation("TourCreatedBy", fields: [createdById], references: [id])
+  destinations     TourDestination[]
+  days             TourDay[]
+  pricing          TourPricing[]
+  departures       Departure[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([status])
   @@map("tours")
+}
+
+/// Pricing tiers for a tour (e.g. Double Occupancy, Single Occupancy, VIP, Custom)
+model TourPricing {
+  id              String   @id @default(uuid())
+  tourId          String
+  tour            Tour     @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  name            String
+  persons         Int      @default(1)
+  price           Decimal  @db.Decimal(12, 2)
+  currency        String   @default("USD")
+  discountPercent Decimal? @db.Decimal(5, 2)
+  discountPrice   Decimal? @db.Decimal(12, 2)
+  isCustom        Boolean  @default(false)
+  note            String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([tourId])
+  @@map("tour_pricing")
 }
 
 /// Many-to-many link between tours and destinations

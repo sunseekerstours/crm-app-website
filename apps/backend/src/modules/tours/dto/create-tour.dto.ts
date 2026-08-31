@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import {
   IsArray,
+  IsDateString,
   IsEnum,
   IsInt,
   IsNumber,
@@ -10,6 +11,7 @@ import {
 } from 'class-validator';
 import { TourStatus } from '@prisma/client';
 import { CreateTourDayDto } from './create-tour-day.dto';
+import { CreateTourPricingDto } from './create-tour-pricing.dto';
 
 export class CreateTourDto {
   @IsString()
@@ -88,6 +90,18 @@ export class CreateTourDto {
   basePrice?: number;
 
   @IsOptional()
+  @IsDateString()
+  startDate?: string;
+
+  @IsOptional()
+  @IsDateString()
+  endDate?: string;
+
+  @IsOptional()
+  @IsString()
+  availabilityNote?: string;
+
+  @IsOptional()
   @IsEnum(TourStatus)
   status?: TourStatus;
 
@@ -101,4 +115,10 @@ export class CreateTourDto {
   @ValidateNested({ each: true })
   @Type(() => CreateTourDayDto)
   days?: CreateTourDayDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateTourPricingDto)
+  pricing?: CreateTourPricingDto[];
 }

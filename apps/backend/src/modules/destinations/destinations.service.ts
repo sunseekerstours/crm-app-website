@@ -35,6 +35,7 @@ export class DestinationsService {
         description: dto.description,
         highlights: dto.highlights ?? [],
         coverImage: dto.coverImage,
+        images: dto.images ?? [],
         isActive: dto.isActive ?? true,
       },
     });
@@ -70,7 +71,16 @@ export class DestinationsService {
         skip: (params.page - 1) * params.limit,
         take: params.limit,
         orderBy: { name: 'asc' },
-        include: { _count: { select: { tours: true } } },
+        include: {
+          tours: {
+            select: {
+              tour: {
+                select: { id: true, name: true, slug: true, durationDays: true, status: true, coverImage: true },
+              },
+            },
+          },
+          _count: { select: { tours: true } },
+        },
       }),
       this.prisma.destination.count({ where }),
     ]);
@@ -89,7 +99,13 @@ export class DestinationsService {
     const destination = await this.prisma.destination.findUnique({
       where: { id },
       include: {
-        tours: { select: { tour: { select: { id: true, name: true, slug: true } } } },
+        tours: {
+          select: {
+            tour: {
+              select: { id: true, name: true, slug: true, durationDays: true, status: true, coverImage: true, basePrice: true, currency: true },
+            },
+          },
+        },
       },
     });
     if (!destination)
@@ -119,6 +135,7 @@ export class DestinationsService {
         description: dto.description,
         highlights: dto.highlights,
         coverImage: dto.coverImage,
+        images: dto.images,
         isActive: dto.isActive,
       },
     });
