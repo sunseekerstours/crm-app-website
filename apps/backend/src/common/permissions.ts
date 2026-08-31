@@ -149,6 +149,22 @@ export const Permission = {
 
   SITE_SETTING_VIEW: 'site_settings.view',
   SITE_SETTING_UPDATE: 'site_settings.update',
+
+  EMPLOYEE_VIEW: 'employees.view',
+  EMPLOYEE_CREATE: 'employees.create',
+  EMPLOYEE_UPDATE: 'employees.update',
+  EMPLOYEE_DELETE: 'employees.delete',
+
+  PERFORMANCE_VIEW: 'performance.view',
+  PERFORMANCE_CREATE: 'performance.create',
+  PERFORMANCE_UPDATE: 'performance.update',
+  PERFORMANCE_DELETE: 'performance.delete',
+
+  LEAVE_VIEW: 'leave.view',
+  LEAVE_CREATE: 'leave.create',
+  LEAVE_UPDATE: 'leave.update',
+  LEAVE_APPROVE: 'leave.approve',
+  LEAVE_DELETE: 'leave.delete',
 } as const;
 
 export type PermissionKey = (typeof Permission)[keyof typeof Permission];

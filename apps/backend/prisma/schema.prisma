@@ -115,6 +115,16 @@ enum AuditableAction {
   PAGE_UPDATED
   PAGE_DELETED
   SITE_SETTING_UPDATED
+  EMPLOYEE_CREATED
+  EMPLOYEE_UPDATED
+  EMPLOYEE_DELETED
+  PERFORMANCE_CREATED
+  PERFORMANCE_UPDATED
+  PERFORMANCE_DELETED
+  LEAVE_CREATED
+  LEAVE_UPDATED
+  LEAVE_APPROVED
+  LEAVE_DELETED
 }
 
 model User {
@@ -1202,4 +1212,109 @@ model NotificationPreference {
 
   @@unique([userId, type])
   @@map("notification_preferences")
+}
+
+// ============================================================================
+// HR (Staff, Performance Reviews, Leave Requests)
+// ============================================================================
+
+enum EmploymentStatus {
+  ACTIVE
+  TERMINATED
+  ON_LEAVE
+}
+
+enum PerformanceRating {
+  EXCEEDS
+  MEETS
+  BELOW
+  NEEDS_IMPROVEMENT
+}
+
+enum LeaveType {
+  ANNUAL
+  SICK
+  UNPAID
+  MATERNITY
+  PATERNITY
+  OTHER
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+/// A staff member managed by the HR module
+model Employee {
+  id                String             @id @default(uuid())
+  employeeCode      String?            @unique
+  firstName         String
+  lastName          String
+  email             String?            @unique
+  phone             String?
+  department        String?
+  jobTitle          String?
+  hireDate          DateTime?
+  baseSalary        Decimal?           @db.Decimal(12, 2)
+  currency          String?            @default("GHS")
+  employmentStatus  EmploymentStatus   @default(ACTIVE)
+  emergencyContact  String?
+  notes             String?
+
+  performanceReviews PerformanceReview[]
+  leaveRequests      LeaveRequest[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@index([department])
+  @@map("employees")
+}
+
+/// A periodic performance review for an employee
+model PerformanceReview {
+  id           String            @id @default(uuid())
+  employeeId   String
+  employee     Employee          @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  reviewDate   DateTime
+  rating       PerformanceRating
+  score        Int?
+  goals        String?
+  achievements String?
+  strengths    String?
+  improvements String?
+  feedback     String?
+  reviewedById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([employeeId])
+  @@index([reviewDate])
+  @@map("performance_reviews")
+}
+
+/// A leave/absence request by an employee
+model LeaveRequest {
+  id           String      @id @default(uuid())
+  employeeId   String
+  employee     Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveType    LeaveType
+  startDate    DateTime
+  endDate      DateTime
+  reason       String?
+  status       LeaveStatus @default(PENDING)
+  approvedById String?
+  approvedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([employeeId])
+  @@index([status])
+  @@map("leave_requests")
 }

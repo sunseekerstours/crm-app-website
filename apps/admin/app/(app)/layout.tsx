@@ -25,6 +25,12 @@ const CRM_NAV = [
   { href: '/crm/notifications', label: 'Notifications' },
 ];
 
+const HR_NAV = [
+  { href: '/hr/employees', label: 'Staff' },
+  { href: '/hr/performance', label: 'Performance' },
+  { href: '/hr/leave', label: 'Leave' },
+];
+
 function NavLink({ item, pathname }: { item: { href: string; label: string; exact?: boolean }; pathname: string }) {
   const active = item.exact ? pathname === item.href : pathname.startsWith(item.href);
   return (
@@ -58,6 +64,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         ) : null}
         <div className="nav-label">CRM</div>
         {CRM_NAV.map((item) => (
+          <NavLink key={item.href} item={item} pathname={pathname} />
+        ))}
+        <div className="nav-label">HR</div>
+        {HR_NAV.map((item) => (
           <NavLink key={item.href} item={item} pathname={pathname} />
         ))}
         <div className="nav-label">Website & Admin</div>
