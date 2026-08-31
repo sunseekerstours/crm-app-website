@@ -47,25 +47,26 @@ async function main(): Promise<void> {
   const saltRounds = parseInt(process.env.BCRYPT_SALT_ROUNDS ?? '10', 10);
 
   console.log('Seeding public site settings...');
+  const navMenus = [
+    { label: 'Home', href: '/' },
+    { label: 'Tours', href: '/tours' },
+    { label: 'Ghana Tours', href: '/tours/ghana' },
+    { label: 'International Tours', href: '/tours/international' },
+    { label: 'Flights', href: '/flights' },
+    { label: 'Hotels', href: '/hotels' },
+    { label: 'Car Rentals', href: '/car-rentals' },
+    { label: 'Destinations', href: '/destinations' },
+    { label: 'Contact', href: '/contact' },
+  ];
   await prisma.siteSetting.upsert({
     where: { key: 'nav_menus' },
     create: {
       key: 'nav_menus',
-      valueJson: {
-        nav_menus: [
-          { label: 'Tours', href: '/tours' },
-          { label: 'Ghana Tours', href: '/tours/ghana' },
-          { label: 'International Tours', href: '/tours/international' },
-          { label: 'Flights', href: '/flights' },
-          { label: 'Hotels', href: '/hotels' },
-          { label: 'Destinations', href: '/destinations' },
-          { label: 'Contact', href: '/contact' },
-        ],
-      },
+      valueJson: { nav_menus: navMenus },
       description: 'Public website top navigation menu items (array of {label, href})',
       isPublic: true,
     },
-    update: {},
+    update: { valueJson: { nav_menus: navMenus } },
   });
 
   const existing = await prisma.user.findUnique({ where: { email: adminEmail } });

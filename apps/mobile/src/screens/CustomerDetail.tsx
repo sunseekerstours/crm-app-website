@@ -44,7 +44,7 @@ interface Note {
 const LEAD_STAGES = ['NEW', 'CONTACTED', 'QUALIFIED', 'PROPOSAL', 'NEGOTIATION', 'WON', 'LOST'];
 const DEAL_STAGES = ['NEW', 'QUALIFIED', 'PROPOSAL', 'NEGOTIATION', 'DEPOSIT', 'WON', 'LOST'];
 
-const PRODUCT_CATEGORIES = ['GHANA_TOUR', 'INTERNATIONAL_TOUR', 'FLIGHT', 'HOTEL', 'OTHER'];
+const PRODUCT_CATEGORIES = ['GHANA_TOUR', 'INTERNATIONAL_TOUR', 'FLIGHT', 'HOTEL', 'CAR_RENTAL', 'OTHER'];
 
 function toneForStatus(s?: string) {
   if (!s) return 'info' as const;

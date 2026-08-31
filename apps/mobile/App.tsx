@@ -7,6 +7,9 @@ import ListScreen from './src/screens/ListScreen';
 import NotificationsScreen from './src/screens/Notifications';
 import CustomerDetailScreen from './src/screens/CustomerDetail';
 import CustomerFormScreen from './src/screens/CustomerForm';
+import LeadFormScreen from './src/screens/LeadForm';
+import DealFormScreen from './src/screens/DealForm';
+import TourFormScreen from './src/screens/TourForm';
 import ProductScreen from './src/screens/ProductScreen';
 import { resourceConfig } from './src/columns';
 import { useAuth, hasPermission } from './src/useAuth';
@@ -80,7 +83,7 @@ export default function App() {
             ? {
                 label: cfg.addLabel,
                 enabled: hasPermission(user, cfg.addPermission),
-                onPress: () => setRoute({ name: 'customerForm' }),
+                onPress: () => setRoute(cfg.addRoute ?? { name: 'customerForm' }),
               }
             : undefined;
         content = (
@@ -92,8 +95,8 @@ export default function App() {
             badgeKey={cfg.badgeKey}
             onBack={goHome}
             onRowPress={
-              cfg.detailRoute
-                ? (item) => setRoute(cfg.detailRoute!(item.id))
+              cfg.detailRoute || cfg.editRoute
+                ? (item) => setRoute(cfg.detailRoute ? cfg.detailRoute(item.id) : cfg.editRoute!(item.id))
                 : undefined
             }
             addAction={addAction}
@@ -102,6 +105,42 @@ export default function App() {
       } else {
         content = <HomeScreen user={user} onOpen={setRoute} onLogout={logout} />;
       }
+      break;
+    }
+
+    case 'leadForm': {
+      content = (
+        <LeadFormScreen
+          leadId={route.leadId}
+          onBack={() => (route.leadId ? setRoute({ name: 'list', resource: 'leads' }) : setRoute({ name: 'list', resource: 'leads' }))}
+          onDone={() => setRoute({ name: 'list', resource: 'leads' })}
+          hasPerm={(p) => hasPermission(user, p)}
+        />
+      );
+      break;
+    }
+
+    case 'dealForm': {
+      content = (
+        <DealFormScreen
+          dealId={route.dealId}
+          onBack={() => setRoute({ name: 'list', resource: 'deals' })}
+          onDone={() => setRoute({ name: 'list', resource: 'deals' })}
+          hasPerm={(p) => hasPermission(user, p)}
+        />
+      );
+      break;
+    }
+
+    case 'tourForm': {
+      content = (
+        <TourFormScreen
+          tourId={route.tourId}
+          onBack={() => setRoute({ name: 'list', resource: 'tours' })}
+          onDone={() => setRoute({ name: 'list', resource: 'tours' })}
+          hasPerm={(p) => hasPermission(user, p)}
+        />
+      );
       break;
     }
 

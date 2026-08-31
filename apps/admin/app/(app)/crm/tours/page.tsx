@@ -42,6 +42,16 @@ interface Destination {
   name: string;
 }
 
+interface TourDay {
+  id?: string;
+  dayNumber: number;
+  title?: string;
+  description?: string;
+  meals?: string[] | string;
+  accommodation?: string;
+  destinationId?: string;
+}
+
 const STATUSES = ['DRAFT', 'ACTIVE', 'INACTIVE', 'ARCHIVED'];
 const TOUR_TYPES = ['ADVENTURE', 'CULTURAL', 'BEACH', 'SAFARI', 'WILDLIFE', 'LUXURY', 'OTHER'];
 
@@ -63,6 +73,7 @@ const initialForm = {
   inclusions: '',
   exclusions: '',
   highlights: '',
+  days: [] as TourDay[],
 };
 
 export default function CrmToursPage() {
@@ -117,8 +128,64 @@ export default function CrmToursPage() {
       inclusions: (t.inclusions ?? []).join(', '),
       exclusions: (t.exclusions ?? []).join(', '),
       highlights: (t.highlights ?? []).join(', '),
+      days: [],
     });
+    void loadDays(t.id);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  async function loadDays(tourId: string) {
+    try {
+      const full = await api.get<TourItem & { days?: TourDay[] }>(`/tours/${tourId}`);
+      const days = Array.isArray(full.days) ? full.days : [];
+      setForm((f) => ({
+        ...f,
+        days: days.map((d, i) => ({
+          id: d.id,
+          dayNumber: d.dayNumber ?? i + 1,
+          title: d.title ?? '',
+          description: d.description ?? '',
+          meals: Array.isArray(d.meals) ? d.meals.join(', ') : (d.meals ?? ''),
+          accommodation: d.accommodation ?? '',
+          destinationId: d.destinationId ?? '',
+        })),
+      }));
+    } catch {
+      setForm((f) => ({ ...f, days: [] }));
+    }
+  }
+
+  function updateDay(index: number, patch: Partial<TourDay>) {
+    setForm((f) => {
+      const days = f.days.map((d, i) => (i === index ? { ...d, ...patch } : d));
+      return { ...f, days };
+    });
+  }
+
+  function addDay() {
+    setForm((f) => ({
+      ...f,
+      days: [
+        ...f.days,
+        {
+          dayNumber: f.days.length + 1,
+          title: '',
+          description: '',
+          meals: '',
+          accommodation: '',
+          destinationId: '',
+        },
+      ],
+    }));
+  }
+
+  function removeDay(index: number) {
+    setForm((f) => ({
+      ...f,
+      days: f.days
+        .filter((_, i) => i !== index)
+        .map((d, i) => ({ ...d, dayNumber: i + 1 })),
+    }));
   }
 
   function reset() {
@@ -149,6 +216,18 @@ export default function CrmToursPage() {
       inclusions: form.inclusions.split(',').map((s) => s.trim()).filter(Boolean),
       exclusions: form.exclusions.split(',').map((s) => s.trim()).filter(Boolean),
       highlights: form.highlights.split(',').map((s) => s.trim()).filter(Boolean),
+      days: form.days.map((d) => ({
+        dayNumber: d.dayNumber,
+        title: d.title || undefined,
+        description: d.description || undefined,
+        meals: (typeof d.meals === 'string' ? d.meals : (d.meals ?? []).join(', '))
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
+          .filter((s) => s.length > 0),
+        accommodation: d.accommodation || undefined,
+        destinationId: d.destinationId || undefined,
+      })),
     };
     try {
       if (editing) {
@@ -249,6 +328,76 @@ export default function CrmToursPage() {
               })}
               {destinations.length === 0 ? <span style={{ color: 'var(--muted)' }}>No destinations available</span> : null}
             </div>
+          </div>
+          <div className="field" style={{ marginTop: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span className="field-label">Itinerary by day</span>
+              <Button variant="secondary" onClick={addDay}>
+                + Add day
+              </Button>
+            </div>
+            {form.days.length === 0 ? (
+              <div style={{ color: 'var(--muted)', fontSize: 13, marginTop: 6 }}>
+                No itinerary days yet. Add the daily plan for this tour.
+              </div>
+            ) : (
+              <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {form.days.map((day, i) => (
+                  <div key={day.id ?? i} className="panel" style={{ padding: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                      <span className="field-label" style={{ margin: 0 }}>Day {i + 1}</span>
+                      <Button variant="danger" onClick={() => removeDay(i)}>
+                        Remove
+                      </Button>
+                    </div>
+                    <div className="form-grid">
+                      <Input
+                        label="Title"
+                        name="dayTitle"
+                        value={day.title ?? ''}
+                        placeholder="e.g. Arrival & city tour"
+                        onChange={(e) => updateDay(i, { title: e.target.value })}
+                      />
+                      <Select
+                        label="Destination"
+                        name="dayDestination"
+                        value={day.destinationId ?? ''}
+                        onChange={(e) => updateDay(i, { destinationId: e.target.value })}
+                        options={[
+                          { value: '', label: 'None' },
+                          ...destinations.map((d) => ({ value: d.id, label: d.name })),
+                        ]}
+                      />
+                    </div>
+                    <div style={{ marginTop: 10 }}>
+                      <Textarea
+                        label="Description"
+                        name="dayDescription"
+                        rows={2}
+                        value={day.description ?? ''}
+                        onChange={(e) => updateDay(i, { description: e.target.value })}
+                      />
+                    </div>
+                    <div className="form-grid" style={{ marginTop: 10 }}>
+                      <Input
+                        label="Meals (comma separated)"
+                        name="dayMeals"
+                        value={(typeof day.meals === 'string' ? day.meals : (day.meals ?? []).join(', '))}
+                        placeholder="e.g. Breakfast, Lunch"
+                        onChange={(e) => updateDay(i, { meals: e.target.value })}
+                      />
+                      <Input
+                        label="Accommodation"
+                        name="dayAccommodation"
+                        value={day.accommodation ?? ''}
+                        placeholder="e.g. Movenpick Hotel, Accra"
+                        onChange={(e) => updateDay(i, { accommodation: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           {form.coverImage ? (
             <div style={{ marginTop: 14 }}>

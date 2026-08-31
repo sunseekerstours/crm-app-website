@@ -13,11 +13,13 @@ const API_BASE: string = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:30
 type NavItem = { label: string; href: string; cta?: boolean };
 
 const DEFAULT_NAV: NavItem[] = [
+  { label: 'Home', href: '/' },
   { label: 'Tours', href: '/tours' },
   { label: 'Ghana Tours', href: '/tours/ghana' },
   { label: 'International Tours', href: '/tours/international' },
   { label: 'Flights', href: '/flights' },
   { label: 'Hotels', href: '/hotels' },
+  { label: 'Car Rentals', href: '/car-rentals' },
   { label: 'Destinations', href: '/destinations' },
   { label: 'Contact', href: '/contact' },
   { label: 'Plan My Trip', href: '/contact', cta: true },

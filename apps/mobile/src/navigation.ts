@@ -3,6 +3,9 @@ export type Route =
   | { name: 'list'; resource: string }
   | { name: 'customerDetail'; id: string }
   | { name: 'customerForm'; customerId?: string }
+  | { name: 'leadForm'; leadId?: string }
+  | { name: 'dealForm'; dealId?: string }
+  | { name: 'tourForm'; tourId?: string }
   | { name: 'productList' }
   | { name: 'productForm' }
   | { name: 'notifications' };

@@ -37,6 +37,13 @@ interface LinkOption {
   label: string;
 }
 
+interface NoteItem {
+  id: string;
+  content: string;
+  createdAt: string;
+  createdBy?: { firstName?: string; lastName?: string } | null;
+}
+
 const STATUSES = ['ACTIVE', 'INACTIVE', 'LEAD'];
 
 const initialForm = {
@@ -62,6 +69,9 @@ export default function CrmCustomersPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [leads, setLeads] = useState<LinkOption[]>([]);
   const [deals, setDeals] = useState<LinkOption[]>([]);
+  const [notes, setNotes] = useState<NoteItem[]>([]);
+  const [noteText, setNoteText] = useState('');
+  const [addingNote, setAddingNote] = useState(false);
 
   const loadProducts = useCallback(async () => {
     try {
@@ -105,6 +115,30 @@ export default function CrmCustomersPage() {
     }
   }, [page]);
 
+  const loadNotes = useCallback(async (customerId: string) => {
+    try {
+      const res = await api.get<Paginated<NoteItem>>(`/notes?customerId=${customerId}`);
+      setNotes(res.items ?? []);
+    } catch {
+      setNotes([]);
+    }
+  }, []);
+
+  async function addNote(customerId: string) {
+    const content = noteText.trim();
+    if (!content) return;
+    setAddingNote(true);
+    try {
+      await api.post(`/customers/${customerId}/notes`, { content });
+      setNoteText('');
+      await loadNotes(customerId);
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : 'Failed to add note');
+    } finally {
+      setAddingNote(false);
+    }
+  }
+
   useEffect(() => {
     void load();
     void loadProducts();
@@ -135,11 +169,14 @@ export default function CrmCustomersPage() {
       linkedLeadId: '',
       linkedDealId: '',
     });
+    void loadNotes(c.id);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   function reset() {
     setEditing(null);
+    setNotes([]);
+    setNoteText('');
     setForm(initialForm);
     setFormError(null);
   }
@@ -262,6 +299,45 @@ export default function CrmCustomersPage() {
           </div>
         </form>
       </Card>
+
+      {editing ? (
+        <Card title="Notes">
+          <div style={{ display: 'flex', gap: 8 }}>
+            <textarea
+              className="input"
+              rows={2}
+              placeholder="Add a note about this customer…"
+              value={noteText}
+              onChange={(e) => setNoteText(e.target.value)}
+              style={{ flex: 1, resize: 'vertical' }}
+            />
+            <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+              <Button onClick={() => addNote(editing.id)} disabled={addingNote || !noteText.trim()}>
+                {addingNote ? 'Adding…' : 'Add note'}
+              </Button>
+            </div>
+          </div>
+          {notes.length === 0 ? (
+            <div style={{ color: 'var(--muted)', fontSize: 13, marginTop: 16 }}>
+              No notes yet for this customer.
+            </div>
+          ) : (
+            <ul style={{ listStyle: 'none', margin: '16px 0 0', padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {notes.map((n) => (
+                <li key={n.id} className="panel" style={{ padding: '10px 12px' }}>
+                  <div style={{ fontSize: 14, whiteSpace: 'pre-wrap' }}>{n.content}</div>
+                  <div style={{ color: 'var(--muted)', fontSize: 12, marginTop: 6 }}>
+                    {n.createdBy && `${n.createdBy.firstName ?? ''} ${n.createdBy.lastName ?? ''}`.trim()
+                      ? `${n.createdBy.firstName ?? ''} ${n.createdBy.lastName ?? ''}`.trim()
+                      : 'User'}
+                    {n.createdAt ? ` · ${new Date(n.createdAt).toLocaleString()}` : ''}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      ) : null}
 
       {error ? <ErrorState message={error} /> : null}
       {data ? (

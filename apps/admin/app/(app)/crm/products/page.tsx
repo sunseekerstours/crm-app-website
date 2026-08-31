@@ -28,7 +28,7 @@ interface ProductItem {
   _count?: { customers?: number };
 }
 
-const CATEGORIES = ['GHANA_TOUR', 'INTERNATIONAL_TOUR', 'FLIGHT', 'HOTEL', 'OTHER'];
+const CATEGORIES = ['GHANA_TOUR', 'INTERNATIONAL_TOUR', 'FLIGHT', 'HOTEL', 'CAR_RENTAL', 'OTHER'];
 
 const initialForm = {
   name: '',

@@ -46,6 +46,48 @@ export default async function HomePage() {
         </div>
       </section>
 
+      <section className="section section-services">
+        <div className="container">
+          <div className="grid grid-5">
+            <Link href="/tours/ghana" className="card service-card">
+              <div className="service-emoji">&#127967;</div>
+              <div className="card-body">
+                <h3>Ghana Tours</h3>
+                <p>Culture, coast &amp; castles — explore Ghana our way.</p>
+              </div>
+            </Link>
+            <Link href="/tours/international" className="card service-card">
+              <div className="service-emoji">&#127757;</div>
+              <div className="card-body">
+                <h3>International Tours</h3>
+                <p>Curated journeys across the globe.</p>
+              </div>
+            </Link>
+            <Link href="/flights" className="card service-card">
+              <div className="service-emoji">&#9992;&#65039;</div>
+              <div className="card-body">
+                <h3>Flights</h3>
+                <p>Flights arranged for a seamless trip.</p>
+              </div>
+            </Link>
+            <Link href="/hotels" className="card service-card">
+              <div className="service-emoji">&#127976;</div>
+              <div className="card-body">
+                <h3>Hotels</h3>
+                <p>Hand-picked stays wherever you go.</p>
+              </div>
+            </Link>
+            <Link href="/car-rentals" className="card service-card">
+              <div className="service-emoji">&#128663;</div>
+              <div className="card-body">
+                <h3>Car Rentals</h3>
+                <p>Ground transport made simple.</p>
+              </div>
+            </Link>
+          </div>
+        </div>
+      </section>
+
       <section className="section">
         <div className="container">
           <div className="section-head">

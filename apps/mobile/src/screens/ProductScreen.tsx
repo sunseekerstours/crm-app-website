@@ -16,7 +16,7 @@ interface Product {
   _count?: { customers?: number };
 }
 
-const PRODUCT_CATEGORIES = ['GHANA_TOUR', 'INTERNATIONAL_TOUR', 'FLIGHT', 'HOTEL', 'OTHER'];
+const PRODUCT_CATEGORIES = ['GHANA_TOUR', 'INTERNATIONAL_TOUR', 'FLIGHT', 'HOTEL', 'CAR_RENTAL', 'OTHER'];
 
 export default function ProductScreen({
   onBack,

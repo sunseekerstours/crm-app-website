@@ -18,7 +18,7 @@ export interface Me {
 
 export function hasPermission(user: User | null, permission: string): boolean {
   if (!user) return false;
-  if (!Array.isArray(user.permissions)) return true;
+  if (!Array.isArray(user.permissions) || user.permissions.length === 0) return true;
   return user.permissions.includes(permission);
 }
 

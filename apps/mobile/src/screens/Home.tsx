@@ -66,7 +66,9 @@ export function HomeScreen({
                 style={[styles.tile, !show && styles.tileDisabled]}
                 onPress={() => show && onOpen(item.route)}
               >
-                <Text style={styles.tileIcon}>{item.icon}</Text>
+                <View style={styles.tileIconWrap}>
+                  <Text style={styles.tileIcon}>{item.icon}</Text>
+                </View>
                 <Text style={styles.tileLabel}>{item.label}</Text>
                 <Text style={styles.tileSub} numberOfLines={2}>
                   {item.subtitle}
@@ -127,7 +129,16 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   tileDisabled: { opacity: 0.45 },
-  tileIcon: { fontSize: 22 },
-  tileLabel: { fontSize: 15, fontWeight: '700', color: colors.text, marginTop: 6 },
+  tileIconWrap: {
+    alignSelf: 'flex-start',
+    width: 40,
+    height: 40,
+    borderRadius: radius.md,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tileIcon: { fontSize: 20 },
+  tileLabel: { fontSize: 15, fontWeight: '700', color: colors.text, marginTop: 8 },
   tileSub: { fontSize: 12, color: colors.muted, marginTop: 2 },
 });

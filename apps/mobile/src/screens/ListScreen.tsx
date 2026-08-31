@@ -10,6 +10,14 @@ export interface Column<T> {
   render: (row: T) => string;
 }
 
+function badgeTone(value: string): 'primary' | 'danger' | 'warning' | 'info' {
+  const v = String(value ?? '').toUpperCase();
+  if (v.includes('WON') || v.includes('ACTIVE') || v.includes('NEW') || v.includes('COMPLETED') || v.includes('DEPOSIT') || v.includes('QUALIFIED') || v.includes('CONFIRMED')) return 'primary';
+  if (v.includes('LOST') || v.includes('CANCELLED') || v.includes('DECLINED') || v.includes('BLOCKED') || v.includes('FAILED') || v.includes('OVERDUE')) return 'danger';
+  if (v.includes('PROPOSAL') || v.includes('NEGOTIATION') || v.includes('INACTIVE') || v.includes('PENDING') || v.includes('IN_PROGRESS')) return 'warning';
+  return 'info';
+}
+
 export default function ListScreen<T extends { id: string }>({
   title,
   endpoint,
@@ -88,7 +96,7 @@ export default function ListScreen<T extends { id: string }>({
                 ) : null}
                 {badgeKey && item[badgeKey] ? (
                   <View style={{ marginTop: 4 }}>
-                    <Badge label={String(item[badgeKey])} />
+                    <Badge label={String(item[badgeKey])} tone={badgeTone(String(item[badgeKey]))} />
                   </View>
                 ) : null}
               </View>

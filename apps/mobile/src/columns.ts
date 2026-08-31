@@ -8,7 +8,9 @@ interface ResourceConfig<T> {
   badgeKey?: keyof T;
   addPermission?: string;
   addLabel?: string;
+  addRoute?: Route;
   detailRoute?: (id: string) => Route;
+  editRoute?: (id: string) => Route;
 }
 
 interface Customer {
@@ -34,6 +36,7 @@ export const RESOURCES: Record<string, ResourceConfig<any>> = {
     badgeKey: 'status',
     addPermission: 'customers.create',
     addLabel: '+ Add',
+    addRoute: { name: 'customerForm' },
     detailRoute: (id: string): Route => ({ name: 'customerDetail', id }),
     columns: [
       { key: 'name', label: 'Name', render: (r: Customer) => `${r.firstName} ${r.lastName}`.trim() },
@@ -48,6 +51,10 @@ export const RESOURCES: Record<string, ResourceConfig<any>> = {
     endpoint: '/leads?limit=50',
     title: 'Leads',
     badgeKey: 'stage',
+    addPermission: 'leads.create',
+    addLabel: '+ Add',
+    addRoute: { name: 'leadForm' },
+    editRoute: (id: string): Route => ({ name: 'leadForm', leadId: id }),
     columns: [
       {
         key: 'name',
@@ -61,6 +68,10 @@ export const RESOURCES: Record<string, ResourceConfig<any>> = {
     endpoint: '/deals?limit=50',
     title: 'Deals',
     badgeKey: 'stage',
+    addPermission: 'deals.create',
+    addLabel: '+ Add',
+    addRoute: { name: 'dealForm' },
+    editRoute: (id: string): Route => ({ name: 'dealForm', dealId: id }),
     columns: [
       { key: 'title', label: 'Title', render: (r: Deal) => r.name ?? r.title ?? '—' },
       { key: 'amount', label: 'Amount', render: (r: Deal) => `${(Number(r.value ?? r.amount ?? 0)).toLocaleString()} ${r.currency ?? 'GHS'}` },
@@ -70,6 +81,10 @@ export const RESOURCES: Record<string, ResourceConfig<any>> = {
     endpoint: '/tours?limit=50',
     title: 'Tours',
     badgeKey: 'status',
+    addPermission: 'tours.create',
+    addLabel: '+ Add',
+    addRoute: { name: 'tourForm' },
+    editRoute: (id: string): Route => ({ name: 'tourForm', tourId: id }),
     columns: [
       { key: 'name', label: 'Name', render: (r: Tour) => r.name },
       { key: 'summary', label: 'Summary', render: (r: Tour) => r.summary ?? '—' },
