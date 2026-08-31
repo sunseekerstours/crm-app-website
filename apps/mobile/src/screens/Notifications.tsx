@@ -68,6 +68,7 @@ export default function NotificationsScreen({ onBack }: { onBack: () => void }) 
         <FlatList
           data={items}
           keyExtractor={(n) => n.id}
+          contentContainerStyle={{ padding: spacing.lg, paddingTop: spacing.sm }}
           ListHeaderComponent={unread ? <Text style={styles.unread}>{unread} unread</Text> : null}
           ListEmptyComponent={<Text style={styles.empty}>No notifications yet.</Text>}
           renderItem={({ item }) => (
@@ -87,7 +88,7 @@ export default function NotificationsScreen({ onBack }: { onBack: () => void }) 
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.md },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.md, paddingHorizontal: spacing.lg, paddingTop: spacing.md },
   back: { color: colors.primary, fontSize: 16 },
   title: { fontSize: 18, fontWeight: '700' },
   link: { color: colors.primary, fontWeight: '600' },

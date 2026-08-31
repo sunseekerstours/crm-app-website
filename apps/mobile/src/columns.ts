@@ -1,28 +1,47 @@
 import type { Column } from './screens/ListScreen';
+import type { Route } from './navigation';
 
 interface ResourceConfig<T> {
   endpoint: string;
   title: string;
   columns: Column<T>[];
   badgeKey?: keyof T;
+  addPermission?: string;
+  addLabel?: string;
+  detailRoute?: (id: string) => Route;
 }
 
-interface Customer { id: string; name: string; email: string; phone: string; status: string; }
-interface Lead { id: string; name: string; company: string; stage: string; }
-interface Deal { id: string; title: string; stage: string; amount: number; }
-interface Tour { id: string; name: string; destination: string; price: number; }
-interface Departure { id: string; reference: string; startDate: string; status: string; }
-interface Booking { id: string; bookingNumber: string; status: string; }
-interface Payment { id: string; amount: number; currency: string; status: string; }
+interface Customer {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email?: string | null;
+  phone?: string | null;
+  status: string;
+  products?: { id: string; name: string; category?: string | null }[];
+}
+interface Lead { id: string; firstName?: string; lastName?: string; email?: string | null; company?: string; stage: string; }
+interface Deal { id: string; name?: string; title?: string; stage: string; amount?: number; value?: number | null; currency?: string; }
+interface Tour { id: string; name: string; summary?: string | null; status: string; }
+interface Departure { id: string; reference?: string; name?: string; startDate?: string; status: string; }
+interface Booking { id: string; bookingNumber?: string; status: string; }
+interface Payment { id: string; amount?: number | null | string; currency?: string; status: string; }
 
 export const RESOURCES: Record<string, ResourceConfig<any>> = {
   customers: {
     endpoint: '/customers?limit=50',
     title: 'Customers',
     badgeKey: 'status',
+    addPermission: 'customers.create',
+    addLabel: '+ Add',
+    detailRoute: (id: string): Route => ({ name: 'customerDetail', id }),
     columns: [
-      { key: 'name', label: 'Name', render: (r: Customer) => r.name },
-      { key: 'email', label: 'Email', render: (r: Customer) => r.email },
+      { key: 'name', label: 'Name', render: (r: Customer) => `${r.firstName} ${r.lastName}`.trim() },
+      {
+        key: 'contact',
+        label: 'Contact',
+        render: (r: Customer) => `${r.email ?? ''}${r.phone ? ` · ${r.phone}` : ''}`,
+      },
     ],
   },
   leads: {
@@ -30,8 +49,12 @@ export const RESOURCES: Record<string, ResourceConfig<any>> = {
     title: 'Leads',
     badgeKey: 'stage',
     columns: [
-      { key: 'name', label: 'Name', render: (r: Lead) => r.name ?? r.company },
-      { key: 'company', label: 'Company', render: (r: Lead) => r.company },
+      {
+        key: 'name',
+        label: 'Name',
+        render: (r: Lead) => `${r.firstName ?? ''} ${r.lastName ?? ''}`.trim() || (r.company as string) || '—',
+      },
+      { key: 'email', label: 'Email', render: (r: Lead) => r.email ?? '—' },
     ],
   },
   deals: {
@@ -39,16 +62,17 @@ export const RESOURCES: Record<string, ResourceConfig<any>> = {
     title: 'Deals',
     badgeKey: 'stage',
     columns: [
-      { key: 'title', label: 'Title', render: (r: Deal) => r.title },
-      { key: 'amount', label: 'Amount', render: (r: Deal) => `GHS ${(r.amount ?? 0).toLocaleString()}` },
+      { key: 'title', label: 'Title', render: (r: Deal) => r.name ?? r.title ?? '—' },
+      { key: 'amount', label: 'Amount', render: (r: Deal) => `${(Number(r.value ?? r.amount ?? 0)).toLocaleString()} ${r.currency ?? 'GHS'}` },
     ],
   },
   tours: {
     endpoint: '/tours?limit=50',
     title: 'Tours',
+    badgeKey: 'status',
     columns: [
       { key: 'name', label: 'Name', render: (r: Tour) => r.name },
-      { key: 'destination', label: 'Destination', render: (r: Tour) => r.destination },
+      { key: 'summary', label: 'Summary', render: (r: Tour) => r.summary ?? '—' },
     ],
   },
   departures: {
@@ -56,7 +80,7 @@ export const RESOURCES: Record<string, ResourceConfig<any>> = {
     title: 'Departures',
     badgeKey: 'status',
     columns: [
-      { key: 'reference', label: 'Reference', render: (r: Departure) => r.reference },
+      { key: 'reference', label: 'Reference', render: (r: Departure) => r.reference ?? r.name ?? '—' },
       { key: 'startDate', label: 'Start', render: (r: Departure) => (r.startDate ? new Date(r.startDate).toLocaleDateString() : '—') },
     ],
   },
@@ -65,7 +89,7 @@ export const RESOURCES: Record<string, ResourceConfig<any>> = {
     title: 'Bookings',
     badgeKey: 'status',
     columns: [
-      { key: 'bookingNumber', label: 'Booking #', render: (r: Booking) => r.bookingNumber },
+      { key: 'bookingNumber', label: 'Booking #', render: (r: Booking) => r.bookingNumber ?? r.id.slice(0, 8) },
       { key: 'id', label: 'ID', render: (r: Booking) => r.id.slice(0, 8) },
     ],
   },
@@ -74,7 +98,7 @@ export const RESOURCES: Record<string, ResourceConfig<any>> = {
     title: 'Payments',
     badgeKey: 'status',
     columns: [
-      { key: 'amount', label: 'Amount', render: (r: Payment) => `${(r.amount ?? 0).toLocaleString()} ${r.currency}` },
+      { key: 'amount', label: 'Amount', render: (r: Payment) => `${(Number(r.amount ?? 0)).toLocaleString()} ${r.currency ?? ''}` },
       { key: 'status', label: 'Status', render: (r: Payment) => r.status },
     ],
   },

@@ -1,4 +1,4 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Controller, Get, Param, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Public } from '@app/common/decorators/public.decorator';
 import { PublicService } from './public.service';
@@ -42,5 +42,11 @@ export class PublicController {
   @Get('settings')
   listSettings() {
     return this.publicService.listPublicSettings();
+  }
+
+  @Public()
+  @Get('products')
+  listProducts(@Query('category') category?: string) {
+    return this.publicService.listProducts(category);
   }
 }

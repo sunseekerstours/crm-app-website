@@ -52,6 +52,16 @@ export type TourPublic = {
   departures?: DetailDeparturePublic[];
 };
 
+export type ProductPublic = {
+  id: string;
+  name: string;
+  slug: string;
+  category: string;
+  description: string | null;
+  price: number | null;
+  currency: string;
+};
+
 export type ApiEnvelope<T> = {
   data: T;
   meta: { requestId?: string };

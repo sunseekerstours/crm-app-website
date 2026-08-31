@@ -38,6 +38,7 @@ import { AutomationModule } from '@app/modules/automation/automation.module';
 import { PublicModule } from '@app/modules/public/public.module';
 import { ContentModule } from '@app/modules/content/content.module';
 import { HrModule } from '@app/modules/hr/hr.module';
+import { ProductsModule } from '@app/modules/products/products.module';
 import { JwtAuthGuard } from '@app/common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '@app/common/guards/permissions.guard';
 import { TransformInterceptor } from '@app/common/interceptors/transform.interceptor';
@@ -83,6 +84,7 @@ import { AllExceptionsFilter } from '@app/common/filters/all-exceptions.filter';
     PublicModule,
     ContentModule,
     HrModule,
+    ProductsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

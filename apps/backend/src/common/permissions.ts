@@ -165,6 +165,11 @@ export const Permission = {
   LEAVE_UPDATE: 'leave.update',
   LEAVE_APPROVE: 'leave.approve',
   LEAVE_DELETE: 'leave.delete',
+
+  PRODUCT_VIEW: 'products.view',
+  PRODUCT_CREATE: 'products.create',
+  PRODUCT_UPDATE: 'products.update',
+  PRODUCT_DELETE: 'products.delete',
 } as const;
 
 export type PermissionKey = (typeof Permission)[keyof typeof Permission];

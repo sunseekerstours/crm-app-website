@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { api, getApiUrl } from '../api';
-import { Badge, Screen, Spinner } from '../components/ui';
-import { colors, spacing } from '../theme';
+import { api } from '../api';
+import { AppHeader, Badge, Empty, ErrorText, Screen, Spinner } from '../components/ui';
+import { colors, radius, spacing } from '../theme';
 
 export interface Column<T> {
   key: string;
@@ -16,12 +16,16 @@ export default function ListScreen<T extends { id: string }>({
   columns,
   badgeKey,
   onBack,
+  onRowPress,
+  addAction,
 }: {
   title: string;
   endpoint: string;
   columns: Column<T>[];
   badgeKey?: keyof T;
   onBack?: () => void;
+  onRowPress?: (item: T) => void;
+  addAction?: { label: string; enabled: boolean; onPress: () => void };
 }) {
   const [rows, setRows] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,49 +54,58 @@ export default function ListScreen<T extends { id: string }>({
     load();
   }
 
-  if (loading) return <Screen><Spinner /></Screen>;
-
   return (
     <Screen>
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          {onBack ? <TouchableOpacity onPress={onBack}><Text style={styles.link}>‹ Back</Text></TouchableOpacity> : null}
-          <Text style={styles.title}>{title}</Text>
-        </View>
-        <TouchableOpacity onPress={onRefresh}><Text style={styles.link}>Refresh</Text></TouchableOpacity>
-      </View>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-      <FlatList
-        data={rows}
-        keyExtractor={(r) => r.id}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}
-        ListEmptyComponent={<Text style={styles.empty}>No records found.</Text>}
-        renderItem={({ item }) => (
-          <TouchableOpacity style={styles.row}>
-            <View style={styles.rowMain}>
-              <Text style={styles.rowTitle}>{columns[0].render(item)}</Text>
-              {badgeKey ? (
-                <View style={{ marginTop: 4 }}><Badge label={String(item[badgeKey])} /></View>
-              ) : null}
-            </View>
-            <Text style={styles.rowId}>{String(item.id).slice(0, 8)}</Text>
-          </TouchableOpacity>
-        )}
+      <AppHeader
+        title={title}
+        onBack={onBack}
+        right={!!addAction && addAction.enabled}
+        rightLabel={addAction?.label ?? '+'}
+        onRight={addAction ? addAction.onPress : undefined}
       />
+      {error ? <ErrorText text={error} /> : null}
+      {loading ? (
+        <Spinner />
+      ) : (
+        <FlatList
+          data={rows}
+          keyExtractor={(r) => r.id}
+          contentContainerStyle={styles.list}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />}
+          ListEmptyComponent={<Empty text="No records found." />}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={styles.row}
+              onPress={onRowPress ? () => onRowPress(item) : undefined}
+              disabled={!onRowPress}
+            >
+              <View style={styles.rowMain}>
+                <Text style={styles.rowTitle}>{columns[0].render(item)}</Text>
+                {columns[1] ? (
+                  <Text style={styles.rowSub} numberOfLines={1}>
+                    {columns[1].render(item)}
+                  </Text>
+                ) : null}
+                {badgeKey && item[badgeKey] ? (
+                  <View style={{ marginTop: 4 }}>
+                    <Badge label={String(item[badgeKey])} />
+                  </View>
+                ) : null}
+              </View>
+              {onRowPress ? <Text style={styles.chevron}>›</Text> : null}
+            </TouchableOpacity>
+          )}
+        />
+      )}
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  title: { fontSize: 22, fontWeight: '700', color: colors.text },
-  link: { color: colors.primary, fontWeight: '600' },
-  error: { color: colors.danger, marginBottom: spacing.md },
-  empty: { color: colors.muted, textAlign: 'center', marginTop: spacing.xl },
+  list: { padding: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xxl },
   row: {
     backgroundColor: colors.panel,
-    borderRadius: 8,
+    borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,
     padding: spacing.lg,
@@ -102,6 +115,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   rowMain: { flex: 1 },
-  rowTitle: { fontSize: 15, fontWeight: '600', color: colors.text },
-  rowId: { color: colors.muted, fontSize: 12 },
+  rowTitle: { fontSize: 15, fontWeight: '700', color: colors.text },
+  rowSub: { fontSize: 13, color: colors.muted, marginTop: 2 },
+  chevron: { color: colors.muted, fontSize: 22, marginLeft: spacing.sm },
 });

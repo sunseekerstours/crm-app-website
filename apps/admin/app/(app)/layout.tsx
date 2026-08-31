@@ -15,6 +15,7 @@ const NAV = [
 
 const CRM_NAV = [
   { href: '/crm/tours', label: 'Tours & Trips' },
+  { href: '/crm/products', label: 'Products & Services' },
   { href: '/crm/customers', label: 'Customers' },
   { href: '/crm/leads', label: 'Leads' },
   { href: '/crm/deals', label: 'Deals' },

@@ -35,8 +35,8 @@ export default function Login({ onLogin }: { onLogin: (email: string, password: 
 }
 
 const styles = StyleSheet.create({
-  titleWrap: { alignItems: 'center', marginBottom: spacing.xl, marginTop: spacing.xl },
+  titleWrap: { alignItems: 'center', marginBottom: spacing.xl, marginTop: spacing.xl, paddingHorizontal: spacing.lg },
   brand: { fontSize: 24, fontWeight: '700', color: colors.primary },
   sub: { color: colors.muted, marginTop: 4 },
-  form: { alignSelf: 'stretch' },
+  form: { alignSelf: 'stretch', paddingHorizontal: spacing.lg },
 });

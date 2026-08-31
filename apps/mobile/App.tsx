@@ -5,13 +5,17 @@ import Login from './src/screens/Login';
 import { HomeScreen } from './src/screens/Home';
 import ListScreen from './src/screens/ListScreen';
 import NotificationsScreen from './src/screens/Notifications';
+import CustomerDetailScreen from './src/screens/CustomerDetail';
+import CustomerFormScreen from './src/screens/CustomerForm';
+import ProductScreen from './src/screens/ProductScreen';
 import { resourceConfig } from './src/columns';
-import { useAuth } from './src/useAuth';
+import { useAuth, hasPermission } from './src/useAuth';
 import { colors } from './src/theme';
+import type { Route } from './src/navigation';
 
 export default function App() {
   const { user, loading, login, logout } = useAuth();
-  const [screen, setScreen] = useState<string | null>(null);
+  const [route, setRoute] = useState<Route>({ name: 'home' });
 
   if (loading) {
     return (
@@ -31,25 +35,84 @@ export default function App() {
     );
   }
 
-  const cfg = screen ? resourceConfig(screen) : null;
+  const goHome = () => setRoute({ name: 'home' });
+
+  let content: React.ReactNode;
+
+  switch (route.name) {
+    case 'notifications':
+      content = <NotificationsScreen onBack={goHome} />;
+      break;
+
+    case 'customerDetail': {
+      content = (
+        <CustomerDetailScreen
+          customerId={route.id}
+          onBack={() => setRoute({ name: 'list', resource: 'customers' })}
+          onEdit={(id) => setRoute({ name: 'customerForm', customerId: id })}
+        />
+      );
+      break;
+    }
+
+    case 'customerForm': {
+      content = (
+        <CustomerFormScreen
+          customerId={route.customerId}
+          onBack={() => (route.customerId ? setRoute({ name: 'customerDetail', id: route.customerId }) : setRoute({ name: 'list', resource: 'customers' }))}
+          onDone={() => (route.customerId ? setRoute({ name: 'customerDetail', id: route.customerId }) : setRoute({ name: 'list', resource: 'customers' }))}
+          hasPerm={(p) => hasPermission(user, p)}
+        />
+      );
+      break;
+    }
+
+    case 'productList': {
+      content = <ProductScreen onBack={goHome} hasPerm={(p) => hasPermission(user, p)} />;
+      break;
+    }
+
+    case 'list': {
+      const cfg = resourceConfig(route.resource);
+      if (cfg) {
+        const addAction =
+          cfg.addPermission && cfg.addLabel
+            ? {
+                label: cfg.addLabel,
+                enabled: hasPermission(user, cfg.addPermission),
+                onPress: () => setRoute({ name: 'customerForm' }),
+              }
+            : undefined;
+        content = (
+          <ListScreen
+            key={cfg.endpoint}
+            title={cfg.title}
+            endpoint={cfg.endpoint}
+            columns={cfg.columns}
+            badgeKey={cfg.badgeKey}
+            onBack={goHome}
+            onRowPress={
+              cfg.detailRoute
+                ? (item) => setRoute(cfg.detailRoute!(item.id))
+                : undefined
+            }
+            addAction={addAction}
+          />
+        );
+      } else {
+        content = <HomeScreen user={user} onOpen={setRoute} onLogout={logout} />;
+      }
+      break;
+    }
+
+    default:
+      content = <HomeScreen user={user} onOpen={setRoute} onLogout={logout} />;
+  }
 
   return (
     <>
-      {screen === 'notifications' ? (
-        <NotificationsScreen onBack={() => setScreen(null)} />
-      ) : cfg ? (
-        <ListScreen
-          key={screen!}
-          title={cfg.title}
-          endpoint={cfg.endpoint}
-          columns={cfg.columns}
-          badgeKey={cfg.badgeKey}
-          onBack={() => setScreen(null)}
-        />
-      ) : (
-        <HomeScreen onOpen={setScreen} onLogout={logout} />
-      )}
-      <StatusBar style="auto" />
+      {content}
+      <StatusBar style="light" />
     </>
   );
 }

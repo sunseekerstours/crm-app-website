@@ -66,4 +66,17 @@ export class UpdateCustomerDto {
   @IsArray()
   @IsString({ each: true })
   tags?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  productIds?: string[];
+
+  @IsOptional()
+  @IsString()
+  linkedLeadId?: string;
+
+  @IsOptional()
+  @IsString()
+  linkedDealId?: string;
 }

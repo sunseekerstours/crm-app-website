@@ -187,4 +187,24 @@ export class PublicService {
       return acc;
     }, {});
   }
+
+  async listProducts(category?: string) {
+    const products = await this.prisma.product.findMany({
+      where: { isActive: true, ...(category ? { category } : {}) },
+      orderBy: { name: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        category: true,
+        description: true,
+        price: true,
+        currency: true,
+      },
+    });
+    return products.map((p) => ({
+      ...p,
+      price: p.price != null ? Number(p.price) : null,
+    }));
+  }
 }

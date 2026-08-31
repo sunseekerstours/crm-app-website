@@ -5,7 +5,27 @@ export interface User {
   id: string;
   email: string;
   name?: string;
-  role?: string;
+  roles: string[];
+  permissions: string[];
+}
+
+export interface Me {
+  id: string;
+  email: string;
+  roles: string[];
+  permissions: string[];
+}
+
+export function hasPermission(user: User | null, permission: string): boolean {
+  if (!user) return false;
+  if (!Array.isArray(user.permissions)) return true;
+  return user.permissions.includes(permission);
+}
+
+export function hasAnyPermission(user: User | null, permissions: string[]): boolean {
+  if (!user) return true;
+  if (!Array.isArray(user.permissions) || user.permissions.length === 0) return true;
+  return permissions.some((p) => user.permissions.includes(p));
 }
 
 export function useAuth() {
@@ -20,8 +40,8 @@ export function useAuth() {
         return;
       }
       try {
-        const me = await api.get<User>('/auth/me');
-        setUser(me);
+        const me = await api.get<Me>('/auth/me');
+        setUser({ ...me, name: undefined });
       } catch {
         await clearToken();
       } finally {
@@ -30,11 +50,24 @@ export function useAuth() {
     })();
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
-    const res = await api.post<{ accessToken: string }>('/auth/login', { email, password });
+  const login = useCallback(async (email: string, password: string): Promise<Me> => {
+    const res = await api.post<{ accessToken: string; user?: Me }>('/auth/login', {
+      email,
+      password,
+    });
     await setToken(res.accessToken);
-    setUser({ id: 'me', email });
-    return res;
+    let me: Me = { id: 'me', email, roles: [], permissions: [] };
+    if (res.user) {
+      me = res.user;
+    } else {
+      try {
+        me = await api.get<Me>('/auth/me');
+      } catch {
+        // fall back to minimal user
+      }
+    }
+    setUser({ ...me, name: undefined });
+    return me;
   }, []);
 
   const logout = useCallback(async () => {
@@ -42,5 +75,5 @@ export function useAuth() {
     setUser(null);
   }, []);
 
-  return { user, loading, login, logout };
+  return { user, loading, login, logout, hasPermission, hasAnyPermission };
 }

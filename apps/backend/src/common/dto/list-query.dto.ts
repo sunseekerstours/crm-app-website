@@ -17,4 +17,8 @@ export class ListQueryDto extends PaginationQueryDto {
   @IsOptional()
   @IsString()
   departureId?: string;
+
+  @IsOptional()
+  @IsString()
+  category?: string;
 }

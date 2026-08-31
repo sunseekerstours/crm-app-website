@@ -125,6 +125,9 @@ enum AuditableAction {
   LEAVE_UPDATED
   LEAVE_APPROVED
   LEAVE_DELETED
+  PRODUCT_CREATED
+  PRODUCT_UPDATED
+  PRODUCT_DELETED
 }
 
 model User {
@@ -374,6 +377,7 @@ model Customer {
   tasks                  Task[]
   bookings               Booking[]
   quotes                 Quote[]
+  products               CustomerProduct[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -382,6 +386,37 @@ model Customer {
   @@index([assignedStaffId])
   @@index([companyId])
   @@map("customers")
+}
+
+/// A product or service offered to customers (tours, flights, hotels, etc)
+model Product {
+  id          String       @id @default(uuid())
+  name        String
+  slug        String       @unique
+  category    String?
+  description String?
+  price       Decimal?     @db.Decimal(12, 2)
+  currency    String       @default("GHS")
+  isActive    Boolean      @default(true)
+  customers   CustomerProduct[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+  @@map("products")
+}
+
+/// Join table linking customers to the products/services they use
+model CustomerProduct {
+  customerId String
+  productId  String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@id([customerId, productId])
+  @@map("customer_products")
 }
 
 /// A corporate entity; customers may belong to a company (§23)
