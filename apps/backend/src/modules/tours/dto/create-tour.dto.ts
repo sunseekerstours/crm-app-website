@@ -70,6 +70,15 @@ export class CreateTourDto {
   coverImage?: string;
 
   @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  images?: string[];
+
+  @IsOptional()
+  @IsString()
+  videoUrl?: string;
+
+  @IsOptional()
   @IsString()
   currency?: string;
 

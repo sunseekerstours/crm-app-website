@@ -156,7 +156,7 @@ export class ContentService {
   }
 
   async updateSiteSetting(key: string, dto: UpdateSiteSettingDto, ctx: RequestContext) {
-    if (dto.value === undefined && dto.valueJson === undefined && dto.description === undefined && dto.isPublic === undefined) {
+    if (dto.value === undefined && dto.valueJson === undefined && dto.description === undefined && dto.isPublic === undefined && dto.group === undefined) {
       throw new ApiBadRequestException(ErrorCode.BAD_REQUEST, 'No update fields provided');
     }
 
@@ -166,6 +166,7 @@ export class ContentService {
       setting = await this.prisma.siteSetting.create({
         data: {
           key,
+          group: dto.group ?? 'general',
           value: dto.value,
           valueJson: dto.valueJson as Prisma.InputJsonValue | undefined,
           description: dto.description,
@@ -176,6 +177,7 @@ export class ContentService {
       setting = await this.prisma.siteSetting.update({
         where: { key },
         data: {
+          group: dto.group,
           value: dto.value,
           valueJson: dto.valueJson as Prisma.InputJsonValue | undefined,
           description: dto.description,

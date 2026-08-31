@@ -1005,6 +1005,252 @@ select.input {
   margin-bottom: 20px;
 }
 
+/* Settings (WordPress-style) */
+.settings-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+.settings-nav {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px;
+  position: sticky;
+  top: 88px;
+}
+
+.settings-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  transition: var(--transition);
+  text-align: left;
+}
+
+.settings-nav-item:hover {
+  background: #f1f5f9;
+}
+
+.settings-nav-item.active {
+  background: var(--primary);
+  color: #fff;
+}
+
+.settings-nav-icon {
+  font-size: 16px;
+}
+
+.settings-nav-label {
+  flex: 1;
+}
+
+.settings-nav-count {
+  font-size: 12px;
+  font-weight: 700;
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--muted);
+  min-width: 22px;
+  height: 20px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+}
+
+.settings-nav-item.active .settings-nav-count {
+  background: rgba(255, 255, 255, 0.25);
+  color: #fff;
+}
+
+.settings-panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  box-shadow: var(--shadow);
+}
+
+.settings-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 20px;
+}
+
+.settings-panel-title {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+  margin: 0 0 4px;
+}
+
+.settings-panel-blurb {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 0;
+}
+
+.settings-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.settings-field {
+  border-bottom: 1px solid #eef2f7;
+  padding-bottom: 18px;
+}
+
+.settings-field:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.settings-field-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.settings-key {
+  background: var(--primary-light);
+  color: var(--primary-dark);
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.settings-public {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.settings-desc {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 8px 0 10px;
+}
+
+.settings-json-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-json-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+@media (max-width: 768px) {
+  .settings-layout {
+    grid-template-columns: 1fr;
+  }
+  .settings-nav {
+    position: static;
+    display: flex;
+    overflow-x: auto;
+    gap: 4px;
+  }
+  .settings-nav-item {
+    white-space: nowrap;
+  }
+  .settings-json-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Tour gallery */
+.tour-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.tour-gallery-item {
+  position: relative;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 2px solid transparent;
+  aspect-ratio: 4 / 3;
+  background: #eef2f7;
+}
+
+.tour-gallery-item.is-cover {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-glow);
+}
+
+.tour-gallery-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.tour-gallery-item-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 6px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0));
+}
+
+.tour-gallery-badge {
+  align-self: flex-start;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 99px;
+}
+
+.tour-gallery-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.tour-gallery-actions .btn {
+  padding: 4px 6px;
+  font-size: 11px;
+  line-height: 1;
+  min-height: 26px;
+}
+
+.tour-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 /* Responsive / Mobile overrides */
 @media (max-width: 1024px) {
   .top-navbar {

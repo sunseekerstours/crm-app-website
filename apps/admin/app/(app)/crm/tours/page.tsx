@@ -30,6 +30,8 @@ interface TourItem {
   basePrice?: number | string;
   currency?: string;
   coverImage?: string;
+  images?: string[];
+  videoUrl?: string;
   status: string;
   inclusions?: string[];
   exclusions?: string[];
@@ -68,6 +70,8 @@ const initialForm = {
   basePrice: '',
   currency: 'GHS',
   coverImage: '',
+  images: [] as string[],
+  videoUrl: '',
   status: 'DRAFT',
   destinationIds: [] as string[],
   inclusions: '',
@@ -123,6 +127,8 @@ export default function CrmToursPage() {
       basePrice: t.basePrice != null ? String(t.basePrice) : '',
       currency: t.currency ?? 'GHS',
       coverImage: t.coverImage ?? '',
+      images: Array.isArray(t.images) ? t.images.filter(Boolean) : [],
+      videoUrl: t.videoUrl ?? '',
       status: t.status ?? 'DRAFT',
       destinationIds: (t.destinations ?? []).map((d) => d.destination.id),
       inclusions: (t.inclusions ?? []).join(', '),
@@ -211,6 +217,8 @@ export default function CrmToursPage() {
       basePrice: form.basePrice ? Number(form.basePrice) : undefined,
       currency: form.currency || undefined,
       coverImage: form.coverImage || undefined,
+      images: form.images.filter(Boolean),
+      videoUrl: form.videoUrl || undefined,
       status: form.status,
       destinationIds: form.destinationIds,
       inclusions: form.inclusions.split(',').map((s) => s.trim()).filter(Boolean),
@@ -263,6 +271,45 @@ export default function CrmToursPage() {
     }));
   }
 
+  function addImage(url: string) {
+    const trimmed = url.trim();
+    if (!trimmed) return;
+    setForm((f) => ({ ...f, images: [...f.images, trimmed] }));
+  }
+
+  function removeImage(index: number) {
+    setForm((f) => ({ ...f, images: f.images.filter((_, i) => i !== index) }));
+  }
+
+  function moveImage(index: number, dir: -1 | 1) {
+    setForm((f) => {
+      const images = [...f.images];
+      const target = index + dir;
+      if (target < 0 || target >= images.length) return f;
+      [images[index], images[target]] = [images[target], images[index]];
+      return { ...f, images };
+    });
+  }
+
+  function setCoverFromImage(index: number) {
+    setForm((f) => ({ ...f, coverImage: f.images[index] }));
+  }
+
+  function isCover(url: string) {
+    return !!url && !!form.coverImage && url === form.coverImage;
+  }
+
+  async function publishTour(t: TourItem) {
+    if (!window.confirm(`Publish "${t.name}"? It will become live on the public website.`)) return;
+    try {
+      await api.post(`/tours/${t.id}/publish`);
+      await load();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : 'Failed to publish tour');
+    }
+  }
+
   return (
     <>
       <PageHeader
@@ -301,7 +348,129 @@ export default function CrmToursPage() {
             <Input label="Base price" name="basePrice" type="number" value={form.basePrice} onChange={(e) => setForm({ ...form, basePrice: e.target.value })} />
             <Input label="Currency" name="currency" value={form.currency} onChange={(e) => setForm({ ...form, currency: e.target.value })} />
             <Select label="Status" name="status" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} options={STATUSES.map((s) => ({ value: s, label: s }))} />
-            <Input label="Cover image URL" name="coverImage" value={form.coverImage} onChange={(e) => setForm({ ...form, coverImage: e.target.value })} placeholder="https://.../image.jpg" />
+            <Input label="Tour video URL (YouTube/Vimeo/MP4)" name="videoUrl" value={form.videoUrl} onChange={(e) => setForm({ ...form, videoUrl: e.target.value })} placeholder="https://youtube.com/watch?v=... or .../tour.mp4" />
+          </div>
+          <div className="field" style={{ marginTop: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <span className="field-label">Tour media — cover image &amp; gallery</span>
+            </div>
+            <div className="form-grid">
+              <Input
+                label="Cover image URL (main picture)"
+                name="coverImage"
+                value={form.coverImage}
+                onChange={(e) => setForm({ ...form, coverImage: e.target.value })}
+                placeholder="https://.../main.jpg"
+              />
+            </div>
+            <div style={{ marginTop: 12 }}>
+              <span className="field-label">Gallery images (up to 10)</span>
+              <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                <input
+                  id="gallery-url-input"
+                  className="input"
+                  placeholder="Paste image URL then click Add"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      addImage((e.target as HTMLInputElement).value);
+                      (e.target as HTMLInputElement).value = '';
+                    }
+                  }}
+                />
+                <Button
+                  variant="secondary"
+                  type="button"
+                  onClick={() => {
+                    const input = document.getElementById('gallery-url-input') as HTMLInputElement | null;
+                    if (input) {
+                      addImage(input.value);
+                      input.value = '';
+                    }
+                  }}
+                >
+                  + Add image
+                </Button>
+              </div>
+              <div className="tour-gallery">
+                {form.images.length === 0 ? (
+                  <div style={{ color: 'var(--muted)', fontSize: 13, marginTop: 8 }}>
+                    No gallery images yet. Add image URLs above.
+                  </div>
+                ) : (
+                  form.images.map((img, i) => (
+                    <div key={i} className={`tour-gallery-item${isCover(img) ? ' is-cover' : ''}`}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={img} alt="" />
+                      <div className="tour-gallery-item-overlay">
+                        <div className="tour-gallery-badge">{isCover(img) ? '★ Cover' : 'Image'}</div>
+                        <div className="tour-gallery-actions">
+                          <button
+                            type="button"
+                            className="btn btn-ghost"
+                            title="Set as cover"
+                            disabled={isCover(img)}
+                            onClick={() => setCoverFromImage(i)}
+                          >
+                            Cover
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-ghost"
+                            title="Move left"
+                            disabled={i === 0}
+                            onClick={() => moveImage(i, -1)}
+                          >
+                            ←
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-ghost"
+                            title="Move right"
+                            disabled={i === form.images.length - 1}
+                            onClick={() => moveImage(i, 1)}
+                          >
+                            →
+                          </button>
+                          <button type="button" className="btn btn-danger" title="Remove" onClick={() => removeImage(i)}>
+                            ✕
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+            {form.videoUrl ? (
+              <div style={{ marginTop: 14 }}>
+                <span className="field-label">Video preview</span>
+                <div style={{ marginTop: 6 }}>
+                  {/* eslint-disable-next-line jsx-a11y/iframe-has-title */}
+                  {form.videoUrl.includes('youtube.com') || form.videoUrl.includes('youtu.be') ? (
+                    <iframe
+                      src={form.videoUrl.replace('watch?v=', 'embed/').replace('youtu.be/', 'youtube.com/embed/')}
+                      title="Tour video"
+                      style={{ width: '100%', maxWidth: 480, aspectRatio: '16/9', borderRadius: 8, border: 0 }}
+                      allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  ) : (
+                    // eslint-disable-next-line jsx-a11y/media-has-caption
+                    <video src={form.videoUrl} controls style={{ width: '100%', maxWidth: 480, borderRadius: 8 }} />
+                  )}
+                </div>
+              </div>
+            ) : null}
+            {form.coverImage ? (
+              <div style={{ marginTop: 14 }}>
+                <span className="field-label">Cover image preview</span>
+                <div style={{ marginTop: 6 }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={form.coverImage} alt="" style={{ maxWidth: 320, maxHeight: 180, borderRadius: 8 }} />
+                </div>
+              </div>
+            ) : null}
           </div>
           <div className="form-grid" style={{ marginTop: 14 }}>
             <Textarea label="Summary" name="summary" rows={2} value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} />
@@ -399,13 +568,6 @@ export default function CrmToursPage() {
               </div>
             )}
           </div>
-          {form.coverImage ? (
-            <div style={{ marginTop: 14 }}>
-              <span className="field-label">Cover image preview</span>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={form.coverImage} alt="" style={{ maxWidth: 320, maxHeight: 180, borderRadius: 8, marginTop: 6 }} />
-            </div>
-          ) : null}
           {formError ? <div className="error-state" style={{ marginTop: 12 }}>{formError}</div> : null}
           <div className="form-actions">
             <Button type="submit" disabled={submitting}>
@@ -445,15 +607,32 @@ export default function CrmToursPage() {
                 render: (t) => (t.basePrice != null ? `${t.currency ?? ''} ${t.basePrice}` : '—'),
               },
               { key: 'durationDays', label: 'Days', render: (t) => t.durationDays ?? '—' },
-              { key: 'status', label: 'Status', render: (t) => <Badge>{t.status}</Badge> },
+              {
+                key: 'status',
+                label: 'Status',
+                render: (t) => (
+                  <Badge>
+                    {t.status === 'ACTIVE'
+                      ? '● Live'
+                      : t.status === 'DRAFT'
+                        ? 'Draft'
+                        : t.status ?? '—'}
+                  </Badge>
+                ),
+              },
               {
                 key: 'actions',
                 label: 'Actions',
                 render: (t) => (
-                  <div style={{ display: 'flex', gap: 8 }}>
+                  <div className="tour-row-actions">
                     <Button variant="secondary" onClick={() => loadIntoForm(t)}>
                       Edit
                     </Button>
+                    {t.status === 'ACTIVE' ? null : (
+                      <Button variant="primary" onClick={() => publishTour(t)}>
+                        Publish
+                      </Button>
+                    )}
                     <Button variant="danger" onClick={() => remove(t)}>
                       Delete
                     </Button>

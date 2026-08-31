@@ -44,6 +44,8 @@ export type TourPublic = {
   maxPax: number | null;
   highlights: string[];
   coverImage: string | null;
+  images?: string[];
+  videoUrl?: string | null;
   currency: string;
   basePrice: number | null;
   status: string;

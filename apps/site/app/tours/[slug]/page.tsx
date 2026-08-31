@@ -10,6 +10,8 @@ import {
   PublicApiError,
   TourPublic,
 } from '@/lib/api';
+import TourGallery from '@/components/TourGallery';
+import TourVideo from '@/components/TourVideo';
 
 export const revalidate = 60;
 export const dynamicParams = true;
@@ -89,6 +91,11 @@ export default async function TourDetailPage({
           ) : null}
           <p style={{ maxWidth: '60ch', margin: 0 }}>{tour.summary}</p>
         </div>
+      </div>
+
+      <div className="container tour-media">
+        <TourGallery coverImage={tour.coverImage} images={tour.images} name={tour.name} />
+        <TourVideo url={tour.videoUrl ?? ''} />
       </div>
 
       <div className="container">

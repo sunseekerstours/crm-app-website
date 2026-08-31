@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { SYSTEM_ROLES } from '../src/common/roles';
 import { ALL_PERMISSIONS, Permission } from '../src/common/permissions';
@@ -58,16 +58,59 @@ async function main(): Promise<void> {
     { label: 'Destinations', href: '/destinations' },
     { label: 'Contact', href: '/contact' },
   ];
-  await prisma.siteSetting.upsert({
-    where: { key: 'nav_menus' },
-    create: {
-      key: 'nav_menus',
-      valueJson: { nav_menus: navMenus },
-      description: 'Public website top navigation menu items (array of {label, href})',
-      isPublic: true,
-    },
-    update: { valueJson: { nav_menus: navMenus } },
-  });
+
+  const siteSettings: {
+    key: string;
+    group: string;
+    value?: string;
+    valueJson?: Record<string, unknown>;
+    description: string;
+    isPublic?: boolean;
+  }[] = [
+    // General
+    { key: 'site_name', group: 'general', value: 'Sunseekers Tours', description: 'Public site name', isPublic: true },
+    { key: 'tagline', group: 'general', value: 'Discover Ghana & the World', description: 'Short site tagline', isPublic: true },
+    { key: 'site_description', group: 'general', value: 'Sunseekers Tours & Travel — curated Ghana and international tour packages.', description: 'SEO/meta site description', isPublic: true },
+    { key: 'site_logo_url', group: 'general', value: '', description: 'URL of the site logo image', isPublic: true },
+    { key: 'currency', group: 'general', value: 'GHS', description: 'Default currency symbol/code for the site', isPublic: true },
+    // Navigation
+    { key: 'nav_menus', group: 'navigation', valueJson: { nav_menus: navMenus }, description: 'Public website top navigation menu items (array of {label, href})', isPublic: true },
+    { key: 'footer_menus', group: 'navigation', valueJson: { footer_menus: [{ label: 'About Us', href: '/about' }, { label: 'Contact', href: '/contact' }, { label: 'Privacy Policy', href: '/privacy' }, { label: 'Terms', href: '/terms' }] }, description: 'Public website footer links (array of {label, href})', isPublic: true },
+    // Contact
+    { key: 'contact_phone', group: 'contact', value: '+233 20 123 4567', description: 'Main contact phone number', isPublic: true },
+    { key: 'contact_email', group: 'contact', value: 'bookings@sunseekers.example', description: 'Main contact / booking email', isPublic: true },
+    { key: 'contact_address', group: 'contact', value: 'Accra, Ghana', description: 'Office / physical address', isPublic: true },
+    { key: 'contact_whatsapp', group: 'contact', value: '+233 20 123 4567', description: 'WhatsApp number for inquiries', isPublic: true },
+    // Social
+    { key: 'social_facebook', group: 'social', value: 'https://facebook.com/', description: 'Facebook profile URL', isPublic: true },
+    { key: 'social_instagram', group: 'social', value: 'https://instagram.com/', description: 'Instagram profile URL', isPublic: true },
+    { key: 'social_twitter', group: 'social', value: 'https://twitter.com/', description: 'Twitter/X profile URL', isPublic: true },
+    { key: 'social_youtube', group: 'social', value: 'https://youtube.com/', description: 'YouTube channel URL', isPublic: true },
+    { key: 'social_tiktok', group: 'social', value: 'https://tiktok.com/', description: 'TikTok profile URL', isPublic: true },
+    // SEO
+    { key: 'seo_default_title', group: 'seo', value: 'Sunseekers Tours & Travel', description: 'Default page title suffix / SEO title', isPublic: true },
+    { key: 'seo_default_description', group: 'seo', value: 'Explore curated Ghana and international travel packages with Sunseekers.', description: 'Default meta description', isPublic: true },
+    { key: 'seo_og_image', group: 'seo', value: '', description: 'Default Open Graph / social share image URL', isPublic: true },
+  ];
+
+  for (const s of siteSettings) {
+    await prisma.siteSetting.upsert({
+      where: { key: s.key },
+      create: {
+        key: s.key,
+        group: s.group,
+        value: s.value,
+        valueJson: s.valueJson as Prisma.InputJsonValue | undefined,
+        description: s.description,
+        isPublic: s.isPublic ?? false,
+      },
+      update: {
+        group: s.group,
+        description: s.description,
+        isPublic: s.isPublic ?? false,
+      },
+    });
+  }
 
   const existing = await prisma.user.findUnique({ where: { email: adminEmail } });
   if (existing) {

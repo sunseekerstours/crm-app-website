@@ -1,4 +1,4 @@
-import { IsObject, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsObject, IsOptional, IsString } from 'class-validator';
 
 export class UpdateSiteSettingDto {
   @IsOptional()
@@ -14,5 +14,10 @@ export class UpdateSiteSettingDto {
   description?: string;
 
   @IsOptional()
+  @IsString()
+  group?: string;
+
+  @IsOptional()
+  @IsBoolean()
   isPublic?: boolean;
 }
