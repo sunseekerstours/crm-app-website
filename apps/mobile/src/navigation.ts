@@ -1,5 +1,6 @@
 export type Route =
   | { name: 'home' }
+  | { name: 'dashboard' }
   | { name: 'list'; resource: string }
   | { name: 'customerDetail'; id: string }
   | { name: 'customerForm'; customerId?: string }
@@ -11,4 +12,5 @@ export type Route =
   | { name: 'departureForm' }
   | { name: 'productList' }
   | { name: 'productForm' }
-  | { name: 'notifications' };
+  | { name: 'notifications' }
+  | { name: 'settings' };

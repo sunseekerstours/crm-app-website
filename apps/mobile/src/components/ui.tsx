@@ -18,12 +18,14 @@ export function Screen({ children }: { children: React.ReactNode }) {
 export function AppHeader({
   title,
   onBack,
+  onMenu,
   right,
   onRight,
   rightLabel,
 }: {
   title: string;
   onBack?: () => void;
+  onMenu?: () => void;
   right?: boolean;
   rightLabel?: string;
   onRight?: () => void;
@@ -32,7 +34,17 @@ export function AppHeader({
   return (
     <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
       <View style={styles.headerSide}>
-        {onBack ? (
+        {onMenu ? (
+          <Pressable
+            onPress={onMenu}
+            hitSlop={10}
+            style={({ pressed }) => [styles.backBtn, pressed && styles.backBtnPressed]}
+            accessibilityRole="button"
+            accessibilityLabel="Menu"
+          >
+            <Text style={styles.backIcon}>☰</Text>
+          </Pressable>
+        ) : onBack ? (
           <Pressable
             onPress={onBack}
             hitSlop={10}
