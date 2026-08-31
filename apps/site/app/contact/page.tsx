@@ -1,109 +1,93 @@
 import type { Metadata } from 'next';
+import ContactForm from '@/components/ContactForm';
 
 export const metadata: Metadata = {
-  title: 'Contact | Sunseekers Travel',
-  description: 'Get in touch with Sunseekers Travel to plan your journey.',
+  title: 'Contact Us | Sunseekers Tours',
+  description: 'Get in touch with Sunseekers Tours to plan your bespoke journey, hotel bookings, flights, and vehicle rentals.',
 };
 
 export default function ContactPage() {
   return (
-    <section className="section">
-      <div className="container">
-        <div className="grid" style={{ gridTemplateColumns: '1fr 1fr', gap: 40 }}>
-          <div>
-            <div className="eyebrow">Contact</div>
-            <h1 style={{ fontSize: '2.2rem', margin: '8px 0 12px' }}>Plan your journey</h1>
-            <p style={{ color: 'var(--muted)', maxWidth: '46ch' }}>
-              Tell us where you’d like to go, how you love to travel, and our
-              designers will craft a bespoke itinerary just for you. No
-              obligation — just inspiration.
-            </p>
-            <ul style={{ listStyle: 'none', padding: 0, marginTop: 24 }}>
-              <li style={{ marginBottom: 10 }}>
-                <strong>Email:</strong> hello@sunseekers.travel
-              </li>
-              <li style={{ marginBottom: 10 }}>
-                <strong>Phone:</strong> +1 (555) 010-2030
-              </li>
-              <li style={{ marginBottom: 10 }}>
-                <strong>Office:</strong> 12 Harbour Walk, Travel City
-              </li>
-            </ul>
+    <>
+      <section
+        className="page-hero-banner"
+        style={{
+          backgroundImage:
+            "linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.65)), url('https://images.unsplash.com/photo-1547471080-7cc2caa01a7e?q=80&w=1920&auto=format&fit=crop')",
+        }}
+      >
+        <div>
+          <div style={{ fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '2px', color: '#fed7aa', marginBottom: '8px' }}>
+            We’re Here to Help
           </div>
+          <h1>Contact Sunseekers Tours</h1>
+          <p>...Memories of our Tours are Forever</p>
+        </div>
+      </section>
 
-          <div className="panel">
-            <h2 style={{ fontSize: '1.3rem', marginTop: 0 }}>Send us a message</h2>
-            <form
-              style={{ display: 'grid', gap: 14 }}
-              action="/contact"
-              method="post"
-            >
-              <div style={{ display: 'grid', gap: 4 }}>
-                <label htmlFor="name" style={{ fontWeight: 600 }}>
-                  Name
-                </label>
-                <input
-                  id="name"
-                  name="name"
-                  required
-                  style={{
-                    padding: 10,
-                    borderRadius: 8,
-                    border: '1px solid var(--border)',
-                    font: 'inherit',
-                  }}
-                />
-              </div>
-              <div style={{ display: 'grid', gap: 4 }}>
-                <label htmlFor="email" style={{ fontWeight: 600 }}>
-                  Email
-                </label>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  required
-                  style={{
-                    padding: 10,
-                    borderRadius: 8,
-                    border: '1px solid var(--border)',
-                    font: 'inherit',
-                  }}
-                />
-              </div>
-              <div style={{ display: 'grid', gap: 4 }}>
-                <label htmlFor="message" style={{ fontWeight: 600 }}>
-                  Where would you like to go?
-                </label>
-                <textarea
-                  id="message"
-                  name="message"
-                  rows={5}
-                  required
-                  style={{
-                    padding: 10,
-                    borderRadius: 8,
-                    border: '1px solid var(--border)',
-                    font: 'inherit',
-                    resize: 'vertical',
-                  }}
-                />
-              </div>
-              <button
-                type="submit"
-                className="btn btn-primary"
-                style={{ border: 'none', width: 'fit-content' }}
-              >
-                Send Enquiry
-              </button>
-              <p style={{ fontSize: '0.85rem', color: 'var(--muted)', margin: 0 }}>
-                This is a demo contact form. Enquiries are logged client-side
-                for demonstration.
+      <section className="section">
+        <div className="container">
+          <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '48px', alignItems: 'start' }}>
+            <div>
+              <div className="section-eyebrow">Get In Touch</div>
+              <h2 style={{ fontSize: '2rem', margin: '8px 0 16px', color: '#0f172a', fontWeight: '800' }}>
+                Plan Your Next Journey
+              </h2>
+              <p style={{ color: '#475569', lineHeight: '1.7', marginBottom: '32px' }}>
+                Tell us where you’d like to go and how you love to travel. Our experienced tour designers and logistics specialists will craft a bespoke itinerary tailored just for you.
               </p>
-            </form>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
+                  <div style={{ background: '#e0f2fe', color: '#0284c7', width: '40px', height: '40px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>
+                    📍
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: '700', color: '#0f172a' }}>Office Address</div>
+                    <div style={{ color: '#64748b', fontSize: '14px', marginTop: '2px' }}>
+                      8 Farrar Avenue Opposite Trust Towers, Adabraka, Accra - Ghana
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
+                  <div style={{ background: '#dcfce7', color: '#16a34a', width: '40px', height: '40px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>
+                    📞
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: '700', color: '#0f172a' }}>Telephone &amp; WhatsApp</div>
+                    <div style={{ color: '#64748b', fontSize: '14px', marginTop: '2px' }}>
+                      +233 302 227 084 / +233 244 311 267
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
+                  <div style={{ background: '#ffedd5', color: '#ea580c', width: '40px', height: '40px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>
+                    ✉️
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: '700', color: '#0f172a' }}>Email Inquiries</div>
+                    <div style={{ color: '#64748b', fontSize: '14px', marginTop: '2px' }}>
+                      info@sunseekerstours.com / sunseekerstours@yahoo.com
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="panel" style={{ padding: '32px', borderRadius: '12px', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+              <h3 style={{ fontSize: '1.4rem', fontWeight: '800', marginTop: 0, marginBottom: '6px', color: '#0f172a' }}>
+                Send Us a Message
+              </h3>
+              <p style={{ fontSize: '14px', color: '#64748b', marginBottom: '20px' }}>
+                Fill in the details below and a travel coordinator will get in touch with you.
+              </p>
+              <ContactForm />
+            </div>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
+    </>
   );
 }

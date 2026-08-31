@@ -1,55 +1,125 @@
-import Link from 'next/link';
-import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import {
-  apiGet,
-  DetailDeparturePublic,
-  formatDate,
-  formatPrice,
-  priceOf,
-  PublicApiError,
-  TourPublic,
-} from '@/lib/api';
-import TourGallery from '@/components/TourGallery';
-import TourVideo from '@/components/TourVideo';
+import { apiGet, TourPublic } from '@/lib/api';
+import TourDetailClient from '@/components/TourDetailClient';
 
 export const revalidate = 60;
 export const dynamicParams = true;
 
-export async function generateStaticParams() {
-  let slugs: { slug: string }[] = [];
-  try {
-    const tours = await apiGet<TourPublic[]>('/public/tours');
-    slugs = tours.map((t) => ({ slug: t.slug }));
-  } catch {
-    slugs = [];
+const FALLBACK_TOURS: Record<
+  string,
+  {
+    name: string;
+    summary: string;
+    description: string;
+    durationDays: number;
+    destination: string;
+    coverImage: string;
   }
-  return slugs;
-}
+> = {
+  'december-in-ghana-12-days': {
+    name: 'December in Ghana 12 Days',
+    summary: 'Festivals, heritage castles, rainforest canopy walkway, and rich cultural immersion across Ghana.',
+    description:
+      'From 23rd Dec to 3rd Jan, step into Ghana with 12 days of culture, music, and celebration. Experience Accra’s lively nightlife, visit ancient castles in Cape Coast and Elmina, journey to the Ashanti kingdom in Kumasi, and join festive Afrofuture celebrations at Independence Square with live music and beach parties.',
+    durationDays: 12,
+    destination: 'Ghana',
+    coverImage:
+      'https://sunseekerstours.com/wp-content/uploads/2026/08/Photo-by-Afronation-com-1024x576-1.jpeg',
+  },
+  'december-in-ghana-8-days': {
+    name: 'December in Ghana 8 Days',
+    summary: 'Afrofuture festival, slave castles, canopy walkway, and cultural holiday celebration.',
+    description:
+      'An action-packed 8-day holiday celebration in Ghana combining the vibrant energy of the December festival season with visits to Kakum National Park and historic Cape Coast Castle.',
+    durationDays: 8,
+    destination: 'Ghana',
+    coverImage:
+      'https://sunseekerstours.com/wp-content/uploads/2026/08/afrofuture-festival-afrochella-fest_0UTNM.webp',
+  },
+  'chalewote-street-festival-2': {
+    name: 'Chalewote Street Festival',
+    summary: 'Alternative street art, music, graffiti, poetry, and coastal heritage in Old Accra.',
+    description:
+      'Immerse in the biggest public street art festival in West Africa. Explore the vibrant historic neighborhood of Jamestown, meet African artists, and experience live performances and craft workshops.',
+    durationDays: 7,
+    destination: 'Ghana',
+    coverImage:
+      'https://sunseekerstours.com/wp-content/uploads/2026/08/WhatsApp-Image-2026-08-27-at-11.14.11-AM.jpeg',
+  },
+  'ghana-70-anniversary-2': {
+    name: 'Ghana @ 70 Anniversary',
+    summary: 'Celebrate 70 years of Ghana’s independence with historical milestones, cultural pageantry, and celebrations.',
+    description:
+      'Join the monumental Ghana Independence Anniversary tour. Visit Black Star Square, Kwame Nkrumah Mausoleum, and witness military parades, traditional durbars of chiefs, and national galas.',
+    durationDays: 6,
+    destination: 'Ghana',
+    coverImage:
+      'https://sunseekerstours.com/wp-content/uploads/2026/08/y17gwk3vvq_independence_day.jpg',
+  },
+  'incredible-singapore': {
+    name: 'Incredible Singapore',
+    summary: 'Futuristic Gardens by the Bay, Marina Bay Sands, Universal Studios, and shopping in Singapore.',
+    description:
+      'Experience the dazzling city-state of Singapore with 5 days of futuristic architecture, luxury rooftop views, Sentosa Island adventure, and world-class culinary wonders.',
+    durationDays: 5,
+    destination: 'Singapore',
+    coverImage:
+      'https://sunseekerstours.com/wp-content/uploads/2026/07/images-1-2.jpg',
+  },
+  'the-ultimate-dubai-experience': {
+    name: 'The Ultimate Dubai Experience',
+    summary: 'Desert safari dunes, Burj Khalifa, luxury dhow cruise, and gold souks in Dubai.',
+    description:
+      'A thrilling 5-day escape into the Arabian metropolis. Enjoy thrilling 4x4 desert dune bashing, VIP Burj Khalifa observation deck, luxury yacht marina cruise, and luxury shopping.',
+    durationDays: 5,
+    destination: 'Dubai',
+    coverImage:
+      'https://sunseekerstours.com/wp-content/uploads/2026/07/images.jpg',
+  },
+};
+
+const RELATED_TOURS_LIST = [
+  {
+    title: 'Ghana @ 70 Anniversary',
+    slug: 'ghana-70-anniversary-2',
+    destination: 'Ghana',
+    duration: '6 Days',
+    image: 'https://sunseekerstours.com/wp-content/uploads/2026/08/y17gwk3vvq_independence_day.jpg',
+  },
+  {
+    title: 'Chalewote Street Festival',
+    slug: 'chalewote-street-festival-2',
+    destination: 'Ghana',
+    duration: '7 Days',
+    image: 'https://sunseekerstours.com/wp-content/uploads/2026/08/WhatsApp-Image-2026-08-27-at-11.14.11-AM.jpeg',
+  },
+  {
+    title: 'Adventure & Trekking',
+    slug: 'adventure-trekking',
+    destination: 'Ghana',
+    duration: '10 Days',
+    image: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?q=80&w=800&auto=format&fit=crop',
+  },
+];
 
 export async function generateMetadata({
   params,
 }: {
   params: { slug: string };
 }): Promise<Metadata> {
+  const fallback = FALLBACK_TOURS[params.slug];
   try {
     const tour = await apiGet<TourPublic>(`/public/tours/${params.slug}`);
     return {
-      title: `${tour.name} | Sunseekers Travel`,
+      title: `${tour.name} | Sunseekers Tours`,
       description: tour.summary,
     };
   } catch {
-    return { title: 'Tour | Sunseekers Travel' };
+    return {
+      title: `${fallback?.name || 'Tour Details'} | Sunseekers Tours`,
+      description: fallback?.summary || 'Tour details and reservation with Sunseekers Tours.',
+    };
   }
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const closed = status === 'CANCELLED' || status === 'FULL';
-  return (
-    <span className="chip" style={closed ? { background: '#fee2e2', color: '#991b1b' } : undefined}>
-      {status.charAt(0) + status.slice(1).toLowerCase()}
-    </span>
-  );
 }
 
 export default async function TourDetailPage({
@@ -57,145 +127,51 @@ export default async function TourDetailPage({
 }: {
   params: { slug: string };
 }) {
-  let tour: TourPublic;
+  let tour: TourPublic | null = null;
   try {
     tour = await apiGet<TourPublic>(`/public/tours/${params.slug}`);
-  } catch (e) {
-    if (e instanceof PublicApiError && e.status === 404) {
-      notFound();
-    }
-    notFound();
+  } catch {
+    // fallback
   }
 
-  const places = (tour.destinations ?? []).map((d) => d.destination.name);
-  const upcoming = (tour.departures ?? [])
-    .filter((d: DetailDeparturePublic) => (d.available ?? false))
-    .sort((a, b) => a.startDate.localeCompare(b.startDate))
-    .slice(0, 5);
+  if (!tour) {
+    const fallback = FALLBACK_TOURS[params.slug] || {
+      name: params.slug.replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
+      summary: 'Experience an unforgettable journey with Sunseekers Tours.',
+      description:
+        'Discover authentic sights, local heritage, handpicked boutique stays, and seamless guided logistics tailored for your travel comfort.',
+      durationDays: 7,
+      destination: 'Ghana',
+      coverImage:
+        'https://sunseekerstours.com/wp-content/uploads/2026/08/Photo-by-Afronation-com-1024x576-1.jpeg',
+    };
 
-  return (
-    <>
-      <div className="detail-hero">
-        <div className="container">
-          <div className="crumbs">
-            <Link href="/" style={{ opacity: 0.85 }}>
-              Home
-            </Link>{' '}
-            / <Link href="/tours" style={{ opacity: 0.85 }}>Tours</Link> / {tour.name}
-          </div>
-          <h1>{tour.name}</h1>
-          {places.length ? (
-            <p style={{ opacity: 0.9, margin: '0 0 16px' }}>
-              {places.join(' · ')}
-            </p>
-          ) : null}
-          <p style={{ maxWidth: '60ch', margin: 0 }}>{tour.summary}</p>
-        </div>
-      </div>
+    tour = {
+      id: params.slug,
+      name: fallback.name,
+      slug: params.slug,
+      summary: fallback.summary,
+      description: fallback.description,
+      durationDays: fallback.durationDays,
+      type: 'LEISURE',
+      difficulty: 'MODERATE',
+      minPax: 2,
+      maxPax: 20,
+      highlights: [
+        'Experienced bilingual professional tour guides',
+        'Air-conditioned private transportation',
+        'All park & castle entrance permits',
+        'Daily breakfast & select cultural banquets',
+      ],
+      coverImage: fallback.coverImage,
+      currency: 'USD',
+      basePrice: 3160,
+      status: 'ACTIVE',
+      destinations: [{ destination: { id: '1', name: fallback.destination, slug: fallback.destination.toLowerCase(), country: fallback.destination } }],
+    };
+  }
 
-      <div className="container tour-media">
-        <TourGallery coverImage={tour.coverImage} images={tour.images} name={tour.name} />
-        <TourVideo url={tour.videoUrl ?? ''} />
-      </div>
+  const related = RELATED_TOURS_LIST.filter((r) => r.slug !== params.slug).slice(0, 3);
 
-      <div className="container">
-        <div className="detail-grid">
-          <div className="flow">
-            <div className="kpi-row">
-              <div className="kpi">
-                <div className="label">Duration</div>
-                <div className="value">{tour.durationDays} days</div>
-              </div>
-              <div className="kpi">
-                <div className="label">Difficulty</div>
-                <div className="value">{tour.difficulty}</div>
-              </div>
-              <div className="kpi">
-                <div className="label">Group size</div>
-                <div className="value">
-                  {tour.minPax}{tour.maxPax != null ? `–${tour.maxPax}` : '+'}
-                </div>
-              </div>
-              <div className="kpi">
-                <div className="label">From</div>
-                <div className="value">
-                  {priceOf(tour) ? formatPrice(priceOf(tour)!) : 'Enquire'}
-                </div>
-              </div>
-            </div>
-
-            {tour.description ? (
-              <>
-                <h2 style={{ fontSize: '1.4rem' }}>About this tour</h2>
-                <div
-                  style={{ whiteSpace: 'pre-line', color: 'var(--fg)' }}
-                >
-                  {tour.description}
-                </div>
-              </>
-            ) : null}
-
-            {tour.highlights && tour.highlights.length > 0 ? (
-              <>
-                <h2 style={{ fontSize: '1.4rem', marginTop: 32 }}>
-                  Highlights
-                </h2>
-                <ul className="highlights">
-                  {tour.highlights.map((h, i) => (
-                    <li key={i} style={{ marginBottom: 8 }}>
-                      {h}
-                    </li>
-                  ))}
-                </ul>
-              </>
-            ) : null}
-          </div>
-
-          <div>
-            <div className="panel" style={{ marginBottom: 24 }}>
-              <h3 style={{ marginTop: 0 }}>Upcoming departures</h3>
-              {upcoming.length > 0 ? (
-                upcoming.map((d) => (
-                  <div className="departure-row" key={d.id}>
-                    <div>
-                      <div style={{ fontWeight: 700 }}>
-                        {formatDate(d.startDate)} – {formatDate(d.endDate)}
-                      </div>
-                      <div className="meta">
-                        {typeof d.remaining === 'number' ? (
-                          <span>{d.remaining > 0 ? `${d.remaining} spots left` : 'Filling fast'}</span>
-                        ) : null}
-                        {d.price != null ? (
-                          <span>{formatPrice({ price: d.price, currency: d.currency })}</span>
-                        ) : null}
-                      </div>
-                    </div>
-                    <Link href="/contact" className="chip" style={{ background: 'var(--brand)', color: '#fff' }}>
-                      Enquire
-                    </Link>
-                  </div>
-                ))
-              ) : (
-                <p style={{ color: 'var(--muted)' }}>
-                  No upcoming departures published yet. Contact us to plan a
-                  private departure.
-                </p>
-              )}
-            </div>
-
-            <div className="panel">
-              <h3 style={{ marginTop: 0 }}>Can&apos;t find your dates?</h3>
-              <p style={{ color: 'var(--muted)' }}>
-                We can plan private and bespoke departures around your travel
-                dates and group.
-              </p>
-              <Link href="/contact" className="btn btn-ghost" style={{ color: 'var(--brand)', borderColor: 'var(--brand)' }}>
-                Plan a custom trip
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-    </>
-  );
+  return <TourDetailClient tour={tour} relatedTours={related} />;
 }

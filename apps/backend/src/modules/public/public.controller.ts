@@ -1,7 +1,8 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Public } from '@app/common/decorators/public.decorator';
 import { PublicService } from './public.service';
+import { CreatePublicInquiryDto } from './dto/create-public-inquiry.dto';
 
 @ApiTags('public')
 @Controller('public')
@@ -48,5 +49,11 @@ export class PublicController {
   @Get('products')
   listProducts(@Query('category') category?: string) {
     return this.publicService.listProducts(category);
+  }
+
+  @Public()
+  @Post('inquiries')
+  createInquiry(@Body() dto: CreatePublicInquiryDto) {
+    return this.publicService.createInquiry(dto);
   }
 }

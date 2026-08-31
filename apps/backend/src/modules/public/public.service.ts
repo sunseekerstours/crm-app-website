@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@app/prisma/prisma.service';
 import { ApiNotFoundException, ErrorCode } from '@app/common/errors';
-import { DepartureStatus, TourStatus, PageStatus } from '@prisma/client';
+import { DepartureStatus, TourStatus, PageStatus, LeadSource, LeadStage } from '@prisma/client';
+import { CreatePublicInquiryDto } from './dto/create-public-inquiry.dto';
 
 const ACTIVE_TOUR_STATUSES: TourStatus[] = [TourStatus.ACTIVE];
 
@@ -206,5 +207,53 @@ export class PublicService {
       ...p,
       price: p.price != null ? Number(p.price) : null,
     }));
+  }
+
+  async createInquiry(dto: CreatePublicInquiryDto) {
+    const nameParts = (dto.fullName || '').trim().split(' ');
+    const firstName = nameParts[0] || 'Web';
+    const lastName = nameParts.slice(1).join(' ') || 'Customer';
+
+    const tags = [dto.serviceType.toUpperCase(), 'WEBSITE_REQUEST'];
+    if (dto.category) tags.push(dto.category);
+
+    const lead = await this.prisma.lead.create({
+      data: {
+        firstName,
+        lastName,
+        email: dto.email,
+        phone: dto.phone,
+        source: LeadSource.WEBSITE,
+        stage: LeadStage.NEW,
+        destination: dto.destination || undefined,
+        interestedTour: dto.interestedTour || undefined,
+        campaign: `Website ${dto.serviceType}`,
+        tags,
+        notes: {
+          create: {
+            content: [
+              `🌐 Service Requested: ${dto.serviceType}`,
+              dto.destination ? `📍 Destination: ${dto.destination}` : null,
+              dto.interestedTour ? `🎒 Tour: ${dto.interestedTour}` : null,
+              dto.startDate ? `📅 Start / Check-in: ${dto.startDate}` : null,
+              dto.endDate ? `📅 End / Check-out: ${dto.endDate}` : null,
+              dto.category ? `🏷️ Category / Room / Class: ${dto.category}` : null,
+              dto.guests ? `👥 Guests / Passengers: ${dto.guests}` : null,
+              dto.pickupLocation ? `🛫 Pickup / Origin: ${dto.pickupLocation}` : null,
+              dto.dropoffLocation ? `🛬 Dropoff / Destination: ${dto.dropoffLocation}` : null,
+              dto.message ? `💬 Message: ${dto.message}` : null,
+            ]
+              .filter(Boolean)
+              .join('\n'),
+          },
+        },
+      },
+    });
+
+    return {
+      success: true,
+      leadId: lead.id,
+      message: 'Your request has been received. Our team will contact you shortly!',
+    };
   }
 }

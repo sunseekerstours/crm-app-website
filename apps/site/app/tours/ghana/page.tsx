@@ -1,59 +1,125 @@
 import type { Metadata } from 'next';
-import TourCard from '@/components/TourCard';
-import { apiGet, TourPublic } from '@/lib/api';
+import Link from 'next/link';
 
 export const revalidate = 60;
 
 export const metadata: Metadata = {
-  title: 'Ghana Tours | Sunseekers Travel',
-  description: 'Explore tours across Ghana — history, culture, coastlines and more.',
+  title: 'Explore Ghana | Tour Ghana | Sunseekers Tours',
+  description:
+    'Experience rich culture, history, and natural beauty across Ghana with Sunseekers Tours. Curated cultural festivals, historical heritage, and scenic adventures.',
 };
 
-export default async function GhanaToursPage() {
-  let tours: TourPublic[] = [];
-  let error = false;
-  try {
-    tours = await apiGet<TourPublic[]>('/public/tours');
-  } catch {
-    error = true;
-  }
-
-  const ghana = tours.filter((t) =>
-    (t.destinations ?? []).some((d) => d.destination.country === 'Ghana'),
-  );
+export default function GhanaToursPage() {
+  const GHANA_TOURS = [
+    {
+      title: 'December in Ghana 12 Days',
+      destination: 'Ghana',
+      duration: '12 Days',
+      slug: 'december-in-ghana-12-days',
+      image: 'https://sunseekerstours.com/wp-content/uploads/2026/08/Photo-by-Afronation-com-1024x576-1.jpeg',
+    },
+    {
+      title: 'December in Ghana 8 Days',
+      destination: 'Ghana',
+      duration: '8 Days',
+      slug: 'december-in-ghana-8-days',
+      image: 'https://sunseekerstours.com/wp-content/uploads/2026/08/afrofuture-festival-afrochella-fest_0UTNM.webp',
+    },
+    {
+      title: 'Chalewote Street Festival',
+      destination: 'Ghana',
+      duration: '7 Days',
+      slug: 'chalewote-street-festival-2',
+      image: 'https://sunseekerstours.com/wp-content/uploads/2026/08/WhatsApp-Image-2026-08-27-at-11.14.11-AM.jpeg',
+    },
+    {
+      title: 'Ghana @ 70 Anniversary',
+      destination: 'Ghana',
+      duration: '6 Days',
+      slug: 'ghana-70-anniversary-2',
+      image: 'https://sunseekerstours.com/wp-content/uploads/2026/08/y17gwk3vvq_independence_day.jpg',
+    },
+    {
+      title: 'Adventure & Trekking',
+      destination: 'Ghana',
+      duration: '10 Days',
+      slug: 'adventure-trekking',
+      image: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?q=80&w=800&auto=format&fit=crop',
+    },
+    {
+      title: 'Authentic Cultural Experience',
+      destination: 'Ghana',
+      duration: '14 Days',
+      slug: 'ghana-classic',
+      image: 'https://images.unsplash.com/photo-1547471080-7cc2caa01a7e?q=80&w=800&auto=format&fit=crop',
+    },
+  ];
 
   return (
-    <section className="section">
-      <div className="container">
-        <div className="section-head">
-          <div className="eyebrow">Within Ghana</div>
-          <h2>Ghana Tours</h2>
-          <p>
-            {error
-              ? 'We couldn’t reach the tour catalogue right now. Please try again shortly.'
-              : `${ghana.length} Ghana tour${ghana.length === 1 ? '' : 's'} available.`}
-          </p>
+    <>
+      {/* Explore Ghana Hero Banner (Screenshots 2 & 3) */}
+      <section
+        className="page-hero-banner"
+        style={{
+          backgroundImage:
+            "linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.65)), url('https://images.unsplash.com/photo-1596706488730-89196b010c79?q=80&w=1920&auto=format&fit=crop')",
+        }}
+      >
+        <div>
+          <div style={{ fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '2px', color: '#fed7aa', marginBottom: '8px' }}>
+            Discover the Heart of West Africa
+          </div>
+          <h1>Explore Ghana</h1>
+          <p>Experience rich culture, history, and natural beauty</p>
         </div>
+      </section>
 
-        {ghana.length > 0 ? (
-          <div className="grid grid-3">
-            {ghana.map((t) => (
-              <TourCard key={t.id} tour={t} />
+      {/* Ghana Tours Grid */}
+      <section className="section">
+        <div className="container">
+          <div className="grid-3">
+            {GHANA_TOURS.map((tour) => (
+              <div key={tour.slug} className="tour-card">
+                <div className="tour-card-img-wrap">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={tour.image}
+                    alt={tour.title}
+                    loading="lazy"
+                  />
+                  <div className="tour-card-badge">{tour.destination}</div>
+                  <button className="tour-card-heart" title="Save to Favorites" aria-label="Favorite">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" style={{ width: 18, height: 18 }}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className="tour-card-body">
+                  <div className="tour-card-dest">
+                    <span>📍 {tour.destination}</span>
+                  </div>
+                  <h3 className="tour-card-title">{tour.title}</h3>
+
+                  <div className="tour-card-meta">
+                    <div className="tour-card-duration">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" style={{ width: 15, height: 15 }}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span>{tour.duration}</span>
+                    </div>
+                    <span className="tour-card-price">Best Value</span>
+                  </div>
+
+                  <Link href={`/tours/${tour.slug}`} className="btn-view-details">
+                    View Details
+                  </Link>
+                </div>
+              </div>
             ))}
           </div>
-        ) : (
-          <div className="panel" style={{ textAlign: 'center', color: 'var(--muted)' }}>
-            <p style={{ margin: 0 }}>
-              {error
-                ? 'The tour catalogue is temporarily unavailable.'
-                : 'No Ghana tours published yet — check back soon or contact us to plan a trip.'}{' '}
-              <a href="/tours" className="link-arrow">
-                View all tours
-              </a>
-            </p>
-          </div>
-        )}
-      </div>
-    </section>
+        </div>
+      </section>
+    </>
   );
 }

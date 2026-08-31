@@ -1,70 +1,76 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
-import { apiGet, ProductPublic } from '@/lib/api';
+import HotelBookingForm from '@/components/HotelBookingForm';
 
 export const revalidate = 60;
 
 export const metadata: Metadata = {
-  title: 'Hotels | Sunseekers Travel',
-  description: 'Hotel accommodation and hospitality services with Sunseekers Travel.',
+  title: 'Premium Accommodations & Hotel Reservations | Sunseekers Tours',
+  description:
+    'Book curated luxury hotel accommodations, boutique resorts, and premium suites in Ghana and worldwide with Sunseekers Tours.',
 };
 
-export default async function HotelsPage() {
-  let products: ProductPublic[] = [];
-  let error = false;
-  try {
-    products = await apiGet<ProductPublic[]>('/public/products?category=HOTEL');
-  } catch {
-    error = true;
-  }
-
+export default function HotelsPage() {
   return (
-    <section className="section">
-      <div className="container">
-        <div className="section-head">
-          <div className="eyebrow">Stay with us</div>
-          <h2>Hotels</h2>
-          <p>
-            {error
-              ? 'We couldn’t load our accommodation services right now.'
-              : products.length > 0
-                ? `${products.length} hotel option${products.length === 1 ? '' : 's'} available.`
-                : 'Hotel options are being added — contact us to arrange your stay.'}
-          </p>
-        </div>
-
-        {products.length > 0 ? (
-          <div className="grid grid-3">
-            {products.map((p) => (
-              <div key={p.id} className="card">
-                <div className="card-body">
-                  <h3 style={{ marginBottom: 6 }}>{p.name}</h3>
-                  <div className="meta" style={{ marginBottom: 6 }}>
-                    <span>{p.category.replace('_', ' ')}</span>
-                  </div>
-                  {p.description ? <p style={{ color: 'var(--muted)' }}>{p.description}</p> : null}
-                  {p.price != null ? (
-                    <div style={{ fontWeight: 600, marginTop: 8 }}>
-                      {p.price} {p.currency}
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-            ))}
+    <>
+      {/* Hero Banner (Screenshot 1) */}
+      <section
+        className="page-hero-banner"
+        style={{
+          backgroundImage:
+            "linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.65)), url('https://images.unsplash.com/photo-1590490360182-c33d57733427?q=80&w=1920&auto=format&fit=crop')",
+        }}
+      >
+        <div>
+          <div style={{ fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '2px', color: '#fed7aa', marginBottom: '8px' }}>
+            Curated Stays &amp; Resilience
           </div>
-        ) : (
-          <div className="panel" style={{ textAlign: 'center', color: 'var(--muted)' }}>
-            <p style={{ margin: 0 }}>
-              {error
-                ? 'Hotel services are temporarily unavailable.'
-                : 'No hotel products published yet.'}{' '}
-              <Link href="/contact" className="link-arrow">
-                Enquire about hotels
-              </Link>
+          <h1>Premium Accommodations</h1>
+          <p>Find the perfect stay for your journey</p>
+        </div>
+      </section>
+
+      {/* Booking Form Section (Screenshot 1) */}
+      <section className="section" style={{ background: '#f8fafc' }}>
+        <div className="container" style={{ maxWidth: '960px' }}>
+          <HotelBookingForm />
+        </div>
+      </section>
+
+      {/* Curated Hotel Types */}
+      <section className="section" style={{ background: '#ffffff' }}>
+        <div className="container">
+          <div className="section-head-center">
+            <div className="section-eyebrow">Luxury &amp; Comfort</div>
+            <h2 className="section-title">Handpicked Accommodations Worldwide</h2>
+            <p className="section-subtitle">
+              From 5-star oceanfront resorts to heritage safari lodges and executive business suites.
             </p>
           </div>
-        )}
-      </div>
-    </section>
+
+          <div className="services-grid">
+            <div className="service-box">
+              <div className="service-icon-wrap">🏖️</div>
+              <h3>Beachfront Resorts</h3>
+              <p>Tropical coastal getaways in Busua, Ada Foah, Seychelles, and Dubai with private shoreline access.</p>
+            </div>
+            <div className="service-box">
+              <div className="service-icon-wrap">🏙️</div>
+              <h3>City Executive Suites</h3>
+              <p>Centrally located hotels in Accra, Singapore, and Nairobi with business centers and fast WiFi.</p>
+            </div>
+            <div className="service-box">
+              <div className="service-icon-wrap">🌿</div>
+              <h3>Safari Eco-Lodges</h3>
+              <p>Serene nature retreats near Mole National Park, Kakum canopy walk, and Rwandan volcano ranges.</p>
+            </div>
+            <div className="service-box">
+              <div className="service-icon-wrap">👑</div>
+              <h3>Boutique Villas</h3>
+              <p>Exclusive private villas and tailored residences offering personalized chef and concierge services.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </>
   );
 }

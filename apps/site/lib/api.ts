@@ -31,6 +31,15 @@ export type DestinationPublic = DestinationSummary & {
   _count?: { tours?: number };
 };
 
+export type TourDayPublic = {
+  id: string;
+  dayNumber: number;
+  title: string;
+  description: string;
+  mealsIncluded?: string[];
+  destination?: DestinationSummary | null;
+};
+
 export type TourPublic = {
   id: string;
   name: string;
@@ -52,6 +61,7 @@ export type TourPublic = {
   destinations?: TourDestination[];
   futureDepartures?: ListDeparturePublic[];
   departures?: DetailDeparturePublic[];
+  days?: TourDayPublic[];
 };
 
 export type ProductPublic = {
@@ -90,6 +100,29 @@ export async function apiGet<T>(path: string, revalidate = 60): Promise<T> {
   }
   const json = (await res.json()) as ApiEnvelope<T>;
   return json?.data;
+}
+
+export async function apiPost<T, B = unknown>(path: string, body: B): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      accept: 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    let errorMsg = `HTTP ${res.status}`;
+    try {
+      const errJson = await res.json();
+      if (errJson.message) errorMsg = Array.isArray(errJson.message) ? errJson.message.join(', ') : errJson.message;
+    } catch {
+      // fallback
+    }
+    throw new PublicApiError(res.status, errorMsg);
+  }
+  const json = (await res.json()) as ApiEnvelope<T>;
+  return json?.data || (json as unknown as T);
 }
 
 export function priceOf(

@@ -911,3 +911,31 @@ img {
     gap: 16px;
   }
 }
+
+/* ==========================================================================
+   Form Card & Booking Component Styling
+   ========================================================================== */
+.form-card-container {
+  background: #ffffff;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  padding: 36px 32px;
+  border: 1px solid #e2e8f0;
+}
+
+.tour-detail-hero-banner {
+  height: 380px;
+  background-size: cover;
+  background-position: center;
+  position: relative;
+}
+
+@media (max-width: 900px) {
+  .tour-detail-layout {
+    grid-template-columns: 1fr !important;
+  }
+  .includes-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
