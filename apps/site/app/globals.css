@@ -54,18 +54,32 @@ img {
 }
 
 /* ==========================================================================
-   Top Info Bar (Screenshot 1)
+   Top Utility Bar (Screenshot 1)
    ========================================================================== */
-.top-info-bar {
-  background: var(--brand-green);
+.header-wrapper {
+  position: relative;
+  width: 100%;
+  z-index: 1000;
+}
+
+.top-utility-bar {
+  background: #008744;
   color: #ffffff;
   font-size: 12px;
   font-weight: 600;
   padding: 8px 0;
-  letter-spacing: 0.2px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
 }
 
-.top-info-bar .container {
+.header-wrapper.is-scrolled .top-utility-bar {
+  display: none;
+}
+
+.utility-container {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 24px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -73,79 +87,300 @@ img {
   gap: 12px;
 }
 
-.top-info-left,
-.top-info-right {
+.utility-left {
   display: flex;
   align-items: center;
-  gap: 20px;
-  flex-wrap: wrap;
+  gap: 14px;
 }
 
-.top-info-item {
+.utility-item {
   display: flex;
   align-items: center;
   gap: 6px;
+  color: #ffffff;
+  text-decoration: none;
+  transition: opacity 0.2s;
 }
 
-.top-info-item svg {
-  width: 14px;
-  height: 14px;
+.utility-item:hover {
+  opacity: 0.85;
+}
+
+.utility-item svg {
+  width: 13px;
+  height: 13px;
   opacity: 0.9;
 }
 
-/* ==========================================================================
-   Main Header Navigation (Screenshot 1)
-   ========================================================================== */
-.site-header {
-  background: #ffffff;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-  position: sticky;
-  top: 0;
-  z-index: 1000;
-  padding: 12px 0;
+.utility-divider {
+  opacity: 0.4;
+  font-size: 10px;
 }
 
-.site-header .container {
+.utility-right {
+  display: flex;
+  align-items: center;
+}
+
+.utility-tagline {
+  font-style: italic;
+  font-weight: 500;
+  opacity: 0.95;
+  letter-spacing: 0.2px;
+}
+
+/* ==========================================================================
+   Floating Island / Pill Navbar (Screenshot 1 & 2)
+   ========================================================================== */
+.floating-navbar-container {
+  width: 100%;
+  padding: 12px 24px;
+  display: flex;
+  justify-content: center;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.header-wrapper.is-scrolled .floating-navbar-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 10px 24px;
+  z-index: 1000;
+  animation: slideDown 0.35s ease forwards;
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.floating-island-navbar {
+  background: #ffffff;
+  border-radius: 9999px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  padding: 8px 24px;
+  max-width: 1140px;
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 20px;
+  transition: all 0.3s ease;
 }
 
-.nav {
+.header-wrapper.is-scrolled .floating-island-navbar {
+  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.12), 0 4px 10px rgba(0, 0, 0, 0.06);
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(16px);
+}
+
+.nav-logo-wrap {
   display: flex;
   align-items: center;
-  gap: 22px;
-  flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
-.nav a {
+.nav-links-center {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.nav-link-item {
+  position: relative;
   font-size: 14px;
   font-weight: 600;
-  color: #334155;
-  transition: var(--transition);
+  color: #1e293b;
+  padding: 8px 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  text-decoration: none;
+  transition: color 0.2s ease;
 }
 
-.nav a:hover,
-.nav a.active {
-  color: var(--brand-green);
+.nav-link-item:hover {
+  color: #008744;
 }
 
-.nav .btn-book-now {
-  background: var(--brand-orange);
+.nav-link-item.active {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+/* Signature Active Indicator Bar (Screenshot 1 & 2) */
+.active-orange-bar {
+  position: absolute;
+  bottom: 0;
+  left: 4px;
+  right: 4px;
+  height: 3px;
+  background: #f37023;
+  border-radius: 9999px;
+}
+
+/* Tours Dropdown Card */
+.nav-item-dropdown {
+  position: relative;
+}
+
+.dropdown-menu-card {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 8px;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.04);
+  border: 1px solid #e2e8f0;
+  min-width: 270px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 1010;
+  animation: fadeIn 0.2s ease forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.dropdown-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: background 0.15s ease;
+}
+
+.dropdown-link:hover {
+  background: #f0fdf4;
+}
+
+.dropdown-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.dropdown-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.dropdown-desc {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 1px;
+}
+
+/* Pill CTA Button (Screenshot 1 & 2) */
+.nav-right-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.pill-book-btn {
+  background: #1e3a2f;
   color: #ffffff !important;
   padding: 10px 22px;
   border-radius: 9999px;
-  font-weight: 700;
   font-size: 14px;
-  box-shadow: 0 4px 12px rgba(243, 112, 35, 0.3);
-  transition: var(--transition);
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  box-shadow: 0 4px 14px rgba(30, 58, 47, 0.25);
+  transition: all 0.25s ease;
 }
 
-.nav .btn-book-now:hover {
-  background: var(--brand-orange-hover);
+.pill-book-btn:hover {
+  background: #008744;
   transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(243, 112, 35, 0.4);
+  box-shadow: 0 6px 18px rgba(0, 135, 68, 0.35);
+}
+
+.mobile-hamburger-btn {
+  display: none;
+  background: none;
+  border: none;
+  color: #1e293b;
+  cursor: pointer;
+  padding: 4px;
+}
+
+/* Mobile Nav Drawer */
+.mobile-nav-drawer {
+  background: #ffffff;
+  border-bottom: 2px solid #e2e8f0;
+  padding: 16px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.mobile-nav-links {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mobile-nav-links a {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1e293b;
+  padding: 6px 0;
+}
+
+.mobile-nav-links a.active {
+  color: #008744;
+  font-weight: 800;
+}
+
+.mobile-cta-btn {
+  background: #1e3a2f !important;
+  color: #ffffff !important;
+  text-align: center;
+  padding: 12px !important;
+  border-radius: 9999px;
+  margin-top: 8px;
+  font-weight: 800 !important;
+}
+
+@media (max-width: 992px) {
+  .nav-links-center {
+    display: none;
+  }
+  .mobile-hamburger-btn {
+    display: block;
+  }
+  .top-utility-bar {
+    display: none;
+  }
 }
 
 /* ==========================================================================
