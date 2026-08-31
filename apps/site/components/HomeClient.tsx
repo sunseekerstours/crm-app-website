@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
 export interface TrendingTour {
@@ -19,31 +19,38 @@ export interface DestinationItem {
   href: string;
 }
 
+export interface ServiceOfferItem {
+  title: string;
+  subtitle: string;
+  image: string;
+  href: string;
+}
+
 const HERO_SLIDES = [
   {
     id: 1,
-    title: 'Celebrate 13 Years of Unforgettable Journeys',
-    subtitle: 'Join us this anniversary and feel the joy. ...Memories of our Tours are Forever.',
-    image: 'https://images.unsplash.com/photo-1514282401047-d79a71a590e8?q=80&w=1920&auto=format&fit=crop',
-    tag: '★ 13TH ANNIVERSARY SPECIAL ★',
+    title: 'Welcome to Sunseekers Tours',
+    subtitle: '...Memories of our Tours are Forever',
+    image: 'https://images.unsplash.com/photo-1547471080-7cc2caa01a7e?q=80&w=1920&auto=format&fit=crop',
+    tag: '★ CELEBRATING 33 YEARS OF UNFORGETTABLE MEMORIES FOR OUR CLIENTS ★',
     ctaText: 'Explore Our Tours',
     ctaLink: '/tours',
   },
   {
     id: 2,
     title: 'Discover the Soul & Heritage of Ghana',
-    subtitle: 'From historic Cape Coast castles to Kakum canopy walkways, Ashanti culture & vibrant festivals.',
-    image: 'https://images.unsplash.com/photo-1590523741831-ab7e8b8f9c7f?q=80&w=1920&auto=format&fit=crop',
-    tag: '🇬🇭 YEAR OF RETURN & BEYOND',
+    subtitle: '...Memories of our Tours are Forever',
+    image: 'https://sunseekerstours.com/wp-content/uploads/2025/11/Black-star-square.png',
+    tag: '★ CELEBRATING 33 YEARS OF UNFORGETTABLE MEMORIES FOR OUR CLIENTS ★',
     ctaText: 'Tour Ghana Packages',
     ctaLink: '/tours/ghana',
   },
   {
     id: 3,
     title: 'Worldwide Adventures & Luxury Escapes',
-    subtitle: 'Explore Dubai skylines, Zanzibar turquoise beaches, Kenya safaris, Singapore & exotic destinations.',
-    image: 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?q=80&w=1920&auto=format&fit=crop',
-    tag: '✈️ GLOBAL EXPEDITIONS',
+    subtitle: '...Memories of our Tours are Forever',
+    image: 'https://sunseekerstours.com/wp-content/uploads/2026/07/images-2-1.jpg',
+    tag: '★ CELEBRATING 33 YEARS OF UNFORGETTABLE MEMORIES FOR OUR CLIENTS ★',
     ctaText: 'International Trips',
     ctaLink: '/tours/international',
   },
@@ -112,12 +119,45 @@ const ALL_DESTINATIONS: DestinationItem[] = [
   },
 ];
 
+const DEFAULT_WHAT_WE_OFFER: ServiceOfferItem[] = [
+  {
+    title: 'Tour Ghana',
+    subtitle: 'Explore the heart of Africa',
+    image: 'https://images.unsplash.com/photo-1590523741831-ab7e8b8f9c7f?q=80&w=800&auto=format&fit=crop',
+    href: '/tours/ghana',
+  },
+  {
+    title: 'International Tours',
+    subtitle: 'World-class destinations',
+    image: 'https://images.unsplash.com/photo-1516426122078-c23e76319801?q=80&w=800&auto=format&fit=crop',
+    href: '/tours/international',
+  },
+  {
+    title: 'Vehicle Rental',
+    subtitle: 'World-class fleet & chauffeurs',
+    image: 'https://images.unsplash.com/photo-1549399542-7e3f8b79c341?q=80&w=800&auto=format&fit=crop',
+    href: '/car-rentals',
+  },
+  {
+    title: 'Flights',
+    subtitle: 'Book domestic & international flights',
+    image: 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?q=80&w=800&auto=format&fit=crop',
+    href: '/flights',
+  },
+  {
+    title: 'Hotels',
+    subtitle: 'Personalized hotel bookings',
+    image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?q=80&w=800&auto=format&fit=crop',
+    href: '/hotels',
+  },
+];
+
 export default function HomeClient({
   trendingTours,
   services,
 }: {
   trendingTours: TrendingTour[];
-  services: { title: string; desc: string; emoji: string; href: string }[];
+  services?: any[];
 }) {
   // Hero Carousel State (Auto transitions every 5 seconds)
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -151,14 +191,14 @@ export default function HomeClient({
   return (
     <>
       {/* =========================================================================
-          1. Hero Section with Automatic Image Transitions
+          1. Hero Section with Automatic Image Transitions & Image 3 Content
           ========================================================================= */}
       <section className="hero-slider-section">
         {HERO_SLIDES.map((slide, idx) => (
           <div
             key={slide.id}
             className={`hero-slide ${idx === currentSlide ? 'active' : ''}`}
-            style={{ backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.55)), url('${slide.image}')` }}
+            style={{ backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.55)), url('${slide.image}')` }}
           >
             <div className="hero-slide-content">
               <div className="hero-anniversary-badge">{slide.tag}</div>
@@ -327,24 +367,42 @@ export default function HomeClient({
       </section>
 
       {/* =========================================================================
-          4. What We Offer Section
+          4. What We Offer (Image 1 - 5 Image Poster Cards Layout)
           ========================================================================= */}
-      <section className="section">
+      <section className="section what-we-offer-section">
         <div className="container">
           <div className="section-head-center">
-            <div className="section-eyebrow">OUR SERVICES</div>
+            <div className="section-eyebrow" style={{ color: '#008744' }}>OUR SERVICES</div>
             <h2 className="section-title">What We Offer</h2>
             <p className="section-subtitle">
               Discover our range of travel services designed to make your journey unforgettable
             </p>
           </div>
 
-          <div className="services-grid">
-            {services.map((serv) => (
-              <Link key={serv.title} href={serv.href} className="service-box">
-                <div className="service-icon-wrap">{serv.emoji}</div>
-                <h3>{serv.title}</h3>
-                <p>{serv.desc}</p>
+          <div className="offer-5grid">
+            {DEFAULT_WHAT_WE_OFFER.map((item) => (
+              <Link key={item.title} href={item.href} className="offer-poster-card">
+                {/* Background Image */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={item.image}
+                  alt={item.title}
+                  loading="lazy"
+                  className="offer-poster-img"
+                />
+                <div className="offer-poster-gradient" />
+
+                {/* Card Content */}
+                <div className="offer-poster-content">
+                  <h3 className="offer-poster-title">{item.title}</h3>
+                  <p className="offer-poster-sub">{item.subtitle}</p>
+                  <span className="offer-poster-btn">
+                    <span>Explore</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M3 10a.75.75 0 01.75-.75h10.638L10.23 5.29a.75.75 0 111.04-1.08l5.5 5.25a.75.75 0 010 1.08l-5.5 5.25a.75.75 0 11-1.04-1.08l4.158-3.96H3.75A.75.75 0 013 10z" clipRule="evenodd" />
+                    </svg>
+                  </span>
+                </div>
               </Link>
             ))}
           </div>
