@@ -34,6 +34,12 @@ export interface AppConfig {
     email: string;
     password: string;
   };
+  jetpackCrm: {
+    enabled: boolean;
+    endpoint: string;
+    apiKey: string;
+    apiSecret: string;
+  };
 }
 
 export const configuration = (): AppConfig => ({
@@ -71,5 +77,11 @@ export const configuration = (): AppConfig => ({
   admin: {
     email: process.env.ADMIN_EMAIL ?? 'admin@sunseeker.local',
     password: process.env.ADMIN_PASSWORD ?? 'ChangeMe123!',
+  },
+  jetpackCrm: {
+    enabled: process.env.JETPACK_CRM_ENABLED === 'true',
+    endpoint: process.env.JETPACK_CRM_ENDPOINT ?? 'https://sunseekerstours.com/zbs_api/',
+    apiKey: process.env.JETPACK_CRM_API_KEY ?? '',
+    apiSecret: process.env.JETPACK_CRM_API_SECRET ?? '',
   },
 });

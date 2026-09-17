@@ -39,6 +39,7 @@ import { PublicModule } from '@app/modules/public/public.module';
 import { ContentModule } from '@app/modules/content/content.module';
 import { HrModule } from '@app/modules/hr/hr.module';
 import { ProductsModule } from '@app/modules/products/products.module';
+import { JetpackCrmModule } from '@app/modules/jetpack-crm/jetpack-crm.module';
 import { JwtAuthGuard } from '@app/common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '@app/common/guards/permissions.guard';
 import { TransformInterceptor } from '@app/common/interceptors/transform.interceptor';
@@ -85,6 +86,7 @@ import { AllExceptionsFilter } from '@app/common/filters/all-exceptions.filter';
     ContentModule,
     HrModule,
     ProductsModule,
+    JetpackCrmModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

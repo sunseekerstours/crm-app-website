@@ -1,14 +1,20 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@app/prisma/prisma.service';
 import { ApiNotFoundException, ErrorCode } from '@app/common/errors';
 import { DepartureStatus, TourStatus, PageStatus, LeadSource, LeadStage } from '@prisma/client';
+import { JetpackCrmService } from '@app/modules/jetpack-crm/jetpack-crm.service';
 import { CreatePublicInquiryDto } from './dto/create-public-inquiry.dto';
 
 const ACTIVE_TOUR_STATUSES: TourStatus[] = [TourStatus.ACTIVE];
 
 @Injectable()
 export class PublicService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(PublicService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly jetpackCrm: JetpackCrmService,
+  ) {}
 
   async listTours() {
     const now = new Date();
@@ -260,6 +266,31 @@ export class PublicService {
         },
       },
     });
+
+    // Asynchronously sync new inquiry lead to Jetpack CRM
+    if (this.jetpackCrm.isEnabled()) {
+      this.jetpackCrm
+        .syncContact({
+          email: dto.email,
+          fname: firstName,
+          lname: lastName,
+          mobtel: dto.phone,
+          status: 'Lead',
+          tags: tags,
+          notes: [
+            `Service Requested: ${dto.serviceType}`,
+            dto.destination ? `Destination: ${dto.destination}` : null,
+            dto.interestedTour ? `Tour: ${dto.interestedTour}` : null,
+            dto.startDate ? `Dates: ${dto.startDate} to ${dto.endDate ?? ''}` : null,
+            dto.message ? `Message: ${dto.message}` : null,
+          ]
+            .filter(Boolean)
+            .join('\n'),
+        })
+        .catch((err) => {
+          this.logger.warn(`Jetpack CRM sync failed for inquiry (${dto.email}): ${err?.message}`);
+        });
+    }
 
     return {
       success: true,
