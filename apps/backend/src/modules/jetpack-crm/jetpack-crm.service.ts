@@ -77,48 +77,71 @@ export class JetpackCrmService {
     data?: any,
     extraParams: Record<string, any> = {},
   ): Promise<T> {
-    const url = this.buildUrl(path, extraParams);
+    const fullUrl = this.buildUrl(path, extraParams);
+    const parsed = new URL(fullUrl);
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 12000);
+    return new Promise<T>((resolve, reject) => {
+      const https = require('https');
+      const postData = data && method === 'POST' ? JSON.stringify(data) : null;
 
-    try {
       const headers: Record<string, string> = {
-        Accept: 'application/json',
-        'User-Agent': 'SunseekerCRM-Backend/1.0',
+        Accept: 'application/json, text/plain, */*',
+        'User-Agent': 'WordPress/6.8; SunseekerCRM-Client/1.0',
       };
 
-      let body: string | undefined;
-      if (data && method === 'POST') {
+      if (postData) {
         headers['Content-Type'] = 'application/json';
-        body = JSON.stringify(data);
+        headers['Content-Length'] = String(Buffer.byteLength(postData));
       }
 
-      const res = await fetch(url, {
-        method,
-        headers,
-        body,
-        signal: controller.signal,
+      const req = https.request(
+        {
+          hostname: parsed.hostname,
+          port: parsed.port || 443,
+          path: parsed.pathname + parsed.search,
+          method,
+          headers,
+          rejectUnauthorized: false,
+          timeout: 30000,
+        },
+        (res: any) => {
+          let body = '';
+          res.on('data', (chunk: any) => (body += chunk));
+          res.on('end', () => {
+            let parsedJson: any;
+            try {
+              parsedJson = JSON.parse(body);
+            } catch {
+              parsedJson = { raw: body };
+            }
+
+            if (res.statusCode && res.statusCode >= 400) {
+              return reject(
+                new Error(
+                  `Jetpack CRM API HTTP ${res.statusCode}: ${typeof parsedJson === 'object' ? JSON.stringify(parsedJson) : parsedJson}`,
+                ),
+              );
+            }
+
+            resolve(parsedJson as T);
+          });
+        },
+      );
+
+      req.on('timeout', () => {
+        req.destroy();
+        reject(new Error('Jetpack CRM connection timed out after 30s'));
       });
 
-      const text = await res.text();
-      let parsed: any;
-      try {
-        parsed = JSON.parse(text);
-      } catch {
-        parsed = { raw: text };
-      }
+      req.on('error', (err: any) => {
+        reject(err);
+      });
 
-      if (!res.ok) {
-        throw new Error(
-          `Jetpack CRM API HTTP ${res.status}: ${typeof parsed === 'object' ? JSON.stringify(parsed) : parsed}`,
-        );
+      if (postData) {
+        req.write(postData);
       }
-
-      return parsed as T;
-    } finally {
-      clearTimeout(timeout);
-    }
+      req.end();
+    });
   }
 
   /**
@@ -128,7 +151,11 @@ export class JetpackCrmService {
     if (!this.apiKey || !this.apiSecret) {
       return { success: false, message: 'Jetpack CRM credentials not configured' };
     }
-    return this.request('status/', 'GET', undefined, full ? { full: 1 } : {});
+    try {
+      return await this.request('status/', 'GET', undefined, full ? { full: 1 } : {});
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
   }
 
   /**
