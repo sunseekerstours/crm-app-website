@@ -1,0 +1,38 @@
+import { Body, Controller, Get, Post } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { TelegramService } from './telegram.service';
+import { RequirePermissions } from '@app/common/decorators/permissions.decorator';
+import { Permission } from '@app/common/permissions';
+
+class TestTelegramDto {
+  botToken?: string;
+  chatId?: string;
+}
+
+@ApiTags('telegram')
+@ApiBearerAuth()
+@Controller('telegram')
+export class TelegramController {
+  constructor(private readonly telegramService: TelegramService) {}
+
+  @Get('status')
+  @RequirePermissions(Permission.SETTINGS_VIEW)
+  async getStatus() {
+    const config = await this.telegramService.getConfig();
+    return {
+      enabled: config.enabled,
+      chatIdConfigured: Boolean(config.chatId),
+      botTokenConfigured: Boolean(config.botToken),
+      maskedToken: config.botToken
+        ? `${config.botToken.slice(0, 4)}...${config.botToken.slice(-4)}`
+        : null,
+      chatId: config.chatId || null,
+    };
+  }
+
+  @Post('test')
+  @RequirePermissions(Permission.SETTINGS_UPDATE)
+  async testBot(@Body() dto: TestTelegramDto) {
+    return this.telegramService.testConnection(dto.botToken, dto.chatId);
+  }
+}

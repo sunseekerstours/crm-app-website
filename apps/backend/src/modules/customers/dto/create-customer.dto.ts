@@ -77,4 +77,20 @@ export class CreateCustomerDto {
   @IsOptional()
   @IsString()
   linkedDealId?: string;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
+
+  @IsOptional()
+  @IsString()
+  followUpReminderDate?: string;
+
+  @IsOptional()
+  @IsString()
+  followUpReminderTitle?: string;
+
+  @IsOptional()
+  @IsString()
+  followUpReminderPriority?: string;
 }

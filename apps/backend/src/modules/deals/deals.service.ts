@@ -6,6 +6,7 @@ import { ApiNotFoundException, ErrorCode } from '@app/common/errors';
 import { RequestContext } from '@app/common/request-context';
 import { CreateDealDto } from './dto/create-deal.dto';
 import { UpdateDealDto } from './dto/update-deal.dto';
+import { SalesAutomationService } from '@app/modules/automation/sales-automation.service';
 import { Prisma, AuditableAction, DealStage } from '@prisma/client';
 
 @Injectable()
@@ -14,6 +15,7 @@ export class DealsService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly timeline: TimelineService,
+    private readonly salesAutomation: SalesAutomationService,
   ) {}
 
   async create(dto: CreateDealDto, ctx: RequestContext) {
@@ -175,6 +177,13 @@ export class DealsService {
         actorId: ctx.userId,
         data: { dealId: id, from: existing.stage, to: updated.stage },
       });
+
+      // Automation #7: Deal Won → Auto-Invoice & Quote Accepted
+      if (updated.stage === DealStage.WON) {
+        await this.salesAutomation.handleDealWon(id, ctx.userId ?? undefined).catch((err) => {
+          // Non-blocking
+        });
+      }
     }
 
     return updated;

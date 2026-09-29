@@ -6,6 +6,7 @@ import { ApiNotFoundException, ApiConflictException, ErrorCode } from '@app/comm
 import { RequestContext } from '@app/common/request-context';
 import { CreateLeadDto } from './dto/create-lead.dto';
 import { UpdateLeadDto } from './dto/update-lead.dto';
+import { SalesAutomationService } from '@app/modules/automation/sales-automation.service';
 import { Prisma, AuditableAction, LeadStage } from '@prisma/client';
 
 @Injectable()
@@ -14,9 +15,23 @@ export class LeadsService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly timeline: TimelineService,
+    private readonly salesAutomation: SalesAutomationService,
   ) {}
 
   async create(dto: CreateLeadDto, ctx: RequestContext) {
+    // 1. Duplicate check (Automation #11)
+    const dup = await this.salesAutomation.detectDuplicate({
+      email: dto.email,
+      phone: dto.phone || dto.whatsapp,
+    });
+
+    const tags = [...(dto.tags ?? [])];
+    if (dup.isDuplicate) {
+      tags.push('DUPLICATE_CHECK_MATCHED');
+    }
+
+    const assignedUserId = dto.assignedUserId || (dup.isDuplicate ? dup.assignedStaffId : undefined);
+    const customerId = dup.existingCustomerId;
     const lead = await this.prisma.lead.create({
       data: {
         firstName: dto.firstName,
@@ -31,12 +46,18 @@ export class LeadsService {
         estimatedValue: dto.estimatedValue,
         currency: dto.currency,
         leadScore: dto.leadScore,
-        assignedUserId: dto.assignedUserId,
+        assignedUserId,
+        customerId,
         stage: dto.stage ?? LeadStage.NEW,
         nextAction: dto.nextAction,
         lastContactAt: dto.lastContactAt ? new Date(dto.lastContactAt) : undefined,
-        tags: dto.tags ?? [],
+        tags,
       },
+    });
+
+    // Run Sales Automations (Auto-Assignment, Immediate Follow-Up Task, Telegram Alert)
+    await this.salesAutomation.handleNewLead(lead).catch((err) => {
+      // Non-blocking fallback
     });
 
     await this.audit.record({
@@ -163,6 +184,13 @@ export class LeadsService {
         actorId: ctx.userId,
         data: { from: existing.stage, to: updated.stage },
       });
+
+      // Automation #4: Lead Qualified → Sales Opportunity (Deal)
+      if (updated.stage === LeadStage.QUALIFIED) {
+        await this.salesAutomation.handleLeadQualified(id).catch((err) => {
+          // Non-blocking
+        });
+      }
     } else {
       await this.timeline.record({
         entityType: 'LEAD',

@@ -6,7 +6,7 @@ import { ApiNotFoundException, ErrorCode } from '@app/common/errors';
 import { RequestContext } from '@app/common/request-context';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
-import { AuditableAction } from '@prisma/client';
+import { AuditableAction, TaskPriority, TaskStatus } from '@prisma/client';
 
 export interface ListParams {
   page: number;
@@ -80,6 +80,60 @@ export class CustomersService {
       description: `${customer.firstName} ${customer.lastName}`,
       actorId: ctx.userId,
     });
+
+    // Optional initial Note on Customer
+    if (dto.notes?.trim()) {
+      await this.prisma.note.create({
+        data: {
+          content: dto.notes.trim(),
+          customerId: customer.id,
+          createdById: ctx.userId ?? undefined,
+        },
+      });
+
+      await this.timeline.record({
+        entityType: 'CUSTOMER',
+        entityId: customer.id,
+        type: 'customer.note_added',
+        title: 'Initial note added',
+        description: dto.notes.trim().slice(0, 150),
+        actorId: ctx.userId,
+      });
+    }
+
+    // Optional follow-up reminder Task
+    if (dto.followUpReminderDate) {
+      const dueDate = new Date(dto.followUpReminderDate);
+      if (!isNaN(dueDate.getTime())) {
+        const priority = dto.followUpReminderPriority && ['LOW', 'NORMAL', 'HIGH', 'URGENT'].includes(dto.followUpReminderPriority)
+          ? (dto.followUpReminderPriority as TaskPriority)
+          : TaskPriority.HIGH;
+
+        const reminderTitle = dto.followUpReminderTitle?.trim() || `Follow-up with ${customer.firstName} ${customer.lastName}`;
+
+        await this.prisma.task.create({
+          data: {
+            title: reminderTitle,
+            description: dto.notes ? `Customer Note: ${dto.notes.trim()}` : `Scheduled follow-up reminder for customer ${customer.firstName} ${customer.lastName}.`,
+            dueDate,
+            priority,
+            status: TaskStatus.PENDING,
+            customerId: customer.id,
+            assignedToId: customer.assignedStaffId || ctx.userId || undefined,
+            createdById: ctx.userId || undefined,
+          },
+        });
+
+        await this.timeline.record({
+          entityType: 'CUSTOMER',
+          entityId: customer.id,
+          type: 'customer.followup_scheduled',
+          title: 'Follow-up scheduled',
+          description: `${reminderTitle} due ${dueDate.toLocaleDateString()}`,
+          actorId: ctx.userId,
+        });
+      }
+    }
 
     return customer;
   }

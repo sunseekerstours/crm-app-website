@@ -40,6 +40,11 @@ export interface AppConfig {
     apiKey: string;
     apiSecret: string;
   };
+  telegram: {
+    enabled: boolean;
+    botToken: string;
+    chatId: string;
+  };
 }
 
 export const configuration = (): AppConfig => ({
@@ -83,5 +88,10 @@ export const configuration = (): AppConfig => ({
     endpoint: process.env.JETPACK_CRM_ENDPOINT ?? 'https://sunseekerstours.com/zbs_api/',
     apiKey: process.env.JETPACK_CRM_API_KEY ?? '',
     apiSecret: process.env.JETPACK_CRM_API_SECRET ?? '',
+  },
+  telegram: {
+    enabled: process.env.TELEGRAM_ENABLED === 'true',
+    botToken: process.env.TELEGRAM_BOT_TOKEN ?? '',
+    chatId: process.env.TELEGRAM_CHAT_ID ?? '',
   },
 });

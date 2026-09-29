@@ -148,8 +148,8 @@ export function Badge({ children }: { children: ReactNode }) {
   return <span className="badge">{children}</span>;
 }
 
-export function Spinner() {
-  return <div className="spinner" aria-label="Loading" />;
+export function Spinner({ size }: { size?: number } = {}) {
+  return <div className="spinner" aria-label="Loading" style={size ? { width: size, height: size } : undefined} />;
 }
 
 export function EmptyState({ message }: { message: string }) {

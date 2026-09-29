@@ -8,16 +8,17 @@ import Logo from '@/components/Logo';
 
 const NAV = [
   { href: '/', label: 'Dashboard', exact: true, permission: '' },
+  { href: '/crm/tours', label: 'Tours & Trips', permission: 'tours.view' },
+  { href: '/crm/destinations', label: 'Destinations', permission: 'destinations.view' },
+  { href: '/crm/products', label: 'Products & Services', permission: 'products.view' },
   { href: '/content/pages', label: 'Site Pages', permission: 'pages.view' },
+  { href: '/settings/automations', label: 'Sales Automations', permission: 'settings.view' },
   { href: '/settings', label: 'Site Settings', permission: 'settings.view' },
   { href: '/users', label: 'Users & Roles', permission: 'users.view' },
   { href: '/audit', label: 'Audit Log', permission: 'audit.view' },
 ];
 
 const CRM_NAV = [
-  { href: '/crm/tours', label: 'Tours & Trips', permission: 'tours.view' },
-  { href: '/crm/destinations', label: 'Destinations', permission: 'destinations.view' },
-  { href: '/crm/products', label: 'Products & Services', permission: 'products.view' },
   { href: '/crm/customers', label: 'Customers', permission: 'customers.view' },
   { href: '/crm/leads', label: 'Leads', permission: 'leads.view' },
   { href: '/crm/deals', label: 'Deals', permission: 'deals.view' },
@@ -51,6 +52,12 @@ function getIcon(label: string) {
       return (
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25v-2.25z" />
+        </svg>
+      );
+    case 'Sales Automations':
+      return (
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
         </svg>
       );
     case 'Site Pages':

@@ -1,0 +1,173 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: sunseekers-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-sunseekers}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-sunseekers}
+    volumes:
+      - sunseekers_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sunseekers} -d ${POSTGRES_DB:-sunseekers}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - default
+
+  redis:
+    image: redis:7-alpine
+    container_name: sunseekers-redis
+    restart: unless-stopped
+    volumes:
+      - sunseekers_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - default
+
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    container_name: sunseekers-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      API_PREFIX: api/v1
+      DATABASE_URL: postgresql://${POSTGRES_USER:-sunseekers}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-sunseekers}?schema=public
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?JWT_ACCESS_SECRET is required}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET is required}
+      JWT_ACCESS_TTL: 900
+      JWT_REFRESH_TTL: 604800
+      BCRYPT_SALT_ROUNDS: 10
+      CORS_ORIGINS: https://sunseekers-crm-69-62-106-189.sslip.io,https://sunseekers-admin-69-62-106-189.sslip.io,https://sunseekers-site-69-62-106-189.sslip.io,http://localhost:3000,http://localhost:3001,http://localhost:3002,http://localhost:3003
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@sunseeker.local}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      AUTOMATION_ENABLED: "true"
+      AUTOMATION_INTERVAL_MS: "3600000"
+      AUTOMATION_REMINDER_WINDOW_DAYS: "3"
+      AUTOMATION_STALE_LEAD_DAYS: "7"
+      AUTOMATION_INVOICE_OVERDUE_DAYS: "1"
+      JETPACK_CRM_ENABLED: ${JETPACK_CRM_ENABLED:-false}
+      JETPACK_CRM_ENDPOINT: ${JETPACK_CRM_ENDPOINT:-https://sunseekerstours.com/zbs_api/}
+      JETPACK_CRM_API_KEY: ${JETPACK_CRM_API_KEY:-}
+      JETPACK_CRM_API_SECRET: ${JETPACK_CRM_API_SECRET:-}
+    networks:
+      - default
+      - dokploy-network
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=dokploy-network
+      - traefik.http.routers.sunseekers-api.rule=Host(`sunseekers-api-69-62-106-189.sslip.io`)
+      - traefik.http.routers.sunseekers-api.entrypoints=web
+      - traefik.http.routers.sunseekers-api.middlewares=redirect-to-https@file
+      - traefik.http.routers.sunseekers-api-secure.rule=Host(`sunseekers-api-69-62-106-189.sslip.io`)
+      - traefik.http.routers.sunseekers-api-secure.entrypoints=websecure
+      - traefik.http.routers.sunseekers-api-secure.tls.certresolver=letsencrypt
+      - traefik.http.services.sunseekers-api-secure.loadbalancer.server.port=3000
+
+  admin:
+    build:
+      context: .
+      dockerfile: apps/admin/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: https://sunseekers-api-69-62-106-189.sslip.io/api/v1
+    container_name: sunseekers-admin
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      NODE_ENV: production
+      PORT: 3003
+      NEXT_PUBLIC_API_URL: https://sunseekers-api-69-62-106-189.sslip.io/api/v1
+    networks:
+      - default
+      - dokploy-network
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=dokploy-network
+      - traefik.http.routers.sunseekers-admin.rule=Host(`sunseekers-admin-69-62-106-189.sslip.io`)
+      - traefik.http.routers.sunseekers-admin.entrypoints=web
+      - traefik.http.routers.sunseekers-admin.middlewares=redirect-to-https@file
+      - traefik.http.routers.sunseekers-admin-secure.rule=Host(`sunseekers-admin-69-62-106-189.sslip.io`)
+      - traefik.http.routers.sunseekers-admin-secure.entrypoints=websecure
+      - traefik.http.routers.sunseekers-admin-secure.tls.certresolver=letsencrypt
+      - traefik.http.services.sunseekers-admin-secure.loadbalancer.server.port=3003
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: https://sunseekers-api-69-62-106-189.sslip.io/api/v1
+    container_name: sunseekers-crm
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      NEXT_PUBLIC_API_URL: https://sunseekers-api-69-62-106-189.sslip.io/api/v1
+    networks:
+      - default
+      - dokploy-network
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=dokploy-network
+      - traefik.http.routers.sunseekers-crm.rule=Host(`sunseekers-crm-69-62-106-189.sslip.io`)
+      - traefik.http.routers.sunseekers-crm.entrypoints=web
+      - traefik.http.routers.sunseekers-crm.middlewares=redirect-to-https@file
+      - traefik.http.routers.sunseekers-crm-secure.rule=Host(`sunseekers-crm-69-62-106-189.sslip.io`)
+      - traefik.http.routers.sunseekers-crm-secure.entrypoints=websecure
+      - traefik.http.routers.sunseekers-crm-secure.tls.certresolver=letsencrypt
+      - traefik.http.services.sunseekers-crm-secure.loadbalancer.server.port=3001
+
+  site:
+    build:
+      context: .
+      dockerfile: apps/site/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: https://sunseekers-api-69-62-106-189.sslip.io/api/v1
+    container_name: sunseekers-site
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      NODE_ENV: production
+      PORT: 3002
+      NEXT_PUBLIC_API_URL: https://sunseekers-api-69-62-106-189.sslip.io/api/v1
+    networks:
+      - default
+      - dokploy-network
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=dokploy-network
+      - traefik.http.routers.sunseekers-site.rule=Host(`sunseekers-site-69-62-106-189.sslip.io`)
+      - traefik.http.routers.sunseekers-site.entrypoints=web
+      - traefik.http.routers.sunseekers-site.middlewares=redirect-to-https@file
+      - traefik.http.routers.sunseekers-site-secure.rule=Host(`sunseekers-site-69-62-106-189.sslip.io`)
+      - traefik.http.routers.sunseekers-site-secure.entrypoints=websecure
+      - traefik.http.routers.sunseekers-site-secure.tls.certresolver=letsencrypt
+      - traefik.http.services.sunseekers-site-secure.loadbalancer.server.port=3002
+
+volumes:
+  sunseekers_pgdata:
+  sunseekers_redis_data:
+
+networks:
+  dokploy-network:
+    external: true

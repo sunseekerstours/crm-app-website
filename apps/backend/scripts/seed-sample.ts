@@ -6,7 +6,7 @@ const NOW = Date.now();
 const daysFromNow = (d: number) => new Date(NOW + d * 24 * 60 * 60 * 1000);
 
 async function main(): Promise<void> {
-  const gh = (n: number) =>
+  const gh = (n: { slug: string; name: string; country: string; region: string; summary: string; description: string }) =>
     prisma.destination.upsert({
       where: { slug: n.slug },
       create: { name: n.name, slug: n.slug, country: n.country, region: n.region, summary: n.summary, description: n.description, isActive: true },

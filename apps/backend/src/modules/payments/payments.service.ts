@@ -5,6 +5,7 @@ import { ApiNotFoundException, ApiConflictException, ErrorCode } from '@app/comm
 import { RequestContext } from '@app/common/request-context';
 import { InvoicesService } from '@app/modules/invoices/invoices.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
+import { SalesAutomationService } from '@app/modules/automation/sales-automation.service';
 import { Prisma, AuditableAction, PaymentMethod, PaymentStatus } from '@prisma/client';
 
 export interface PaymentListParams {
@@ -23,6 +24,7 @@ export class PaymentsService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly invoicesService: InvoicesService,
+    private readonly salesAutomation: SalesAutomationService,
   ) {}
 
   async create(dto: CreatePaymentDto, ctx: RequestContext) {
@@ -92,6 +94,11 @@ export class PaymentsService {
       ipAddress: ctx.ipAddress,
       userAgent: ctx.userAgent,
       requestId: ctx.requestId,
+    });
+
+    // Automation #8 & #10: Auto-Receipt, Booking Confirmation, Post-Sale Care Task, Telegram Alert
+    await this.salesAutomation.handlePaymentRecorded(payment).catch((err) => {
+      // Non-blocking
     });
 
     return payment;

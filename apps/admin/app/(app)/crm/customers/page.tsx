@@ -56,6 +56,11 @@ const initialForm = {
   productIds: [] as string[],
   linkedLeadId: '',
   linkedDealId: '',
+  notes: '',
+  scheduleFollowUp: false,
+  followUpReminderDate: '',
+  followUpReminderTitle: '',
+  followUpReminderPriority: 'HIGH',
 };
 
 export default function CrmCustomersPage() {
@@ -168,6 +173,11 @@ export default function CrmCustomersPage() {
       productIds: (c.products ?? []).map((p) => p.id),
       linkedLeadId: '',
       linkedDealId: '',
+      notes: '',
+      scheduleFollowUp: false,
+      followUpReminderDate: '',
+      followUpReminderTitle: '',
+      followUpReminderPriority: 'HIGH',
     });
     void loadNotes(c.id);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -185,7 +195,7 @@ export default function CrmCustomersPage() {
     e.preventDefault();
     setSubmitting(true);
     setFormError(null);
-    const body = {
+    const body: Record<string, any> = {
       firstName: form.firstName || undefined,
       lastName: form.lastName || undefined,
       email: form.email || undefined,
@@ -195,7 +205,15 @@ export default function CrmCustomersPage() {
       productIds: form.productIds.length ? form.productIds : undefined,
       linkedLeadId: form.linkedLeadId || undefined,
       linkedDealId: form.linkedDealId || undefined,
+      notes: form.notes || undefined,
     };
+
+    if (form.scheduleFollowUp && form.followUpReminderDate) {
+      body.followUpReminderDate = new Date(form.followUpReminderDate).toISOString();
+      body.followUpReminderTitle = form.followUpReminderTitle || `Follow up with ${form.firstName} ${form.lastName}`;
+      body.followUpReminderPriority = form.followUpReminderPriority;
+    }
+
     try {
       if (editing) {
         await api.patch(`/customers/${editing.id}`, body);
@@ -291,6 +309,68 @@ export default function CrmCustomersPage() {
               </div>
             )}
           </div>
+
+          {/* Initial Customer Notes / Special Requirements */}
+          <div style={{ marginTop: 16 }}>
+            <label className="field">
+              <span className="field-label">Customer Notes &amp; Special Preferences</span>
+              <textarea
+                className="input"
+                rows={3}
+                placeholder="Add background notes, travel preferences, dietary requests, or referral details..."
+                value={form.notes}
+                onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                style={{ width: '100%', resize: 'vertical' }}
+              />
+            </label>
+          </div>
+
+          {/* Set Follow-Up Reminder */}
+          <div style={{ marginTop: 16, padding: '14px 16px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontWeight: 600, fontSize: 14, color: '#1e293b' }}>
+              <input
+                type="checkbox"
+                checked={form.scheduleFollowUp}
+                onChange={(e) => setForm({ ...form, scheduleFollowUp: e.target.checked })}
+                style={{ width: 18, height: 18, accentColor: 'var(--brand, #0f766e)' }}
+              />
+              <span>⏰ Schedule Follow-up Reminder</span>
+            </label>
+
+            {form.scheduleFollowUp && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginTop: 12 }}>
+                <Input
+                  label="Follow-up Date & Time"
+                  name="followUpReminderDate"
+                  type="datetime-local"
+                  required={form.scheduleFollowUp}
+                  value={form.followUpReminderDate}
+                  onChange={(e) => setForm({ ...form, followUpReminderDate: e.target.value })}
+                />
+                <Input
+                  label="Reminder Reason / Task Title"
+                  name="followUpReminderTitle"
+                  placeholder="e.g. Call to discuss tour itinerary"
+                  value={form.followUpReminderTitle}
+                  onChange={(e) => setForm({ ...form, followUpReminderTitle: e.target.value })}
+                />
+                <label className="field">
+                  <span className="field-label">Priority</span>
+                  <select
+                    className="input"
+                    value={form.followUpReminderPriority}
+                    onChange={(e) => setForm({ ...form, followUpReminderPriority: e.target.value })}
+                  >
+                    <option value="NORMAL">Normal</option>
+                    <option value="HIGH">High Priority</option>
+                    <option value="URGENT">Urgent</option>
+                    <option value="LOW">Low</option>
+                  </select>
+                </label>
+              </div>
+            )}
+          </div>
+
           {formError ? <div className="error-state" style={{ marginTop: 12 }}>{formError}</div> : null}
           <div className="form-actions">
             <Button type="submit" disabled={submitting}>

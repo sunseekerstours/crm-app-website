@@ -3,6 +3,7 @@ import { PrismaService } from '@app/prisma/prisma.service';
 import { ApiNotFoundException, ErrorCode } from '@app/common/errors';
 import { DepartureStatus, TourStatus, PageStatus, LeadSource, LeadStage } from '@prisma/client';
 import { JetpackCrmService } from '@app/modules/jetpack-crm/jetpack-crm.service';
+import { SalesAutomationService } from '@app/modules/automation/sales-automation.service';
 import { CreatePublicInquiryDto } from './dto/create-public-inquiry.dto';
 
 const ACTIVE_TOUR_STATUSES: TourStatus[] = [TourStatus.ACTIVE];
@@ -14,6 +15,7 @@ export class PublicService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jetpackCrm: JetpackCrmService,
+    private readonly salesAutomation: SalesAutomationService,
   ) {}
 
   async listTours() {
@@ -231,8 +233,15 @@ export class PublicService {
     const firstName = nameParts[0] || 'Web';
     const lastName = nameParts.slice(1).join(' ') || 'Customer';
 
+    // Automation #11: Duplicate Detection
+    const dup = await this.salesAutomation.detectDuplicate({
+      email: dto.email,
+      phone: dto.phone,
+    });
+
     const tags = [dto.serviceType.toUpperCase(), 'WEBSITE_REQUEST'];
     if (dto.category) tags.push(dto.category);
+    if (dup.isDuplicate) tags.push('EXISTING_CUSTOMER');
 
     const lead = await this.prisma.lead.create({
       data: {
@@ -245,11 +254,14 @@ export class PublicService {
         destination: dto.destination || undefined,
         interestedTour: dto.interestedTour || undefined,
         campaign: `Website ${dto.serviceType}`,
+        customerId: dup.existingCustomerId,
+        assignedUserId: dup.assignedStaffId,
         tags,
         notes: {
           create: {
             content: [
               `🌐 Service Requested: ${dto.serviceType}`,
+              dup.isDuplicate ? `⚠️ Note: Match found with existing customer record (${dup.existingCustomerName})` : null,
               dto.destination ? `📍 Destination: ${dto.destination}` : null,
               dto.interestedTour ? `🎒 Tour: ${dto.interestedTour}` : null,
               dto.startDate ? `📅 Start / Check-in: ${dto.startDate}` : null,
@@ -265,6 +277,11 @@ export class PublicService {
           },
         },
       },
+    });
+
+    // Run Sales Automations (Auto-Assignment, Immediate Follow-Up Task, Telegram Alert)
+    await this.salesAutomation.handleNewLead(lead).catch((err) => {
+      this.logger.warn(`Sales automation error for inquiry: ${err?.message}`);
     });
 
     // Asynchronously sync new inquiry lead to Jetpack CRM

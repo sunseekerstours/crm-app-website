@@ -13,6 +13,9 @@ import {
   UserStatus,
 } from '@prisma/client';
 
+import { SalesAutomationService } from './sales-automation.service';
+import { JetpackCrmService } from '@app/modules/jetpack-crm/jetpack-crm.service';
+
 const OPERATIONS_ROLES = ['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'OPERATIONS_STAFF'];
 const FINANCE_ROLES = ['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'FINANCE'];
 
@@ -22,6 +25,9 @@ export interface RunSummary {
   paymentReminders: number;
   leadFollowUps: number;
   checklistTodos: number;
+  inactivityEscalations?: number;
+  quoteFollowUps?: number;
+  jetpackSynced?: number;
 }
 
 @Injectable()
@@ -34,6 +40,8 @@ export class AutomationService implements OnModuleInit, OnModuleDestroy {
     private readonly notifications: NotificationsService,
     private readonly audit: AuditService,
     private readonly config: ConfigService,
+    private readonly salesAutomation: SalesAutomationService,
+    private readonly jetpackCrm: JetpackCrmService,
   ) {}
 
   onModuleInit(): void {
@@ -61,12 +69,25 @@ export class AutomationService implements OnModuleInit, OnModuleDestroy {
     const windowDays = this.config.getOrThrow<number>('automation.reminderWindowDays');
     const staleLeadDays = this.config.getOrThrow<number>('automation.staleLeadDays');
 
+    const salesSweeps = await this.salesAutomation.runSweeps().catch((err) => {
+      this.logger.error('Sales automation sweeps failed', err?.stack);
+      return { inactivityEscalations: 0, quoteFollowUps: 0 };
+    });
+
+    const jetpackSync = await this.jetpackCrm.importFromJetpack({ limit: 50 }).catch((err) => {
+      this.logger.warn(`Jetpack CRM auto-sync skipped: ${err?.message}`);
+      return null;
+    });
+
     const summary: RunSummary = {
       departureReminders: await this.remindDepartures(now, windowDays),
       invoiceOverdue: await this.remindInvoicesOverdue(now),
       paymentReminders: await this.remindBookingPayments(now, windowDays),
       leadFollowUps: await this.remindLeads(now, staleLeadDays),
       checklistTodos: await this.remindChecklists(now, windowDays),
+      inactivityEscalations: salesSweeps.inactivityEscalations,
+      quoteFollowUps: salesSweeps.quoteFollowUps,
+      jetpackSynced: (jetpackSync?.customersCreated ?? 0) + (jetpackSync?.leadsCreated ?? 0),
     };
 
     this.logger.log(`Reminder sweep complete: ${JSON.stringify(summary)}`);
