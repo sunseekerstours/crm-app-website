@@ -16,10 +16,6 @@ export class CreateBookingDto {
 
   @IsOptional()
   @IsString()
-  departureId?: string;
-
-  @IsOptional()
-  @IsString()
   tourName?: string;
 
   @IsOptional()

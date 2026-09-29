@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { PrismaClient, TourStatus, PageStatus, DepartureStatus } from '@prisma/client';
+import { PrismaClient, TourStatus, PageStatus } from '@prisma/client';
 
 /**
  * Wordpress -> Platform migration importer.
@@ -9,7 +9,7 @@ import { PrismaClient, TourStatus, PageStatus, DepartureStatus } from '@prisma/c
  * and idempotently imports:
  *   - destinations  (from tax_destination)
  *   - published pages (from pages)
- *   - tours + tour days + departures (from trips, itineraries, available_times)
+ *   - tours + tour days + upcoming dates (from trips, itineraries, available_times)
  *
  * The live WordPress site (sunseekerstours.com) is NOT touched - this is a
  * one-way migration from the captured snapshot (PRD golden rule 13).
@@ -264,29 +264,22 @@ async function main(): Promise<void> {
     }
 
     const dates = futureDepartureDates(t.available_times?.[0]?.items);
-    for (const start of dates) {
+    if (dates.length > 0) {
+      const start = dates[0]!;
       const end = new Date(start.getTime() + Math.max(durationDays, 1) * 24 * 60 * 60 * 1000);
-      const existing = await prisma.departure.findFirst({ where: { tourId: row.id, startDate: start } });
-      if (!existing) {
-        await prisma.departure.create({
-          data: {
-            tourId: row.id,
-            startDate: start,
-            endDate: end,
-            status: DepartureStatus.SCHEDULED,
-            minPax: toNullableNumber(t.min_pax) ?? 1,
-            maxPax: toNullableNumber(t.max_pax),
-            price: priceNum,
-            currency,
-          },
-        });
-        departureCount++;
-      }
+      const dateList = dates
+        .map((d) => d.toISOString().slice(0, 10))
+        .join(', ');
+      await prisma.tour.update({
+        where: { id: row.id },
+        data: { startDate: start, endDate: end, availabilityNote: `Available dates: ${dateList}` },
+      });
+      departureCount += dates.length;
     }
 
     tourCount++;
   }
-  console.log(`Tours: ${tourCount} | Future departures created: ${departureCount}`);
+  console.log(`Tours: ${tourCount} | Upcoming dates imported: ${departureCount}`);
 }
 
 main()

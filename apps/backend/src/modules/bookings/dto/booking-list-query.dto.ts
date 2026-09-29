@@ -8,10 +8,6 @@ export class BookingListQueryDto extends ListQueryDto {
   customerId?: string;
 
   @IsOptional()
-  @IsString()
-  departureId?: string;
-
-  @IsOptional()
   @IsEnum(BookingStatus)
   status?: BookingStatus;
 

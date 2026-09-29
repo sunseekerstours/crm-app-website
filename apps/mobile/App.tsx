@@ -15,7 +15,6 @@ import DealFormScreen from './src/screens/DealForm';
 import TourFormScreen from './src/screens/TourForm';
 import PaymentFormScreen from './src/screens/PaymentForm';
 import BookingFormScreen from './src/screens/BookingForm';
-import DepartureFormScreen from './src/screens/DepartureForm';
 import ProductScreen from './src/screens/ProductScreen';
 import { Drawer } from './src/components/Drawer';
 import { AppHeader } from './src/components/ui';
@@ -63,14 +62,12 @@ export default function App() {
       tourForm: { name: 'list', resource: 'tours' },
       paymentForm: { name: 'list', resource: 'payments' },
       bookingForm: { name: 'list', resource: 'bookings' },
-      departureForm: { name: 'list', resource: 'departures' },
       productList: { name: 'dashboard' },
       productForm: { name: 'dashboard' },
       notifications: { name: 'dashboard' },
       settings: { name: 'dashboard' },
       home: { name: 'dashboard' },
-    };
-    setRoute(backMap[route.name] ?? { name: 'dashboard' });
+    };    setRoute(backMap[route.name] ?? { name: 'dashboard' });
   };
 
   const isRoot = route.name === 'dashboard' || route.name === 'home';
@@ -96,10 +93,8 @@ export default function App() {
                       ? route.tourId ? 'Edit Tour' : 'New Tour'
                       : route.name === 'paymentForm'
                         ? 'Record Payment'
-                        : route.name === 'bookingForm'
-                          ? 'New Booking'
-                          : route.name === 'departureForm'
-                            ? 'New Departure'
+                          : route.name === 'bookingForm'
+                            ? 'New Booking'
                             : route.name === 'productList'
                               ? 'Products'
                               : '';
@@ -236,17 +231,6 @@ export default function App() {
         <BookingFormScreen
           onBack={() => setRoute({ name: 'list', resource: 'bookings' })}
           onDone={() => setRoute({ name: 'list', resource: 'bookings' })}
-          hasPerm={(p) => hasPermission(user, p)}
-        />
-      );
-      break;
-    }
-
-    case 'departureForm': {
-      content = (
-        <DepartureFormScreen
-          onBack={() => setRoute({ name: 'list', resource: 'departures' })}
-          onDone={() => setRoute({ name: 'list', resource: 'departures' })}
           hasPerm={(p) => hasPermission(user, p)}
         />
       );

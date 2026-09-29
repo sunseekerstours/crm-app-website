@@ -6,10 +6,6 @@ export class CreateChecklistItemDto {
 
   @IsOptional()
   @IsString()
-  departureId?: string;
-
-  @IsOptional()
-  @IsString()
   description?: string;
 
   @IsOptional()

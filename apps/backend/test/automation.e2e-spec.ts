@@ -68,7 +68,6 @@ describe('Automation & Notifications Task 9 (e2e)', () => {
         prisma.invoice.deleteMany({ where: { id: { in: invoiceIds } } }),
         prisma.bookingTraveler.deleteMany({ where: { bookingId: { in: createdIds } } }),
         prisma.booking.deleteMany({ where: { customerId: { in: createdIds } } }),
-        prisma.departure.deleteMany({ where: { id: { in: createdIds } } }),
         prisma.tour.deleteMany({ where: { id: { in: createdIds } } }),
         prisma.customer.deleteMany({ where: { id: { in: createdIds } } }),
         prisma.user.deleteMany({ where: { email: adminEmail } }),
@@ -84,7 +83,7 @@ describe('Automation & Notifications Task 9 (e2e)', () => {
 
   it('turns preferences on/off for a type (NOTIFICATION_MANAGE)', async () => {
     const prefs = await auth(agent().get(path('/notifications/preferences'))).expect(200);
-    expect(prefs.body.data.DEPARTURE_REMINDER).toBeDefined();
+    expect(prefs.body.data.INVOICE_OVERDUE).toBeDefined();
 
     const updated = await auth(agent().patch(path('/notifications/preferences'))).send({
       type: 'PAYMENT_REMINDER',
@@ -96,7 +95,7 @@ describe('Automation & Notifications Task 9 (e2e)', () => {
     expect(updated.body.data.PAYMENT_REMINDER.email).toBe(false);
   });
 
-  it('creates an upcoming departure and an overdue invoice', async () => {
+  it('creates an overdue invoice', async () => {
     const customer = await auth(agent().post(path('/customers')))
       .send({
         firstName: 'Efua',
@@ -113,43 +112,32 @@ describe('Automation & Notifications Task 9 (e2e)', () => {
     const tourId = tour.body.data.id;
     createdIds.push(tourId);
 
-    const dep = await auth(agent().post(path('/departures')))
-      .send({
-        tourId: tourId,
-        startDate: daysFromNow(2),
-        endDate: daysFromNow(6),
-        maxPax: 12,
-        price: 4800,
-      })
-      .expect(201);
-    createdIds.push(dep.body.data.id);
+    for (const amount of [1500, 900]) {
+      const inv = await auth(agent().post(path('/invoices')))
+        .send({ customerId, amount, currency: 'GHS' })
+        .expect(201);
+      invoiceIds.push(inv.body.data.id);
 
-    const inv = await auth(agent().post(path('/invoices')))
-      .send({ customerId, amount: 1500, currency: 'GHS' })
-      .expect(201);
-    invoiceIds.push(inv.body.data.id);
-
-    const issued = await auth(agent().patch(path('/invoices/' + inv.body.data.id))).send({
-      status: 'ISSUED',
-      dueDate: daysFromNow(-3),
-    });
-    expect(issued.status).toBe(200);
-    expect(issued.body.data.dueDate).toBeTruthy();
+      const issued = await auth(agent().patch(path('/invoices/' + inv.body.data.id))).send({
+        status: 'ISSUED',
+        dueDate: daysFromNow(-3),
+      });
+      expect(issued.status).toBe(200);
+      expect(issued.body.data.dueDate).toBeTruthy();
+    }
   });
 
   it('runs the reminder engine and generates notifications (AUTOMATION_RUN)', async () => {
     const res = await auth(agent().post(path('/automation/reminders/run'))).expect(201);
-    expect(res.body.data.departureReminders).toBeGreaterThanOrEqual(1);
-    expect(res.body.data.invoiceOverdue).toBeGreaterThanOrEqual(1);
+    expect(res.body.data.invoiceOverdue).toBeGreaterThanOrEqual(2);
   });
 
   it('lists generated notifications and exposes unread count', async () => {
     const unread = await auth(agent().get(path('/notifications/unread-count'))).expect(200);
-    expect(unread.body.data).toBeGreaterThanOrEqual(2);
+    expect(unread.body.data).toBeGreaterThanOrEqual(1);
 
     const list = await auth(agent().get(path('/notifications?limit=50'))).expect(200);
     const types = list.body.data.items.map((n: { type: string }) => n.type);
-    expect(types).toContain('DEPARTURE_REMINDER');
     expect(types).toContain('INVOICE_OVERDUE');
   });
 

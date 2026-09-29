@@ -29,6 +29,10 @@ enum AuditableAction {
   USER_STATUS_CHANGED
   USER_ROLE_ASSIGNED
   USER_ROLE_REMOVED
+  ROLE_CREATED
+  ROLE_UPDATED
+  ROLE_DELETED
+  ROLE_PERMISSIONS_UPDATED
   CUSTOMER_CREATED
   CUSTOMER_UPDATED
   CUSTOMER_DELETED
@@ -646,15 +650,6 @@ enum TourStatus {
   ARCHIVED
 }
 
-enum DepartureStatus {
-  SCHEDULED
-  OPEN
-  GUARANTEED
-  LOCKED
-  COMPLETED
-  CANCELLED
-}
-
 /// A place that tours visit/reference (PRD §Destination)
 model Destination {
   id          String   @id @default(uuid())
@@ -678,7 +673,7 @@ model Destination {
   @@map("destinations")
 }
 
-/// A sellable tour package (PRD §Tour). Tour != Departure (PRD 131).
+/// A sellable tour package (PRD §Tour)
 model Tour {
   id               String          @id @default(uuid())
   name             String
@@ -707,7 +702,6 @@ model Tour {
   destinations     TourDestination[]
   days             TourDay[]
   pricing          TourPricing[]
-  departures       Departure[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -766,47 +760,6 @@ model TourDay {
 
   @@unique([tourId, dayNumber])
   @@map("tour_days")
-}
-
-/// A fixed-date run of a tour (PRD §Departure).
-model Departure {
-  id          String           @id @default(uuid())
-  tourId      String
-  tour        Tour             @relation(fields: [tourId], references: [id])
-  startDate   DateTime
-  endDate     DateTime
-  status      DepartureStatus  @default(SCHEDULED)
-  minPax      Int              @default(1)
-  maxPax      Int?
-  bookedCount Int              @default(0)
-  price       Decimal?         @db.Decimal(12, 2)
-  currency    String           @default("GHS")
-  note        String?
-  pricing     DeparturePricing[]
-  bookings    Booking[]  @relation("DepartureBookings")
-  quotes      Quote[]    @relation("DepartureQuotes")
-  assignments TripAssignment[]
-  checklists  ChecklistItem[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([tourId])
-  @@index([startDate])
-  @@map("departures")
-}
-
-/// Pricing tiers for a departure (e.g. Adult, Child, Private, Single supplement)
-model DeparturePricing {
-  id          String    @id @default(uuid())
-  departureId String
-  departure   Departure @relation(fields: [departureId], references: [id], onDelete: Cascade)
-  name        String
-  price       Decimal?  @db.Decimal(12, 2)
-  currency    String    @default("GHS")
-
-  @@index([departureId])
-  @@map("departure_pricing")
 }
 
 // ============================================================================
@@ -935,8 +888,6 @@ model Booking {
   bookingNumber String        @unique
   customerId    String
   customer      Customer      @relation(fields: [customerId], references: [id])
-  departureId   String?
-  departure     Departure?    @relation("DepartureBookings", fields: [departureId], references: [id])
   tourId        String?
   tourName      String?
   startDate     DateTime?
@@ -957,7 +908,6 @@ model Booking {
   updatedAt DateTime @updatedAt
 
   @@index([customerId])
-  @@index([departureId])
   @@index([status])
   @@map("bookings")
 }
@@ -983,8 +933,6 @@ model Quote {
   customer      Customer?   @relation(fields: [customerId], references: [id])
   dealId        String?
   deal          Deal?       @relation(fields: [dealId], references: [id])
-  departureId   String?
-  departure     Departure?  @relation("DepartureQuotes", fields: [departureId], references: [id])
   tourName      String?
   status        QuoteStatus @default(DRAFT)
   totalPrice    Decimal?    @db.Decimal(12, 2)
@@ -1146,7 +1094,6 @@ model Hotel {
   checkOutTime  String?
   notes         String?
   isActive      Boolean       @default(true)
-  assignments   TripAssignment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1168,7 +1115,6 @@ model Vehicle {
   driver           Driver?     @relation(fields: [driverId], references: [id])
   notes            String?
   isActive         Boolean     @default(true)
-  assignments      TripAssignment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1190,7 +1136,6 @@ model Guide {
   supplierId     String?
   supplier       Supplier?   @relation(fields: [supplierId], references: [id])
   isActive       Boolean     @default(true)
-  assignments    TripAssignment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1219,32 +1164,9 @@ model Driver {
   @@map("drivers")
 }
 
-/// Assignment of a resource (guide/hotel/vehicle) to a departure trip day
-model TripAssignment {
-  id          String    @id @default(uuid())
-  departureId String
-  departure   Departure @relation(fields: [departureId], references: [id], onDelete: Cascade)
-  dayNumber   Int?
-  guideId     String?
-  guide       Guide?    @relation(fields: [guideId], references: [id])
-  hotelId     String?
-  hotel       Hotel?    @relation(fields: [hotelId], references: [id])
-  vehicleId   String?
-  vehicle     Vehicle?  @relation(fields: [vehicleId], references: [id])
-  notes       String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([departureId])
-  @@map("trip_assignments")
-}
-
-/// A checklist item attached to a departure trip
+/// A standalone operations checklist item
 model ChecklistItem {
   id            String    @id @default(uuid())
-  departureId   String?
-  departure     Departure?  @relation(fields: [departureId], references: [id], onDelete: Cascade)
   title         String
   description   String?
   category      String?
@@ -1257,7 +1179,6 @@ model ChecklistItem {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([departureId])
   @@map("checklist_items")
 }
 

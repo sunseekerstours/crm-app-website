@@ -1,9 +1,6 @@
-import { PrismaClient, DepartureStatus, TourStatus } from '@prisma/client';
+import { PrismaClient, TourStatus } from '@prisma/client';
 
 const prisma = new PrismaClient();
-
-const NOW = Date.now();
-const daysFromNow = (d: number) => new Date(NOW + d * 24 * 60 * 60 * 1000);
 
 async function main(): Promise<void> {
   const gh = (n: { slug: string; name: string; country: string; region: string; summary: string; description: string }) =>
@@ -89,7 +86,7 @@ async function main(): Promise<void> {
     return tourRow;
   }
 
-  const ghanaClassic = await tour({
+  await tour({
     slug: 'ghana-classic',
     name: 'Ghana Classic',
     summary: 'Ten days through the history, culture and coastlines of Ghana.',
@@ -102,21 +99,7 @@ async function main(): Promise<void> {
     dests: ['accra', 'kumasi'],
   });
 
-  await prisma.departure.createMany({
-    data: [
-      {
-        tourId: ghanaClassic.id, startDate: daysFromNow(30), endDate: daysFromNow(40),
-        status: DepartureStatus.OPEN, price: 18500, currency: 'GHS', minPax: 4, maxPax: 16, bookedCount: 5,
-      },
-      {
-        tourId: ghanaClassic.id, startDate: daysFromNow(90), endDate: daysFromNow(100),
-        status: DepartureStatus.SCHEDULED, price: 18500, currency: 'GHS', minPax: 4, maxPax: 16, bookedCount: 0,
-      },
-    ],
-    skipDuplicates: true,
-  });
-
-  const nile = await tour({
+  await tour({
     slug: 'nile-odyssey',
     name: 'Nile Odyssey',
     summary: 'Seven days from the pyramids of Giza to the temples of Luxor.',
@@ -129,17 +112,7 @@ async function main(): Promise<void> {
     dests: ['cairo-nile'],
   });
 
-  await prisma.departure.createMany({
-    data: [
-      {
-        tourId: nile.id, startDate: daysFromNow(45), endDate: daysFromNow(52),
-        status: DepartureStatus.GUARANTEED, price: 22400, currency: 'GHS', minPax: 4, maxPax: 14, bookedCount: 9,
-      },
-    ],
-    skipDuplicates: true,
-  });
-
-  const sahara = await tour({
+  await tour({
     slug: 'sahara-starlight',
     name: 'Sahara Starlight',
     summary: 'Marrakech souks, Atlas trekking and a night under Saharan stars.',
@@ -152,16 +125,6 @@ async function main(): Promise<void> {
     dests: ['marrakech'],
   });
 
-  await prisma.departure.createMany({
-    data: [
-      {
-        tourId: sahara.id, startDate: daysFromNow(20), endDate: daysFromNow(26),
-        status: DepartureStatus.OPEN, price: 16800, currency: 'GHS', minPax: 4, maxPax: 12, bookedCount: 3,
-      },
-    ],
-    skipDuplicates: true,
-  });
-
   // A DRAFT tour that must NOT appear on the public site.
   await prisma.tour.upsert({
     where: { slug: 'private-draft-tour' },
@@ -172,7 +135,7 @@ async function main(): Promise<void> {
     update: {},
   });
 
-  console.log('Sample public data ready: Accra, Kumasi, Cairo & the Nile, Marrakech + 3 active tours with departures.');
+  console.log('Sample public data ready: Accra, Kumasi, Cairo & the Nile, Marrakech + 3 active tours.');
 }
 
 main()

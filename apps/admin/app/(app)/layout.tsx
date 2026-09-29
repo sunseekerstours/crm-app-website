@@ -15,6 +15,7 @@ const NAV = [
   { href: '/settings/automations', label: 'Sales Automations', permission: 'settings.view' },
   { href: '/settings', label: 'Site Settings', permission: 'settings.view' },
   { href: '/users', label: 'Users & Roles', permission: 'users.view' },
+  { href: '/roles', label: 'Roles & Permissions', permission: 'roles.view' },
   { href: '/audit', label: 'Audit Log', permission: 'audit.view' },
 ];
 
@@ -22,11 +23,9 @@ const CRM_NAV = [
   { href: '/crm/customers', label: 'Customers', permission: 'customers.view' },
   { href: '/crm/leads', label: 'Leads', permission: 'leads.view' },
   { href: '/crm/deals', label: 'Deals', permission: 'deals.view' },
-  { href: '/crm/departures', label: 'Departures', permission: 'departures.view' },
   { href: '/crm/bookings', label: 'Bookings', permission: 'bookings.view' },
   { href: '/crm/invoices', label: 'Invoices & Quotes', permission: 'invoices.view' },
   { href: '/crm/payments', label: 'Payments', permission: 'payments.view' },
-  { href: '/crm/operations', label: 'Trip Board', permission: 'operations.view' },
   { href: '/crm/notifications', label: 'Notifications', permission: 'notifications.view' },
 ];
 
@@ -79,6 +78,12 @@ function getIcon(label: string) {
           <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.109A11.386 11.386 0 0110.089 21c-2.213 0-4.302-.63-6.085-1.73v-.109m12-3.972a4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.109A11.386 11.386 0 0110.089 21c-2.213 0-4.302-.63-6.085-1.73v-.109m12-3.972a4.125 4.125 0 00-7.533-2.493m0 0a4.012 4.012 0 014.012-4.012c2.216 0 4.012 1.796 4.012 4.012m-8.024 0a4.012 4.012 0 00-4.012 4.012" />
         </svg>
       );
+    case 'Roles & Permissions':
+      return (
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
+        </svg>
+      );
     case 'Audit Log':
       return (
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -128,12 +133,6 @@ function getIcon(label: string) {
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-1.958-.59a2.502 2.502 0 010-3.953c1.047-.78 2.868-.78 3.916 0L15 8.25M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
       );
-    case 'Departures':
-      return (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
-        </svg>
-      );
     case 'Bookings':
       return (
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -144,12 +143,6 @@ function getIcon(label: string) {
       return (
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
-        </svg>
-      );
-    case 'Trip Board':
-      return (
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
       );
     case 'Notifications':

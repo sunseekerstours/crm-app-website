@@ -15,7 +15,6 @@ describe('Bookings & Payments (e2e)', () => {
   const createdIds: string[] = [];
   const stamp = Date.now();
   const unique = (name: string) => name + ' ' + stamp;
-  let depCounter = 0;
 
   function path(p: string) {
     return '/api/v1' + p;
@@ -33,24 +32,6 @@ describe('Bookings & Payments (e2e)', () => {
       .expect(201);
     createdIds.push(res.body.data.id);
     return res.body.data.id;
-  }
-
-  async function makeDeparture(maxPax: number) {
-    const tour = await auth(agent().post(path('/tours')))
-      .send({ name: unique('Rainforest Expedition') + '-' + ++depCounter, durationDays: 3, maxPax })
-      .expect(201);
-    createdIds.push(tour.body.data.id);
-    const dep = await auth(agent().post(path('/departures')))
-      .send({
-        tourId: tour.body.data.id,
-        startDate: '2027-06-01T00:00:00.000Z',
-        endDate: '2027-06-04T00:00:00.000Z',
-        maxPax,
-        price: 2500,
-      })
-      .expect(201);
-    createdIds.push(dep.body.data.id);
-    return dep.body.data.id;
   }
 
   beforeAll(async () => {
@@ -89,7 +70,6 @@ describe('Bookings & Payments (e2e)', () => {
         prisma.bookingTraveler.deleteMany({ where: { bookingId: { in: createdIds } } }),
         prisma.booking.deleteMany({ where: { customerId: { in: createdIds } } }),
         prisma.timelineEvent.deleteMany({ where: { entityId: { in: createdIds } } }),
-        prisma.departure.deleteMany({ where: { id: { in: createdIds } } }),
         prisma.tour.deleteMany({ where: { id: { in: createdIds } } }),
       ])
       .catch(() => undefined);
@@ -117,37 +97,17 @@ describe('Bookings & Payments (e2e)', () => {
     expect(searchRes.body.data.total).toBeGreaterThan(0);
   });
 
-  it('creates a booking on a departure, adjusting departure availability (BOOKING_*)', async () => {
+  it('creates a booking for a customer and tour package (BOOKING_*)', async () => {
     const customerId = await makeCustomer();
-    const departureId = await makeDeparture(2);
 
     const bookingRes = await auth(agent().post(path('/bookings')))
-      .send({ customerId, departureId, paxCount: 2, notes: 'Window seats' })
+      .send({ customerId, tourName: unique('Rainforest Expedition'), paxCount: 2, notes: 'Window seats' })
       .expect(201);
     const bookingId = bookingRes.body.data.id;
     createdIds.push(bookingId);
     expect(bookingRes.body.data.bookingNumber).toMatch(/^BKG-/);
     expect(bookingRes.body.data.status).toBe('PENDING');
-    expect(bookingRes.body.data.tourName).toBeTruthy();
-
-    const avail = await auth(
-      agent().get(path('/departures/' + departureId + '/availability')),
-    ).expect(200);
-    expect(avail.body.data.remaining).toBe(0);
-    expect(avail.body.data.bookedCount).toBe(2);
-  });
-
-  it('rejects a booking that exceeds remaining capacity', async () => {
-    const customerId = await makeCustomer();
-    const departureId = await makeDeparture(1);
-
-    await auth(agent().post(path('/bookings')))
-      .send({ customerId, departureId, paxCount: 1 })
-      .expect(201);
-
-    await auth(agent().post(path('/bookings')))
-      .send({ customerId, departureId, paxCount: 1 })
-      .expect(409);
+    expect(bookingRes.body.data.tourName).toContain('Rainforest Expedition');
   });
 
   it('confirms and then cancels a booking (status transitions + availability)', async () => {
@@ -183,10 +143,10 @@ describe('Bookings & Payments (e2e)', () => {
 
   it('creates a quote, accepts it and converts it into a booking (QUOTE_*)', async () => {
     const customerId = await makeCustomer();
-    const departureId = await makeDeparture(3);
+    const tourName = unique('Cairo and the Nile');
 
     const quoteRes = await auth(agent().post(path('/quotes')))
-      .send({ customerId, departureId, totalPrice: 2500, currency: 'GHS', notes: 'Group of 2' })
+      .send({ customerId, tourName, totalPrice: 2500, currency: 'GHS', notes: 'Group of 2' })
       .expect(201);
     const quoteId = quoteRes.body.data.id;
     createdIds.push(quoteId);
@@ -195,9 +155,10 @@ describe('Bookings & Payments (e2e)', () => {
     const accepted = await auth(agent().post(path('/quotes/' + quoteId + '/accept'))).expect(201);
     expect(accepted.body.data.status).toBe('ACCEPTED');
 
+    // The convert endpoint returns the created booking itself.
     const converted = await auth(agent().post(path('/quotes/' + quoteId + '/convert'))).expect(201);
-    expect(converted.body.data.bookingId).toBeTruthy();
-    const bookedId = converted.body.data.bookingId;
+    const bookedId = converted.body.data.id;
+    expect(bookedId).toBeTruthy();
     createdIds.push(bookedId);
 
     const quoteDetail = await auth(agent().get(path('/quotes/' + quoteId))).expect(200);
@@ -209,11 +170,10 @@ describe('Bookings & Payments (e2e)', () => {
 
   it('creates and issues an invoice, records a payment and reconciles to PAID (INVOICE_/PAYMENT_)', async () => {
     const customerId = await makeCustomer();
-    const departureId = await makeDeparture(2);
 
     const bookingId = (
       await auth(agent().post(path('/bookings')))
-        .send({ customerId, departureId, paxCount: 1, totalPrice: 2500 })
+        .send({ customerId, paxCount: 1, totalPrice: 2500 })
         .expect(201)
     ).body.data.id;
     createdIds.push(bookingId);

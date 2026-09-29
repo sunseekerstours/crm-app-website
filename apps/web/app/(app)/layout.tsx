@@ -11,10 +11,8 @@ const NAV = [
   { href: '/leads', label: 'Leads' },
   { href: '/deals', label: 'Deals' },
   { href: '/tours', label: 'Tours' },
-  { href: '/departures', label: 'Departures' },
   { href: '/bookings', label: 'Bookings' },
   { href: '/payments', label: 'Payments' },
-  { href: '/operations', label: 'Trip Board' },
   { href: '/notifications', label: 'Notifications' },
 ];
 

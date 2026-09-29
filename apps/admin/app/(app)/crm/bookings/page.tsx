@@ -25,20 +25,11 @@ interface CustomerOption {
   country?: string;
 }
 
-interface DepartureOption {
-  id: string;
-  tour?: { name?: string };
-  startDate?: string;
-  price?: number | string;
-}
-
 interface BookingItem {
   id: string;
   bookingNumber?: string;
   customerId?: string;
   customer?: CustomerOption;
-  departureId?: string;
-  departure?: DepartureOption;
   tourName?: string;
   status?: string;
   paxCount?: number;
@@ -59,7 +50,6 @@ const CURRENCIES = [
 
 const initialForm = {
   customerId: '',
-  departureId: '',
   tourName: '',
   status: 'PENDING',
   paxCount: '1',
@@ -77,7 +67,6 @@ export default function CrmBookingsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [customers, setCustomers] = useState<CustomerOption[]>([]);
-  const [departures, setDepartures] = useState<DepartureOption[]>([]);
 
   // Quick Customer Creation modal inside booking
   const [showAddCustomer, setShowAddCustomer] = useState(false);
@@ -112,12 +101,6 @@ export default function CrmBookingsPage() {
     } catch (e) {
       console.error('Failed to load customers for bookings:', e);
     }
-    try {
-      const depRes = await api.get<Paginated<DepartureOption>>('/departures?limit=200');
-      setDepartures(depRes.items ?? []);
-    } catch (e) {
-      console.error('Failed to load departures for bookings:', e);
-    }
   }, []);
 
   useEffect(() => {
@@ -133,8 +116,7 @@ export default function CrmBookingsPage() {
     setFormError(null);
     setForm({
       customerId: b.customerId ?? b.customer?.id ?? '',
-      departureId: b.departureId ?? b.departure?.id ?? '',
-      tourName: b.tourName ?? b.departure?.tour?.name ?? '',
+      tourName: b.tourName ?? '',
       status: b.status ?? 'PENDING',
       paxCount: b.paxCount != null ? String(b.paxCount) : '1',
       totalPrice: b.totalPrice != null ? String(b.totalPrice) : '',
@@ -162,7 +144,6 @@ export default function CrmBookingsPage() {
 
     const body: Record<string, unknown> = {
       customerId: form.customerId,
-      departureId: form.departureId || undefined,
       tourName: form.tourName || undefined,
       status: form.status,
       paxCount: form.paxCount ? Number(form.paxCount) : 1,
@@ -188,7 +169,7 @@ export default function CrmBookingsPage() {
   // 1-Click Invoice Generator from Booking
   async function generateInvoiceForBooking(b: BookingItem) {
     try {
-      const tourTitle = b.tourName || b.departure?.tour?.name || 'Tour Package Booking';
+      const tourTitle = b.tourName || 'Tour Package Booking';
       const amount = Number(b.totalPrice) || 0;
       const invoice = await api.post<any>('/invoices', {
         bookingId: b.id,
@@ -216,7 +197,7 @@ export default function CrmBookingsPage() {
   // 1-Click Quote Generator from Booking
   async function generateQuoteForBooking(b: BookingItem) {
     try {
-      const tourTitle = b.tourName || b.departure?.tour?.name || 'Tour Package Booking';
+      const tourTitle = b.tourName || 'Tour Package Booking';
       const amount = Number(b.totalPrice) || 0;
       const quote = await api.post<any>('/quotes', {
         bookingId: b.id,
@@ -295,12 +276,6 @@ export default function CrmBookingsPage() {
     return name || contact || c.id;
   }
 
-  function departureLabel(d: DepartureOption) {
-    const tour = d.tour?.name ?? 'Unknown tour';
-    const date = d.startDate ? new Date(d.startDate).toLocaleDateString() : '';
-    return date ? `${tour} — ${date}` : tour;
-  }
-
   return (
     <div style={{ display: 'grid', gap: '24px' }}>
       <PageHeader
@@ -359,22 +334,6 @@ export default function CrmBookingsPage() {
                 </select>
               </label>
             </div>
-
-            <Select
-              label="Tour Departure (Optional)"
-              name="departureId"
-              value={form.departureId}
-              onChange={(e) => {
-                const dep = departures.find((d) => d.id === e.target.value);
-                setForm({
-                  ...form,
-                  departureId: e.target.value,
-                  tourName: dep?.tour?.name || form.tourName,
-                  totalPrice: dep?.price ? String(dep.price) : form.totalPrice,
-                });
-              }}
-              options={[{ value: '', label: '— Select departure or type tour name —' }, ...departures.map((d) => ({ value: d.id, label: departureLabel(d) }))]}
-            />
 
             <Input
               label="Tour Package / Trip Name"
@@ -475,7 +434,7 @@ export default function CrmBookingsPage() {
                 render: (b) => (
                   <div>
                     <div style={{ fontWeight: '700', color: '#0f172a' }}>
-                      {b.tourName || b.departure?.tour?.name || 'Custom Booking'}
+                      {b.tourName || 'Custom Booking'}
                     </div>
                     <div style={{ fontSize: '11px', color: '#64748b' }}>{b.paxCount ?? 1} Pax</div>
                   </div>

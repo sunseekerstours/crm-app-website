@@ -7,7 +7,7 @@ import { RequestContext } from '@app/common/request-context';
 import { CreateTourDto } from './dto/create-tour.dto';
 import { UpdateTourDto } from './dto/update-tour.dto';
 import { CreateTourPricingDto } from './dto/create-tour-pricing.dto';
-import { Prisma, AuditableAction, TourStatus, DepartureStatus } from '@prisma/client';
+import { Prisma, AuditableAction, TourStatus } from '@prisma/client';
 
 @Injectable()
 export class ToursService {
@@ -107,7 +107,7 @@ export class ToursService {
             select: { destination: { select: { id: true, name: true, slug: true, country: true, region: true, coverImage: true } } },
           },
           pricing: { orderBy: { price: 'asc' } },
-          _count: { select: { departures: true, days: true } },
+          _count: { select: { days: true } },
         },
       }),
       this.prisma.tour.count({ where }),
@@ -130,7 +130,6 @@ export class ToursService {
         destinations: { include: { destination: true } },
         days: { orderBy: { dayNumber: 'asc' }, include: { destination: true } },
         pricing: { orderBy: { price: 'asc' } },
-        departures: { orderBy: { startDate: 'asc' } },
       },
     });
     if (!tour) throw new ApiNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, 'Tour not found');
@@ -238,44 +237,9 @@ export class ToursService {
     return tour;
   }
 
-  /** Availability across a tour's departures (PRD §Availability). */
-  async availability(id: string) {
-    const tour = await this.prisma.tour.findUnique({ where: { id } });
-    if (!tour) throw new ApiNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, 'Tour not found');
-
-    const departures = await this.prisma.departure.findMany({
-      where: { tourId: id, status: { not: DepartureStatus.CANCELLED } },
-      orderBy: { startDate: 'asc' },
-    });
-
-    const items = departures.map((d) => {
-      const remaining = d.maxPax != null ? Math.max(d.maxPax - d.bookedCount, 0) : null;
-      return {
-        id: d.id,
-        startDate: d.startDate,
-        endDate: d.endDate,
-        status: d.status,
-        maxPax: d.maxPax,
-        bookedCount: d.bookedCount,
-        remaining,
-        available: remaining === null ? true : remaining > 0,
-      };
-    });
-
-    return { tourId: id, items };
-  }
-
   async remove(id: string, ctx: RequestContext) {
     const existing = await this.prisma.tour.findUnique({ where: { id } });
     if (!existing) throw new ApiNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, 'Tour not found');
-
-    const deps = await this.prisma.departure.count({ where: { tourId: id } });
-    if (deps > 0) {
-      throw new ApiConflictException(
-        ErrorCode.BAD_REQUEST,
-        'Cannot delete a tour that has departures',
-      );
-    }
 
     await this.prisma.tour.delete({ where: { id } });
 

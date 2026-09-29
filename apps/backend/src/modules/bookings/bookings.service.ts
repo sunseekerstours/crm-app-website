@@ -13,7 +13,6 @@ export interface BookingListParams {
   limit: number;
   search?: string;
   customerId?: string;
-  departureId?: string;
   status?: string;
   from?: string;
   to?: string;
@@ -35,48 +34,13 @@ export class BookingsService {
     const paxCount = dto.paxCount ?? 1;
     const bookingNumber = await this.nextNumber('BKG');
 
-    const booking = await this.prisma.$transaction(async (tx) => {
-      let tourName = dto.tourName;
-      let startDate = dto.startDate ? new Date(dto.startDate) : undefined;
-
-      if (dto.departureId) {
-        const departure = await tx.departure.findUnique({
-          where: { id: dto.departureId },
-          include: { tour: { select: { name: true } } },
-        });
-        if (!departure) {
-          throw new ApiNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, 'Departure not found');
-        }
-        if (departure.status === 'CANCELLED') {
-          throw new ApiConflictException(
-            ErrorCode.BAD_REQUEST,
-            'Cannot book a cancelled departure',
-          );
-        }
-        if (departure.maxPax != null) {
-          const remaining = departure.maxPax - departure.bookedCount;
-          if (paxCount > remaining) {
-            throw new ApiConflictException(
-              ErrorCode.BAD_REQUEST,
-              'Not enough seats on this departure',
-            );
-          }
-        }
-        tourName = departure.tour.name;
-        startDate = departure.startDate;
-        await tx.departure.update({
-          where: { id: departure.id },
-          data: { bookedCount: { increment: paxCount } },
-        });
-      }
-
-      return tx.booking.create({
+    const booking = await this.prisma.$transaction(async (tx) =>
+      tx.booking.create({
         data: {
           bookingNumber,
           customerId: customer.id,
-          departureId: dto.departureId,
-          tourName,
-          startDate,
+          tourName: dto.tourName,
+          startDate: dto.startDate ? new Date(dto.startDate) : undefined,
           status: dto.status ?? BookingStatus.PENDING,
           paxCount,
           totalPrice: dto.totalPrice,
@@ -91,9 +55,9 @@ export class BookingsService {
               }
             : undefined,
         },
-        include: { customer: true, departure: true, travelers: { include: { traveler: true } } },
-      });
-    });
+        include: { customer: true, travelers: { include: { traveler: true } } },
+      }),
+    );
 
     await this.audit.record({
       userId: ctx.userId,
@@ -126,7 +90,6 @@ export class BookingsService {
   async findAll(params: BookingListParams) {
     const where: Record<string, unknown> = {};
     if (params.customerId) where.customerId = params.customerId;
-    if (params.departureId) where.departureId = params.departureId;
     if (params.status) where.status = params.status;
     if (params.from || params.to) {
       where.bookedAt = {
@@ -152,7 +115,6 @@ export class BookingsService {
         orderBy: { createdAt: 'desc' },
         include: {
           customer: { select: { id: true, firstName: true, lastName: true, email: true, phone: true } },
-          departure: true,
           travelers: { include: { traveler: true } },
         },
       }),
@@ -174,7 +136,6 @@ export class BookingsService {
       where: { id },
       include: {
         customer: { select: { id: true, firstName: true, lastName: true, email: true, phone: true } },
-        departure: true,
         travelers: { include: { traveler: true } },
         invoices: true,
         payments: true,
@@ -195,40 +156,8 @@ export class BookingsService {
 
     const statusChanged = dto.status && dto.status !== existing.status;
 
-    const updated = await this.prisma.$transaction(async (tx) => {
-      const newPax = dto.paxCount ?? existing.paxCount;
-      const newDepartureId = dto.departureId ?? existing.departureId;
-      const oldDepartureId = existing.departureId;
-
-      if (newDepartureId && oldDepartureId && newDepartureId !== oldDepartureId) {
-        throw new ApiConflictException(
-          ErrorCode.BAD_REQUEST,
-          'Change departure via transfer endpoint',
-        );
-      }
-
-      if (newDepartureId) {
-        const departure = await tx.departure.findUnique({ where: { id: newDepartureId } });
-        if (!departure) {
-          throw new ApiNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, 'Departure not found');
-        }
-        const paxDelta = newPax - existing.paxCount;
-        if (paxDelta !== 0) {
-          const projected = departure.bookedCount + paxDelta;
-          if (departure.maxPax != null && projected > departure.maxPax) {
-            throw new ApiConflictException(
-              ErrorCode.BAD_REQUEST,
-              'Not enough seats on this departure',
-            );
-          }
-          await tx.departure.update({
-            where: { id: departure.id },
-            data: { bookedCount: Math.max(projected, 0) },
-          });
-        }
-      }
-
-      return tx.booking.update({
+    const updated = await this.prisma.$transaction(async (tx) =>
+      tx.booking.update({
         where: { id },
         data: {
           tourName: dto.tourName,
@@ -240,8 +169,8 @@ export class BookingsService {
           notes: dto.notes,
         },
         include: { customer: true },
-      });
-    });
+      }),
+    );
 
     await this.audit.record({
       userId: ctx.userId,
@@ -307,17 +236,9 @@ export class BookingsService {
       throw new ApiConflictException(ErrorCode.BAD_REQUEST, 'Booking already cancelled');
     }
 
-    await this.prisma.$transaction(async (tx) => {
-      if (existing.departureId) {
-        await tx.departure.update({
-          where: { id: existing.departureId },
-          data: { bookedCount: { decrement: existing.paxCount } },
-        });
-      }
-      await tx.booking.update({
-        where: { id },
-        data: { status: BookingStatus.CANCELLED },
-      });
+    await this.prisma.booking.update({
+      where: { id },
+      data: { status: BookingStatus.CANCELLED },
     });
 
     await this.audit.record({
@@ -349,15 +270,7 @@ export class BookingsService {
     if (!existing)
       throw new ApiNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, 'Booking not found');
 
-    await this.prisma.$transaction(async (tx) => {
-      if (existing.departureId) {
-        await tx.departure.update({
-          where: { id: existing.departureId },
-          data: { bookedCount: { decrement: existing.paxCount } },
-        });
-      }
-      await tx.booking.delete({ where: { id } });
-    });
+    await this.prisma.booking.delete({ where: { id } });
 
     await this.audit.record({
       userId: ctx.userId,

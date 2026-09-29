@@ -18,7 +18,6 @@ const NAV: NavItem[] = [
   { key: 'leads', label: 'Leads', subtitle: 'Track and follow up leads', permission: 'leads.view', icon: '🎯', route: { name: 'list', resource: 'leads' } },
   { key: 'deals', label: 'Deals', subtitle: 'Pipeline and opportunities', permission: 'deals.view', icon: '💼', route: { name: 'list', resource: 'deals' } },
   { key: 'tours', label: 'Tours', subtitle: 'Tour catalog', permission: 'tours.view', icon: '🏝️', route: { name: 'list', resource: 'tours' } },
-  { key: 'departures', label: 'Departures', subtitle: 'Scheduled departures', permission: 'departures.view', icon: '📅', route: { name: 'list', resource: 'departures' } },
   { key: 'bookings', label: 'Bookings', subtitle: 'Reservations', permission: 'bookings.view', icon: '🧾', route: { name: 'list', resource: 'bookings' } },
   { key: 'payments', label: 'Payments', subtitle: 'Payment records', permission: 'payments.view', icon: '💳', route: { name: 'list', resource: 'payments' } },
   { key: 'products', label: 'Products & Services', subtitle: 'Tours, flights, hotels', permission: 'products.view', icon: '📦', route: { name: 'productList' } },

@@ -6,7 +6,6 @@ import { NotificationsService } from '@app/modules/notifications/notifications.s
 import {
   AuditableAction,
   BookingStatus,
-  DepartureStatus,
   InvoiceStatus,
   LeadStage,
   NotificationType,
@@ -20,11 +19,9 @@ const OPERATIONS_ROLES = ['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'OPERATIONS_STAFF']
 const FINANCE_ROLES = ['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'FINANCE'];
 
 export interface RunSummary {
-  departureReminders: number;
   invoiceOverdue: number;
   paymentReminders: number;
   leadFollowUps: number;
-  checklistTodos: number;
   inactivityEscalations?: number;
   quoteFollowUps?: number;
   jetpackSynced?: number;
@@ -80,11 +77,9 @@ export class AutomationService implements OnModuleInit, OnModuleDestroy {
     });
 
     const summary: RunSummary = {
-      departureReminders: await this.remindDepartures(now, windowDays),
       invoiceOverdue: await this.remindInvoicesOverdue(now),
       paymentReminders: await this.remindBookingPayments(now, windowDays),
       leadFollowUps: await this.remindLeads(now, staleLeadDays),
-      checklistTodos: await this.remindChecklists(now, windowDays),
       inactivityEscalations: salesSweeps.inactivityEscalations,
       quoteFollowUps: salesSweeps.quoteFollowUps,
       jetpackSynced: (jetpackSync?.customersCreated ?? 0) + (jetpackSync?.leadsCreated ?? 0),
@@ -97,43 +92,6 @@ export class AutomationService implements OnModuleInit, OnModuleDestroy {
       after: summary,
     });
     return summary;
-  }
-
-  // ---------------------------------------------------------------------------
-  // Departure reminders (operations)
-  // ---------------------------------------------------------------------------
-  private async remindDepartures(now: Date, windowDays: number): Promise<number> {
-    const end = this.addDays(now, windowDays);
-    const departures = await this.prisma.departure.findMany({
-      where: {
-        status: DepartureStatus.SCHEDULED,
-        startDate: { gte: now, lte: end },
-      },
-      include: { tour: { select: { id: true, name: true } } },
-    });
-
-    const recipients = await this.opsUsers();
-    let count = 0;
-    for (const d of departures) {
-      const days = this.dayDiff(now, d.startDate);
-      const title = `Departure in ${days} day${days === 1 ? '' : 's'}`;
-      const message = `${d.tour.name} departs on ${d.startDate.toISOString().slice(0, 10)}.`;
-      for (const uid of recipients) {
-        if (
-          await this.shouldDispatch(uid, NotificationType.DEPARTURE_REMINDER, 'DEPARTURE', d.id)
-        ) {
-          await this.notifications.dispatch({
-            userId: uid,
-            type: NotificationType.DEPARTURE_REMINDER,
-            title,
-            message,
-            entity: { type: 'DEPARTURE', id: d.id },
-          });
-          count++;
-        }
-      }
-    }
-    return count;
   }
 
   // ---------------------------------------------------------------------------
@@ -247,62 +205,6 @@ export class AutomationService implements OnModuleInit, OnModuleDestroy {
           entity: { type: 'LEAD', id: l.id },
         });
         count++;
-      }
-    }
-    return count;
-  }
-
-  // ---------------------------------------------------------------------------
-  // Incomplete required checklist items on upcoming departures
-  // ---------------------------------------------------------------------------
-  private async remindChecklists(now: Date, windowDays: number): Promise<number> {
-    const end = this.addDays(now, windowDays);
-    const departingIds = (
-      await this.prisma.departure.findMany({
-        where: {
-          status: DepartureStatus.SCHEDULED,
-          startDate: { gte: now, lte: end },
-        },
-        select: { id: true },
-      })
-    ).map((d) => d.id);
-
-    if (departingIds.length === 0) return 0;
-
-    const openItems = await this.prisma.checklistItem.findMany({
-      where: {
-        departureId: { in: departingIds },
-        isRequired: true,
-        isCompleted: false,
-      },
-      include: { departure: { include: { tour: { select: { name: true } } } } },
-    });
-
-    const recipients = await this.opsUsers();
-    const byDeparture = new Map<string, typeof openItems>();
-    for (const item of openItems) {
-      if (!item.departureId) continue;
-      const arr = byDeparture.get(item.departureId) ?? [];
-      arr.push(item);
-      byDeparture.set(item.departureId, arr);
-    }
-
-    let count = 0;
-    for (const [depId, items] of byDeparture) {
-      const first = items[0];
-      const title = `Open checklist for ${first.departure!.tour.name}`;
-      const message = `${items.length} required item(s) remain incomplete for the upcoming departure.`;
-      for (const uid of recipients) {
-        if (await this.shouldDispatch(uid, NotificationType.CHECKLIST_TODO, 'DEPARTURE', depId)) {
-          await this.notifications.dispatch({
-            userId: uid,
-            type: NotificationType.CHECKLIST_TODO,
-            title,
-            message,
-            entity: { type: 'DEPARTURE', id: depId },
-          });
-          count++;
-        }
       }
     }
     return count;

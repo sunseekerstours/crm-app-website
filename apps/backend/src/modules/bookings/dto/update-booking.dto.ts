@@ -5,10 +5,6 @@ import { BookingStatus } from '@prisma/client';
 export class UpdateBookingDto {
   @IsOptional()
   @IsString()
-  departureId?: string;
-
-  @IsOptional()
-  @IsString()
   tourName?: string;
 
   @IsOptional()

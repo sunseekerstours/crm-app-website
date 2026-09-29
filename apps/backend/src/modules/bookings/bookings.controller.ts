@@ -29,7 +29,6 @@ export class BookingsController {
       limit: query.limit ?? 20,
       search: query.search,
       customerId: query.customerId,
-      departureId: query.departureId,
       status: query.status,
       from: query.from,
       to: query.to,

@@ -60,7 +60,6 @@ describe('Travel Core (e2e)', () => {
     await prisma
       .$transaction([
         prisma.timelineEvent.deleteMany({ where: { entityId: { in: createdIds } } }),
-        prisma.departure.deleteMany({ where: { id: { in: createdIds } } }),
         prisma.tour.deleteMany({ where: { id: { in: createdIds } } }),
         prisma.destination.deleteMany({ where: { id: { in: createdIds } } }),
       ])
@@ -137,7 +136,7 @@ describe('Travel Core (e2e)', () => {
     expect(detail.body.data.days).toHaveLength(2);
   });
 
-  it('publishes a tour and reports availability (TOUR_PUBLISH / availability)', async () => {
+  it('publishes a tour and exposes it on the public endpoint (TOUR_PUBLISH)', async () => {
     const createRes = await auth(agent().post(path('/tours')))
       .send({ name: unique('Volta Highlands Trek'), durationDays: 3, maxPax: 12 })
       .expect(201);
@@ -147,62 +146,9 @@ describe('Travel Core (e2e)', () => {
     const publishRes = await auth(agent().post(path('/tours/' + tourId + '/publish'))).expect(201);
     expect(publishRes.body.data.status).toBe('ACTIVE');
 
-    const availability = await auth(agent().get(path('/tours/' + tourId + '/availability'))).expect(
-      200,
-    );
-    expect(availability.body.data.items).toEqual([]);
+    const publicList = await agent().get(path('/public/tours')).expect(200);
+    const names = publicList.body.data.map((t: { name: string }) => t.name);
+    expect(names).toContain(unique('Volta Highlands Trek'));
   });
 
-  it('creates a departure, adds pricing and checks remaining seats (DEPARTURE_*)', async () => {
-    const tourRes = await auth(agent().post(path('/tours')))
-      .send({ name: unique('Savannah Safari'), durationDays: 5, maxPax: 20 })
-      .expect(201);
-    const tourId = tourRes.body.data.id;
-    createdIds.push(tourId);
-
-    const depRes = await auth(agent().post(path('/departures')))
-      .send({
-        tourId,
-        startDate: '2027-03-10T00:00:00.000Z',
-        endDate: '2027-03-15T00:00:00.000Z',
-        maxPax: 20,
-        price: 5400,
-        currency: 'GHS',
-        pricing: [
-          { name: 'Adult', price: 5400 },
-          { name: 'Child (6-12)', price: 4200 },
-        ],
-      })
-      .expect(201);
-    const departureId = depRes.body.data.id;
-    createdIds.push(departureId);
-    expect(depRes.body.data.status).toBe('SCHEDULED');
-    expect(depRes.body.data.pricing.length).toBe(2);
-
-    const pricingRes = await auth(agent().post(path('/departures/' + departureId + '/pricing')))
-      .send({ name: 'Single supplement', price: 600 })
-      .expect(201);
-    createdIds.push(pricingRes.body.data.id);
-
-    const availability = await auth(
-      agent().get(path('/departures/' + departureId + '/availability')),
-    ).expect(200);
-    expect(availability.body.data.remaining).toBe(20);
-    expect(availability.body.data.available).toBe(true);
-
-    const filtered = await auth(
-      agent().get(path('/departures?tourId=' + tourId + '&status=SCHEDULED')),
-    ).expect(200);
-    expect(filtered.body.data.total).toBeGreaterThan(0);
-  });
-
-  it('rejects a departure whose end date precedes its start date', async () => {
-    await auth(agent().post(path('/departures')))
-      .send({
-        tourId: 'does-not-exist',
-        startDate: '2027-05-10T00:00:00.000Z',
-        endDate: '2027-05-01T00:00:00.000Z',
-      })
-      .expect(400);
-  });
 });

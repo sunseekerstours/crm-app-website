@@ -15,31 +15,64 @@ async function main(): Promise<void> {
     });
   }
 
+  // Prune permissions that no longer exist in the catalog (e.g. when a feature
+  // is retired) so they stop appearing in the admin permission matrix and stop
+  // being granted to anyone.
+  const stale = await prisma.permission.findMany({
+    where: { key: { notIn: ALL_PERMISSIONS } },
+    select: { id: true, key: true },
+  });
+  if (stale.length > 0) {
+    await prisma.rolePermission.deleteMany({
+      where: { permissionId: { in: stale.map((p) => p.id) } },
+    });
+    await prisma.permission.deleteMany({ where: { id: { in: stale.map((p) => p.id) } } });
+    console.log(`Pruned ${stale.length} retired permission(s): ${stale.map((p) => p.key).join(', ')}`);
+  }
+
   console.log('Seeding system roles...');
   for (const preset of SYSTEM_ROLES) {
-    const role = await prisma.role.upsert({
-      where: { name: preset.name },
-      create: {
-        name: preset.name,
-        description: preset.description,
-        isSystem: preset.isSystem,
-      },
-      update: { description: preset.description, isSystem: preset.isSystem },
-    });
+    const existingRole = await prisma.role.findUnique({ where: { name: preset.name } });
+    const role = existingRole
+      ? existingRole
+      : await prisma.role.create({
+          data: {
+            name: preset.name,
+            description: preset.description,
+            isSystem: preset.isSystem,
+          },
+        });
 
     const permissionKeys = preset.permissions.length
       ? preset.permissions
       : Object.values(Permission);
 
-    const perms = await prisma.permission.findMany({
-      where: { key: { in: permissionKeys } },
-    });
+    // SUPER_ADMIN must always hold every permission, including ones added by
+    // later releases, so its access never depends on a stale seed snapshot.
+    // Everything else is only seeded on first creation: afterwards the stored
+    // grants are the source of truth so admin edits survive a redeploy.
+    const shouldApplyPreset = !existingRole || preset.name === 'SUPER_ADMIN';
 
-    await prisma.rolePermission.deleteMany({ where: { roleId: role.id } });
-    await prisma.rolePermission.createMany({
-      data: perms.map((p) => ({ roleId: role.id, permissionId: p.id })),
-      skipDuplicates: true,
-    });
+    if (shouldApplyPreset) {
+      const perms = await prisma.permission.findMany({
+        where: { key: { in: permissionKeys } },
+      });
+      if (preset.name === 'SUPER_ADMIN') {
+        // Additive only: never revoke, so a deploy cannot strip the super admin.
+        await prisma.rolePermission.createMany({
+          data: perms.map((p) => ({ roleId: role.id, permissionId: p.id })),
+          skipDuplicates: true,
+        });
+      } else {
+        await prisma.rolePermission.deleteMany({ where: { roleId: role.id } });
+        await prisma.rolePermission.createMany({
+          data: perms.map((p) => ({ roleId: role.id, permissionId: p.id })),
+          skipDuplicates: true,
+        });
+      }
+    } else {
+      console.log(`  ${preset.name}: keeping administrator-managed permissions`);
+    }
   }
 
   const adminEmail = (process.env.ADMIN_EMAIL ?? 'admin@sunseeker.local').toLowerCase();

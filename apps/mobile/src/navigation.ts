@@ -9,7 +9,6 @@ export type Route =
   | { name: 'tourForm'; tourId?: string }
   | { name: 'paymentForm' }
   | { name: 'bookingForm' }
-  | { name: 'departureForm' }
   | { name: 'productList' }
   | { name: 'productForm' }
   | { name: 'notifications' }

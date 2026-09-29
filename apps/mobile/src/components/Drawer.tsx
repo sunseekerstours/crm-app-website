@@ -18,7 +18,6 @@ export const DRAWER_ITEMS: DrawerItem[] = [
   { key: 'customers', label: 'Customers', icon: '👥', permission: 'customers.view', route: { name: 'list', resource: 'customers' } },
   { key: 'leads', label: 'Leads', icon: '🎯', permission: 'leads.view', route: { name: 'list', resource: 'leads' } },
   { key: 'deals', label: 'Deals', icon: '💼', permission: 'deals.view', route: { name: 'list', resource: 'deals' } },
-  { key: 'departures', label: 'Departures', icon: '✈️', permission: 'departures.view', route: { name: 'list', resource: 'departures' } },
   { key: 'bookings', label: 'Bookings', icon: '🧾', permission: 'bookings.view', route: { name: 'list', resource: 'bookings' } },
   { key: 'payments', label: 'Payments', icon: '💳', permission: 'payments.view', route: { name: 'list', resource: 'payments' } },
   { key: 'tours', label: 'Tours', icon: '🏝️', permission: 'tours.view', route: { name: 'list', resource: 'tours' } },

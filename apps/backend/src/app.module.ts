@@ -20,7 +20,6 @@ import { NotesModule } from '@app/modules/notes/notes.module';
 import { SearchModule } from '@app/modules/search/search.module';
 import { DestinationsModule } from '@app/modules/destinations/destinations.module';
 import { ToursModule } from '@app/modules/tours/tours.module';
-import { DeparturesModule } from '@app/modules/departures/departures.module';
 import { TravelersModule } from '@app/modules/travelers/travelers.module';
 import { BookingsModule } from '@app/modules/bookings/bookings.module';
 import { QuotesModule } from '@app/modules/quotes/quotes.module';
@@ -31,7 +30,6 @@ import { HotelsModule } from '@app/modules/hotels/hotels.module';
 import { VehiclesModule } from '@app/modules/vehicles/vehicles.module';
 import { GuidesModule } from '@app/modules/guides/guides.module';
 import { DriversModule } from '@app/modules/drivers/drivers.module';
-import { TripsModule } from '@app/modules/trips/trips.module';
 import { ChecklistsModule } from '@app/modules/checklists/checklists.module';
 import { NotificationsModule } from '@app/modules/notifications/notifications.module';
 import { AutomationModule } from '@app/modules/automation/automation.module';
@@ -68,7 +66,6 @@ import { AllExceptionsFilter } from '@app/common/filters/all-exceptions.filter';
     SearchModule,
     DestinationsModule,
     ToursModule,
-    DeparturesModule,
     TravelersModule,
     BookingsModule,
     QuotesModule,
@@ -79,7 +76,6 @@ import { AllExceptionsFilter } from '@app/common/filters/all-exceptions.filter';
     VehiclesModule,
     GuidesModule,
     DriversModule,
-    TripsModule,
     ChecklistsModule,
     NotificationsModule,
     AutomationModule,

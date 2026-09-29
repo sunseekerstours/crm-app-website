@@ -36,17 +36,6 @@ export class QuotesService {
         throw new ApiNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, 'Customer not found');
     }
 
-    let tourName = dto.tourName;
-    if (dto.departureId) {
-      const departure = await this.prisma.departure.findUnique({
-        where: { id: dto.departureId },
-        include: { tour: { select: { name: true } } },
-      });
-      if (!departure)
-        throw new ApiNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, 'Departure not found');
-      tourName = tourName ?? departure.tour.name;
-    }
-
     let calculatedTotal = dto.totalPrice;
     if (calculatedTotal == null && Array.isArray(dto.items) && dto.items.length > 0) {
       const subtotal = dto.items.reduce((sum, it) => sum + (Number(it.total) || (Number(it.quantity) * Number(it.unitPrice)) || 0), 0);
@@ -61,8 +50,7 @@ export class QuotesService {
         customerId: dto.customerId,
         dealId: dto.dealId,
         bookingId: dto.bookingId,
-        departureId: dto.departureId,
-        tourName,
+        tourName: dto.tourName,
         totalPrice: calculatedTotal ?? 0,
         currency: dto.currency ?? 'USD',
         validUntil: dto.validUntil ? new Date(dto.validUntil) : undefined,
@@ -73,7 +61,7 @@ export class QuotesService {
         terms: dto.terms,
         createdById: ctx.userId,
       },
-      include: { customer: true, departure: true, deal: true },
+      include: { customer: true, deal: true },
     });
 
     await this.audit.record({
@@ -116,7 +104,6 @@ export class QuotesService {
         include: {
           customer: true,
           deal: true,
-          departure: true,
           booking: true,
         },
       }),
@@ -136,7 +123,7 @@ export class QuotesService {
   async findById(id: string) {
     const quote = await this.prisma.quote.findUnique({
       where: { id },
-      include: { customer: true, departure: true, booking: true, deal: true },
+      include: { customer: true, booking: true, deal: true },
     });
     if (!quote) throw new ApiNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, 'Quote not found');
     return quote;
@@ -184,7 +171,7 @@ export class QuotesService {
         notes: dto.notes !== undefined ? dto.notes : undefined,
         terms: dto.terms !== undefined ? dto.terms : undefined,
       },
-      include: { customer: true, departure: true, booking: true, deal: true },
+      include: { customer: true, booking: true, deal: true },
     });
 
     await this.audit.record({
@@ -239,7 +226,7 @@ export class QuotesService {
   async convertToBooking(id: string, ctx: RequestContext) {
     const quote = await this.prisma.quote.findUnique({
       where: { id },
-      include: { customer: true, departure: true },
+      include: { customer: true },
     });
     if (!quote) throw new ApiNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, 'Quote not found');
 
@@ -261,7 +248,7 @@ export class QuotesService {
 
     const bookingDto: CreateBookingDto = {
       customerId: quote.customerId,
-      departureId: quote.departureId ?? undefined,
+      tourName: quote.tourName ?? undefined,
       paxCount: 1,
       totalPrice: quote.totalPrice ? Number(quote.totalPrice) : undefined,
       currency: quote.currency ?? 'USD',

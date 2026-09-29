@@ -58,7 +58,6 @@ describe('Public API + Website Task 11 (e2e)', () => {
   afterAll(async () => {
     await prisma
       .$transaction([
-        prisma.departure.deleteMany({ where: { id: { in: createdIds } } }),
         prisma.tour.deleteMany({ where: { id: { in: createdIds } } }),
         prisma.destination.deleteMany({ where: { id: { in: createdIds } } }),
         prisma.user.deleteMany({ where: { email: adminEmail } }),
@@ -67,7 +66,7 @@ describe('Public API + Website Task 11 (e2e)', () => {
     await app.close();
   });
 
-  it('publishes a tour with destination + departure (setup)', async () => {
+  it('publishes a tour with a destination (setup)', async () => {
     const dest = await auth(agent().post(path('/destinations')))
       .send({ name: 'Elephant Coast' + stamp, country: 'Ghana', slug: 'elephant-coast-' + stamp })
       .expect(201);
@@ -99,11 +98,12 @@ describe('Public API + Website Task 11 (e2e)', () => {
     expect(names).toContain('Heritage Trails ' + stamp);
   });
 
-  it('returns a single published tour by slug including pricing + departures', async () => {
+  it('returns a single published tour by slug including pricing', async () => {
     const res = await agent().get(path('/public/tours/heritage-trails-' + stamp)).expect(200);
     expect(res.body.data.name).toBe('Heritage Trails ' + stamp);
     expect(res.body.data.basePrice).toBe(2000);
-    expect(Array.isArray(res.body.data.departures)).toBe(true);
+    expect(Array.isArray(res.body.data.pricing)).toBe(true);
+    expect(res.body.data.departures).toBeUndefined();
   });
 
   it('404s for a tour that is not ACTIVE or does not exist', async () => {

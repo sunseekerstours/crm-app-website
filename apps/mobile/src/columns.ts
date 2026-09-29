@@ -25,7 +25,6 @@ interface Customer {
 interface Lead { id: string; firstName?: string; lastName?: string; email?: string | null; company?: string; stage: string; }
 interface Deal { id: string; name?: string; title?: string; stage: string; amount?: number; value?: number | null; currency?: string; }
 interface Tour { id: string; name: string; summary?: string | null; status: string; }
-interface Departure { id: string; reference?: string; name?: string; startDate?: string; status: string; }
 interface Booking { id: string; bookingNumber?: string; status: string; }
 interface Payment { id: string; amount?: number | null | string; currency?: string; status: string; }
 
@@ -88,15 +87,6 @@ export const RESOURCES: Record<string, ResourceConfig<any>> = {
     columns: [
       { key: 'name', label: 'Name', render: (r: Tour) => r.name },
       { key: 'summary', label: 'Summary', render: (r: Tour) => r.summary ?? '—' },
-    ],
-  },
-  departures: {
-    endpoint: '/departures?limit=50',
-    title: 'Departures',
-    badgeKey: 'status',
-    columns: [
-      { key: 'reference', label: 'Reference', render: (r: Departure) => r.reference ?? r.name ?? '—' },
-      { key: 'startDate', label: 'Start', render: (r: Departure) => (r.startDate ? new Date(r.startDate).toLocaleDateString() : '—') },
     ],
   },
   bookings: {

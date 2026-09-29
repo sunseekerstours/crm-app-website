@@ -33,12 +33,6 @@ export class ToursController {
     });
   }
 
-  @Get(':id/availability')
-  @RequirePermissions(Permission.TOUR_VIEW)
-  availability(@Param('id') id: string) {
-    return this.toursService.availability(id);
-  }
-
   @Post(':id/publish')
   @RequirePermissions(Permission.TOUR_PUBLISH)
   publish(@Param('id') id: string, @Req() req: Request, @CurrentUser('id') userId: string) {

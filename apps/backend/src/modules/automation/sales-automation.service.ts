@@ -426,7 +426,13 @@ export class SalesAutomationService {
           customerName = `${invoice.customer.firstName} ${invoice.customer.lastName}`.trim();
         }
 
-        const newPaid = Number(invoice.amountPaid || 0) + Number(payment.amount || 0);
+        // Recompute from completed payments rather than incrementing, so this
+        // stays idempotent alongside InvoiceService.recomputeStatus.
+        const paidAggregate = await this.prisma.payment.aggregate({
+          where: { invoiceId: invoice.id, status: PaymentStatus.COMPLETED },
+          _sum: { amount: true },
+        });
+        const newPaid = Number(paidAggregate._sum.amount || 0);
         const isPaidFull = newPaid >= Number(invoice.amount || 0);
 
         await this.prisma.invoice.update({

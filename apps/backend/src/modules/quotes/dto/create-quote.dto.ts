@@ -16,10 +16,6 @@ export class CreateQuoteDto {
 
   @IsOptional()
   @IsString()
-  departureId?: string;
-
-  @IsOptional()
-  @IsString()
   tourName?: string;
 
   @IsOptional()

@@ -3,7 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '@app/prisma/prisma.service';
 import { AuditService } from '@app/modules/audit/audit.service';
-import { ApiConflictException, ApiNotFoundException, ErrorCode } from '@app/common/errors';
+import { ApiBadRequestException, ApiConflictException, ApiForbiddenException, ApiNotFoundException, ErrorCode } from '@app/common/errors';
+import { SUPER_ADMIN_ROLE, isSubsetOf, resolvePermissions } from '@app/common/rbac';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { AssignRoleDto } from './dto/assign-role.dto';
@@ -144,8 +145,13 @@ export class UsersService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new ApiNotFoundException(ErrorCode.USER_NOT_FOUND, 'User not found');
 
-    const role = await this.prisma.role.findUnique({ where: { id: dto.roleId } });
+    const role = await this.prisma.role.findUnique({
+      where: { id: dto.roleId },
+      include: { permissions: { include: { permission: true } } },
+    });
     if (!role) throw new ApiNotFoundException(ErrorCode.ROLE_NOT_FOUND, 'Role not found');
+
+    await this.assertCanAssign(meta, role.name, role.permissions.map((p) => p.permission.key));
 
     await this.prisma.userRole.upsert({
       where: { userId_roleId: { userId, roleId: dto.roleId } },
@@ -171,9 +177,20 @@ export class UsersService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new ApiNotFoundException(ErrorCode.USER_NOT_FOUND, 'User not found');
 
+    const role = await this.prisma.role.findUnique({ where: { id: roleId } });
+
+    if (role?.name === SUPER_ADMIN_ROLE) {
+      if (userId === meta.userId) {
+        throw new ApiBadRequestException(
+          ErrorCode.BAD_REQUEST,
+          'You cannot remove your own SUPER_ADMIN role',
+        );
+      }
+      await this.assertNotLastSuperAdmin(userId);
+    }
+
     await this.prisma.userRole.deleteMany({ where: { userId, roleId } });
 
-    const role = await this.prisma.role.findUnique({ where: { id: roleId } });
     await this.audit.record({
       userId: meta.userId,
       action: AuditableAction.USER_ROLE_REMOVED,
@@ -186,6 +203,54 @@ export class UsersService {
     });
 
     return { success: true };
+  }
+
+  /** Blocks granting a role that carries permissions the actor does not hold. */
+  private async assertCanAssign(
+    meta: RequestContextMeta,
+    roleName: string,
+    rolePermissionKeys: string[],
+  ) {
+    if (!meta.userId) {
+      throw new ApiForbiddenException(ErrorCode.PERMISSION_DENIED, 'Permission denied');
+    }
+    const actor = await this.prisma.user.findUnique({
+      where: { id: meta.userId },
+      include: {
+        roles: {
+          include: { role: { include: { permissions: { include: { permission: true } } } } },
+        },
+      },
+    });
+    if (!actor) throw new ApiNotFoundException(ErrorCode.USER_NOT_FOUND, 'User not found');
+
+    const actorPermissions = resolvePermissions(
+      actor.roles.map((r) => r.role.name),
+      actor.roles.flatMap((r) => r.role.permissions.map((p) => p.permission.key)),
+    );
+
+    if (!isSubsetOf(rolePermissionKeys, actorPermissions)) {
+      throw new ApiForbiddenException(
+        ErrorCode.PERMISSION_DENIED,
+        `You cannot assign ${roleName} because it grants permissions you do not have`,
+      );
+    }
+  }
+
+  /** Prevents removing the final SUPER_ADMIN, which would lock everyone out. */
+  private async assertNotLastSuperAdmin(excludingUserId: string) {
+    const superAdminRole = await this.prisma.role.findUnique({ where: { name: SUPER_ADMIN_ROLE } });
+    if (!superAdminRole) return;
+
+    const holders = await this.prisma.userRole.count({
+      where: { roleId: superAdminRole.id, userId: { not: excludingUserId } },
+    });
+    if (holders === 0) {
+      throw new ApiBadRequestException(
+        ErrorCode.BAD_REQUEST,
+        'At least one user must keep the SUPER_ADMIN role',
+      );
+    }
   }
 
   private sanitize(user: User & { roles?: Array<{ role: { id: string; name: string } }> }) {

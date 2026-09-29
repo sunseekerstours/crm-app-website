@@ -35,19 +35,17 @@ export default function DashboardScreen({
 
   const load = useCallback(async () => {
     try {
-      const [customers, leads, deals, bookings, payments, departures] = await Promise.all([
+      const [customers, leads, deals, bookings, payments] = await Promise.all([
         api.get<{ total?: number; items?: unknown[] }>('/customers?limit=1').catch(() => ({ total: 0 })),
         api.get<{ total?: number; items?: unknown[] }>('/leads?limit=1').catch(() => ({ total: 0 })),
         api.get<{ total?: number; items?: unknown[] }>('/deals?limit=1').catch(() => ({ total: 0 })),
         api.get<{ total?: number; items?: unknown[] }>('/bookings?limit=1').catch(() => ({ total: 0 })),
         api.get<{ total?: number; items?: unknown[] }>('/payments?limit=1').catch(() => ({ total: 0 })),
-        api.get<{ total?: number; items?: unknown[] }>('/departures?limit=1').catch(() => ({ total: 0 })),
       ]);
       setStats([
         { label: 'Customers', value: customers.total ?? 0, icon: '👥', color: '#0E9F6E', route: { name: 'list', resource: 'customers' }, permission: 'customers.view' },
         { label: 'Leads', value: leads.total ?? 0, icon: '🎯', color: '#F59E0B', route: { name: 'list', resource: 'leads' }, permission: 'leads.view' },
         { label: 'Deals', value: deals.total ?? 0, icon: '💼', color: '#2563EB', route: { name: 'list', resource: 'deals' }, permission: 'deals.view' },
-        { label: 'Departures', value: departures.total ?? 0, icon: '✈️', color: '#7C3AED', route: { name: 'list', resource: 'departures' }, permission: 'departures.view' },
         { label: 'Bookings', value: bookings.total ?? 0, icon: '🧾', color: '#0891B2', route: { name: 'list', resource: 'bookings' }, permission: 'bookings.view' },
         { label: 'Payments', value: payments.total ?? 0, icon: '💳', color: '#059669', route: { name: 'list', resource: 'payments' }, permission: 'payments.view' },
       ]);

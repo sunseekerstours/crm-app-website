@@ -7,10 +7,6 @@ export class UpdateChecklistItemDto {
 
   @IsOptional()
   @IsString()
-  departureId?: string;
-
-  @IsOptional()
-  @IsString()
   description?: string;
 
   @IsOptional()

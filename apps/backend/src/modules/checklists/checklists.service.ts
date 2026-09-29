@@ -11,7 +11,6 @@ export interface ListParams {
   page: number;
   limit: number;
   search?: string;
-  departureId?: string;
 }
 
 @Injectable()
@@ -27,7 +26,6 @@ export class ChecklistsService {
     const item = await this.prisma.checklistItem.create({
       data: {
         title: dto.title,
-        departureId: dto.departureId,
         description: dto.description,
         category: dto.category,
         isRequired: dto.isRequired ?? true,
@@ -49,7 +47,6 @@ export class ChecklistsService {
 
   async findAll(params: ListParams) {
     const where: Prisma.ChecklistItemWhereInput = {};
-    if (params.departureId) where.departureId = params.departureId;
     if (params.search) where.title = { contains: params.search, mode: 'insensitive' };
 
     const [items, total] = await Promise.all([
@@ -87,7 +84,6 @@ export class ChecklistsService {
       where: { id },
       data: {
         title: dto.title,
-        departureId: dto.departureId,
         description: dto.description,
         category: dto.category,
         isRequired: dto.isRequired,

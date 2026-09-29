@@ -65,11 +65,6 @@ export const Permission = {
   DESTINATION_UPDATE: 'destinations.update',
   DESTINATION_DELETE: 'destinations.delete',
 
-  DEPARTURE_VIEW: 'departures.view',
-  DEPARTURE_CREATE: 'departures.create',
-  DEPARTURE_UPDATE: 'departures.update',
-  DEPARTURE_DELETE: 'departures.delete',
-
   TRAVELER_VIEW: 'travelers.view',
   TRAVELER_CREATE: 'travelers.create',
   TRAVELER_UPDATE: 'travelers.update',
@@ -117,17 +112,11 @@ export const Permission = {
   DRIVER_UPDATE: 'drivers.update',
   DRIVER_DELETE: 'drivers.delete',
 
-  TRIP_VIEW: 'trips.view',
-  TRIP_CONFIGURE: 'trips.configure',
-
   CHECKLIST_VIEW: 'checklists.view',
   CHECKLIST_CREATE: 'checklists.create',
   CHECKLIST_UPDATE: 'checklists.update',
   CHECKLIST_COMPLETE: 'checklists.complete',
   CHECKLIST_DELETE: 'checklists.delete',
-
-  OPERATION_VIEW: 'operations.view',
-  OPERATION_UPDATE: 'operations.update',
 
   REPORT_VIEW: 'reports.view',
 

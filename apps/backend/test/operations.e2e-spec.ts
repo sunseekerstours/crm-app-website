@@ -14,16 +14,12 @@ describe('Operations Task 6 (e2e)', () => {
   const adminPassword = 'OpsE2ePassword123!';
   const stamp = Date.now();
   const unique = (name: string) => name + ' ' + stamp;
-  let counter = 0;
 
   const supplierIds: string[] = [];
   const hotelIds: string[] = [];
   const vehicleIds: string[] = [];
   const guideIds: string[] = [];
   const driverIds: string[] = [];
-  const departureIds: string[] = [];
-  const tourIds: string[] = [];
-  const assignmentIds: string[] = [];
   const checklistIds: string[] = [];
 
   function path(p: string) {
@@ -34,24 +30,6 @@ describe('Operations Task 6 (e2e)', () => {
   }
   function auth(r: request.Test) {
     return r.set('Authorization', 'Bearer ' + token);
-  }
-
-  async function makeDeparture() {
-    const tour = await auth(agent().post(path('/tours')))
-      .send({ name: unique('Operations Trip') + '-' + ++counter, durationDays: 3, maxPax: 10 })
-      .expect(201);
-    tourIds.push(tour.body.data.id);
-    const dep = await auth(agent().post(path('/departures')))
-      .send({
-        tourId: tour.body.data.id,
-        startDate: '2027-07-01T00:00:00.000Z',
-        endDate: '2027-07-04T00:00:00.000Z',
-        maxPax: 10,
-        price: 3000,
-      })
-      .expect(201);
-    departureIds.push(dep.body.data.id);
-    return dep.body.data.id;
   }
 
   beforeAll(async () => {
@@ -85,9 +63,6 @@ describe('Operations Task 6 (e2e)', () => {
     await prisma
       .$transaction([
         prisma.checklistItem.deleteMany({ where: { id: { in: checklistIds } } }),
-        prisma.tripAssignment.deleteMany({ where: { id: { in: assignmentIds } } }),
-        prisma.departure.deleteMany({ where: { id: { in: departureIds } } }),
-        prisma.tour.deleteMany({ where: { id: { in: tourIds } } }),
         prisma.vehicle.deleteMany({ where: { id: { in: vehicleIds } } }),
         prisma.driver.deleteMany({ where: { id: { in: driverIds } } }),
         prisma.guide.deleteMany({ where: { id: { in: guideIds } } }),
@@ -162,59 +137,16 @@ describe('Operations Task 6 (e2e)', () => {
     expect(search.body.data.total).toBeGreaterThan(0);
   });
 
-  it('assigns resources to a trip and reads the trip board (TRIP_*)', async () => {
-    const supplierRes = await auth(agent().post(path('/suppliers')))
-      .send({ name: unique('Rainforest Lodge Co'), type: 'HOTEL' })
-      .expect(201);
-    const supplierId = supplierRes.body.data.id;
-    supplierIds.push(supplierId);
-
-    const hotelRes = await auth(agent().post(path('/hotels')))
-      .send({ name: unique('Canopy Lodge'), supplierId })
-      .expect(201);
-    const hotelId = hotelRes.body.data.id;
-    hotelIds.push(hotelId);
-
-    const guideRes = await auth(agent().post(path('/guides')))
-      .send({ firstName: 'Ama', lastName: 'Darko' })
-      .expect(201);
-    const guideId = guideRes.body.data.id;
-    guideIds.push(guideId);
-
-    const vehicleRes = await auth(agent().post(path('/vehicles')))
-      .send({ name: unique('Safari 4x4'), type: 'SUV_4X4', capacity: 6 })
-      .expect(201);
-    const vehicleId = vehicleRes.body.data.id;
-    vehicleIds.push(vehicleId);
-
-    const departureId = await makeDeparture();
-
-    const assignRes = await auth(agent().post(path('/trips/' + departureId + '/assignments')))
-      .send({ dayNumber: 1, guideId, hotelId, vehicleId, notes: 'Day 1 pickup at 8am' })
-      .expect(201);
-    assignmentIds.push(assignRes.body.data.id);
-    expect(assignRes.body.data.dayNumber).toBe(1);
-
-    const board = await auth(agent().get(path('/trips/' + departureId + '/board'))).expect(200);
-    expect(board.body.data.resources.guidesAssigned).toBe(1);
-    expect(board.body.data.resources.hotelsAssigned).toBe(1);
-    expect(board.body.data.resources.vehiclesAssigned).toBe(1);
-    expect(board.body.data.assignments).toHaveLength(1);
-    expect(board.body.data.departure.availableSeats).toBe(10);
-  });
-
-  it('manages checklist items for a trip, including completion (CHECKLIST_*)', async () => {
-    const departureId = await makeDeparture();
-
+  it('manages standalone checklist items, including completion (CHECKLIST_*)', async () => {
     const item1 = await auth(agent().post(path('/checklists')))
-      .send({ departureId, title: unique('Confirm park permits'), category: 'DOCUMENTS' })
+      .send({ title: unique('Confirm park permits'), category: 'DOCUMENTS' })
       .expect(201);
     const id1 = item1.body.data.id;
     checklistIds.push(id1);
     expect(item1.body.data.isCompleted).toBe(false);
 
     const item2 = await auth(agent().post(path('/checklists')))
-      .send({ departureId, title: unique('Vehicle inspection'), isRequired: true })
+      .send({ title: unique('Vehicle inspection'), isRequired: true })
       .expect(201);
     const id2 = item2.body.data.id;
     checklistIds.push(id2);
@@ -228,8 +160,7 @@ describe('Operations Task 6 (e2e)', () => {
     const reopened = await auth(agent().post(path('/checklists/' + id1 + '/reopen'))).expect(201);
     expect(reopened.body.data.isCompleted).toBe(false);
 
-    const board = await auth(agent().get(path('/trips/' + departureId + '/board'))).expect(200);
-    expect(board.body.data.checklists.total).toBe(2);
-    expect(board.body.data.checklists.completed).toBe(0);
+    const list = await auth(agent().get(path('/checklists?limit=50'))).expect(200);
+    expect(list.body.data.items).toHaveLength(2);
   });
 });

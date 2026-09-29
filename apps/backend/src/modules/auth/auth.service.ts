@@ -6,6 +6,7 @@ import { createHash, randomBytes } from 'crypto';
 import { PrismaService } from '@app/prisma/prisma.service';
 import { AuditService } from '@app/modules/audit/audit.service';
 import { ApiNotFoundException, ApiUnauthorizedException, ErrorCode } from '@app/common/errors';
+import { resolvePermissions } from '@app/common/rbac';
 import { LoginDto } from './dto/login.dto';
 import { CompletePasswordResetDto } from './dto/complete-password-reset.dto';
 import { User, UserStatus, AuditableAction } from '@prisma/client';
@@ -274,8 +275,9 @@ export class AuthService {
       throw new ApiNotFoundException(ErrorCode.USER_NOT_FOUND, 'User not found');
     }
     const roles = user.roles.map((r) => r.role.name);
-    const permissions = Array.from(
-      new Set(user.roles.flatMap((r) => r.role.permissions.map((p) => p.permission.key))),
+    const permissions = resolvePermissions(
+      roles,
+      user.roles.flatMap((r) => r.role.permissions.map((p) => p.permission.key)),
     );
     return { id: user.id, email: user.email, roles, permissions };
   }

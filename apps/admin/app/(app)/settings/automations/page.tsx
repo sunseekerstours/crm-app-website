@@ -559,7 +559,7 @@ export default function AutomationsPage() {
             fontSize: '13px',
           }}
         >
-          <strong>Sweep Results:</strong> Departure Reminders: {sweepResult.departureReminders} | Overdue Invoices: {sweepResult.invoiceOverdue} | Payment Reminders: {sweepResult.paymentReminders} | Stale Leads: {sweepResult.leadFollowUps} | Inactivity Escalations: {sweepResult.inactivityEscalations ?? 0}
+          <strong>Sweep Results:</strong> Overdue Invoices: {sweepResult.invoiceOverdue} | Payment Reminders: {sweepResult.paymentReminders} | Stale Leads: {sweepResult.leadFollowUps} | Inactivity Escalations: {sweepResult.inactivityEscalations ?? 0}
         </div>
       )}
 

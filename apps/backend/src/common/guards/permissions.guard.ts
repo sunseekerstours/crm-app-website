@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 import { ApiForbiddenException } from '../errors';
 import { ErrorCode } from '../errors';
 import { REQUIRED_PERMISSIONS_KEY } from '../decorators/permissions.decorator';
+import { isSuperAdmin } from '../rbac';
 
 @Injectable()
 export class PermissionsGuard implements CanActivate {
@@ -23,7 +24,7 @@ export class PermissionsGuard implements CanActivate {
     }
 
     // SuperAdmin implicitly passes all permission checks.
-    if (user.roles?.includes('SUPER_ADMIN')) return true;
+    if (isSuperAdmin(user.roles)) return true;
 
     const hasAll = required.every((perm) => user.permissions?.includes(perm));
     if (!hasAll) {

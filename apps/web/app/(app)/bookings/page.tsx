@@ -9,7 +9,6 @@ interface Booking {
   id: string;
   bookingNumber: string;
   customerId: string;
-  departureId?: string;
   status: string;
   paxCount: number;
   totalPrice?: number;
@@ -23,18 +22,11 @@ interface Customer {
   lastName: string;
 }
 
-interface Departure {
-  id: string;
-  startDate: string;
-  status: string;
-}
-
 export default function BookingsPage() {
   const [page, setPage] = useState(1);
   const { data, loading, error, reload } = useList<Booking>(`/bookings?page=${page}&limit=10`, [page]);
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [departures, setDepartures] = useState<Departure[]>([]);
-  const [form, setForm] = useState({ customerId: '', departureId: '', paxCount: '1', totalPrice: '' });
+  const [form, setForm] = useState({ customerId: '', tourName: '', paxCount: '1', totalPrice: '' });
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -42,10 +34,6 @@ export default function BookingsPage() {
     api
       .get<Paginated<Customer>>('/customers?limit=100')
       .then((r) => setCustomers(r.items))
-      .catch(() => undefined);
-    api
-      .get<Paginated<Departure>>('/departures?limit=100')
-      .then((r) => setDepartures(r.items.filter((d) => d.status === 'SCHEDULED')))
       .catch(() => undefined);
   });
 
@@ -56,11 +44,11 @@ export default function BookingsPage() {
     try {
       await api.post('/bookings', {
         customerId: form.customerId,
-        departureId: form.departureId || undefined,
+        tourName: form.tourName || undefined,
         paxCount: Number(form.paxCount),
         totalPrice: form.totalPrice ? Number(form.totalPrice) : undefined,
       });
-      setForm({ customerId: '', departureId: '', paxCount: '1', totalPrice: '' });
+      setForm({ customerId: '', tourName: '', paxCount: '1', totalPrice: '' });
       reload();
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Failed to create');
@@ -76,7 +64,7 @@ export default function BookingsPage() {
         <form onSubmit={create}>
           <div className="form-grid">
             <Select label="Customer" name="customerId" value={form.customerId} onChange={(e) => setForm({ ...form, customerId: e.target.value })} options={customers.map((c) => ({ value: c.id, label: `${c.firstName} ${c.lastName}` }))} />
-            <Select label="Departure" name="departureId" value={form.departureId} onChange={(e) => setForm({ ...form, departureId: e.target.value })} options={departures.map((d) => ({ value: d.id, label: new Date(d.startDate).toLocaleDateString() }))} />
+            <Input label="Tour name" name="tourName" value={form.tourName} onChange={(e) => setForm({ ...form, tourName: e.target.value })} />
             <Input label="Pax count" name="paxCount" type="number" value={form.paxCount} onChange={(e) => setForm({ ...form, paxCount: e.target.value })} />
             <Input label="Total price" name="totalPrice" type="number" value={form.totalPrice} onChange={(e) => setForm({ ...form, totalPrice: e.target.value })} />
           </div>

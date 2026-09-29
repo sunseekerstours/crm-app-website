@@ -36,7 +36,6 @@ export default function DashboardPage() {
           api.get<{ total: number }>('/leads?limit=1').catch(() => ({ total: 0 })),
           api.get<{ total: number }>('/deals?limit=1').catch(() => ({ total: 0 })),
           api.get<{ total: number }>('/tours?limit=1').catch(() => ({ total: 0 })),
-          api.get<{ total: number }>('/departures?limit=1').catch(() => ({ total: 0 })),
           api.get<{ total: number }>('/bookings?limit=1').catch(() => ({ total: 0 })),
           api.get<{ total: number }>('/payments?limit=1').catch(() => ({ total: 0 })),
           api.get<{ total: number }>('/users?limit=1').catch(() => ({ total: 0 })),
@@ -47,10 +46,9 @@ export default function DashboardPage() {
           { label: 'Leads', value: String(results[1].total), href: '/crm/leads', icon: '🎯', color: '#F59E0B', permission: 'leads.view' },
           { label: 'Deals', value: String(results[2].total), href: '/crm/deals', icon: '💼', color: '#2563EB', permission: 'deals.view' },
           { label: 'Tours', value: String(results[3].total), href: '/crm/tours', icon: '🏝️', color: '#7C3AED', permission: 'tours.view' },
-          { label: 'Departures', value: String(results[4].total), href: '/crm/departures', icon: '✈️', color: '#0891B2', permission: 'departures.view' },
-          { label: 'Bookings', value: String(results[5].total), href: '/crm/bookings', icon: '🧾', color: '#059669', permission: 'bookings.view' },
-          { label: 'Payments', value: String(results[6].total), href: '/crm/payments', icon: '💳', color: '#D97706', permission: 'payments.view' },
-          { label: 'Users', value: String(results[7].total), href: '/users', icon: '👤', color: '#6366F1', permission: 'users.view' },
+          { label: 'Bookings', value: String(results[4].total), href: '/crm/bookings', icon: '🧾', color: '#059669', permission: 'bookings.view' },
+          { label: 'Payments', value: String(results[5].total), href: '/crm/payments', icon: '💳', color: '#D97706', permission: 'payments.view' },
+          { label: 'Users', value: String(results[6].total), href: '/users', icon: '👤', color: '#6366F1', permission: 'users.view' },
         ]);
       } catch {
         if (active) setStats([]);

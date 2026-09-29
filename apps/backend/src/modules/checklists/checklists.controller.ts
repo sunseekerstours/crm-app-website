@@ -32,7 +32,6 @@ export class ChecklistsController {
       page: query.page ?? 1,
       limit: query.limit ?? 20,
       search: query.search,
-      departureId: query.departureId,
     });
   }
 
