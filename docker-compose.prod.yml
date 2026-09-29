@@ -1,5 +1,15 @@
 name: sunseekers-crm
 
+# Dokploy builds compose domain service URLs as http://<appName>:<port>, where
+# appName is the single hostname it knows for this project. The proxy below
+# answers to that hostname and fans out to the four services by port, so the
+# Domains tab in Dokploy is the single source of truth for routing.
+#
+# DOKPLOY_APPNAME must match the compose appName in the Dokploy database. If
+# the service is ever recreated and Dokploy issues a new random suffix, update
+# it here (and redeploy) or the domains will stop resolving.
+x-dokploy-appname: &dokployAppName sunseekers-crm-75eab8
+
 services:
   db:
     image: postgres:16-alpine
@@ -71,16 +81,6 @@ services:
     networks:
       - default
       - dokploy-network
-    labels:
-      - traefik.enable=true
-      - traefik.docker.network=dokploy-network
-      - traefik.http.routers.sunseekers-api.rule=Host(`sunseekers-api-69-62-106-189.sslip.io`)
-      - traefik.http.routers.sunseekers-api.entrypoints=web
-      - traefik.http.routers.sunseekers-api.middlewares=redirect-to-https@file
-      - traefik.http.routers.sunseekers-api-secure.rule=Host(`sunseekers-api-69-62-106-189.sslip.io`)
-      - traefik.http.routers.sunseekers-api-secure.entrypoints=websecure
-      - traefik.http.routers.sunseekers-api-secure.tls.certresolver=letsencrypt
-      - traefik.http.services.sunseekers-api-secure.loadbalancer.server.port=3000
 
   admin:
     build:
@@ -99,16 +99,6 @@ services:
     networks:
       - default
       - dokploy-network
-    labels:
-      - traefik.enable=true
-      - traefik.docker.network=dokploy-network
-      - traefik.http.routers.sunseekers-admin.rule=Host(`sunseekers-admin-69-62-106-189.sslip.io`)
-      - traefik.http.routers.sunseekers-admin.entrypoints=web
-      - traefik.http.routers.sunseekers-admin.middlewares=redirect-to-https@file
-      - traefik.http.routers.sunseekers-admin-secure.rule=Host(`sunseekers-admin-69-62-106-189.sslip.io`)
-      - traefik.http.routers.sunseekers-admin-secure.entrypoints=websecure
-      - traefik.http.routers.sunseekers-admin-secure.tls.certresolver=letsencrypt
-      - traefik.http.services.sunseekers-admin-secure.loadbalancer.server.port=3003
 
   web:
     build:
@@ -127,16 +117,6 @@ services:
     networks:
       - default
       - dokploy-network
-    labels:
-      - traefik.enable=true
-      - traefik.docker.network=dokploy-network
-      - traefik.http.routers.sunseekers-crm.rule=Host(`sunseekers-crm-69-62-106-189.sslip.io`)
-      - traefik.http.routers.sunseekers-crm.entrypoints=web
-      - traefik.http.routers.sunseekers-crm.middlewares=redirect-to-https@file
-      - traefik.http.routers.sunseekers-crm-secure.rule=Host(`sunseekers-crm-69-62-106-189.sslip.io`)
-      - traefik.http.routers.sunseekers-crm-secure.entrypoints=websecure
-      - traefik.http.routers.sunseekers-crm-secure.tls.certresolver=letsencrypt
-      - traefik.http.services.sunseekers-crm-secure.loadbalancer.server.port=3001
 
   site:
     build:
@@ -155,16 +135,35 @@ services:
     networks:
       - default
       - dokploy-network
-    labels:
-      - traefik.enable=true
-      - traefik.docker.network=dokploy-network
-      - traefik.http.routers.sunseekers-site.rule=Host(`sunseekers-site-69-62-106-189.sslip.io`)
-      - traefik.http.routers.sunseekers-site.entrypoints=web
-      - traefik.http.routers.sunseekers-site.middlewares=redirect-to-https@file
-      - traefik.http.routers.sunseekers-site-secure.rule=Host(`sunseekers-site-69-62-106-189.sslip.io`)
-      - traefik.http.routers.sunseekers-site-secure.entrypoints=websecure
-      - traefik.http.routers.sunseekers-site-secure.tls.certresolver=letsencrypt
-      - traefik.http.services.sunseekers-site-secure.loadbalancer.server.port=3002
+
+  # Single entrypoint for all four public domains.
+  # Exposes 3000 (api), 3001 (crm), 3002 (site), 3003 (admin) and answers to
+  # the Dokploy appName so the Domains tab generates working config.
+  proxy:
+    image: nginx:1.27-alpine
+    container_name: sunseekers-proxy
+    restart: unless-stopped
+    depends_on:
+      - backend
+      - web
+      - site
+      - admin
+    volumes:
+      - ./docker/proxy-nginx-main.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/proxy-nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      default:
+        aliases:
+          - *dokployAppName
+      dokploy-network:
+        aliases:
+          - *dokployAppName
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3001/ >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
 volumes:
   sunseekers_pgdata:
