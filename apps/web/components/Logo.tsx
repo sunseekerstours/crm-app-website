@@ -1,21 +1,14 @@
 import Link from 'next/link';
 
 export default function Logo({
-  variant = 'light',
-  showTagline = true,
-  className = '',
   collapsed = false,
+  className = '',
   height = 42,
 }: {
-  variant?: 'dark' | 'light';
-  showTagline?: boolean;
-  className?: string;
   collapsed?: boolean;
+  className?: string;
   height?: number;
 }) {
-  const textColor = variant === 'light' ? '#ffffff' : '#007A3D';
-  const subtextColor = variant === 'light' ? '#f97316' : '#ea580c';
-
   return (
     <Link
       href="/"
@@ -25,29 +18,27 @@ export default function Logo({
         alignItems: 'center',
         gap: collapsed ? '0' : '10px',
         textDecoration: 'none',
-        transition: 'all 0.25s ease',
       }}
     >
       <img
         src="/logo.png"
         alt="Sunseekers Tours"
         style={{
-          height: `${collapsed ? 36 : height}px`,
+          height: `${height}px`,
           width: 'auto',
           objectFit: 'contain',
-          filter: 'drop-shadow(0 2px 8px rgba(22, 163, 74, 0.3))',
+          filter: 'drop-shadow(0 2px 8px rgba(22, 163, 74, 0.25))',
         }}
       />
-
       {!collapsed && (
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <span
             style={{
-              fontSize: '18px',
+              fontSize: '17px',
               fontWeight: '900',
+              color: '#ffffff',
               letterSpacing: '-0.3px',
-              color: textColor,
-              lineHeight: '1.1',
+              lineHeight: 1.1,
             }}
           >
             Sunseekers
@@ -56,27 +47,24 @@ export default function Logo({
             style={{
               fontSize: '13px',
               fontWeight: '800',
-              letterSpacing: '1px',
               color: '#22c55e',
-              lineHeight: '1.1',
+              letterSpacing: '0.8px',
+              lineHeight: 1.1,
               textTransform: 'uppercase',
             }}
           >
-            Admin Console
+            Tours CRM
           </span>
-          {showTagline && (
-            <span
-              style={{
-                fontSize: '10px',
-                fontStyle: 'italic',
-                color: subtextColor,
-                marginTop: '1px',
-                fontWeight: 600,
-              }}
-            >
-              ...Memories Forever
-            </span>
-          )}
+          <span
+            style={{
+              fontSize: '9px',
+              fontStyle: 'italic',
+              color: '#f97316',
+              marginTop: '1px',
+            }}
+          >
+            ...Memories Forever
+          </span>
         </div>
       )}
     </Link>

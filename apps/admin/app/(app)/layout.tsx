@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { ReactNode, useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth';
 import Logo from '@/components/Logo';
+import { useNotifications } from '@/lib/notifications-context';
 
 const NAV = [
   { href: '/', label: 'Dashboard', exact: true, permission: '' },
@@ -190,28 +191,56 @@ function getIcon(label: string) {
 function NavLink({
   item,
   pathname,
+  unreadCount = 0,
   onClick,
 }: {
   item: { href: string; label: string; exact?: boolean };
   pathname: string;
+  unreadCount?: number;
   onClick?: () => void;
 }) {
   const active = item.exact ? pathname === item.href : pathname.startsWith(item.href);
+  const isNotification = item.label === 'Notifications';
   return (
     <Link
       key={item.href}
       href={item.href}
       className={`nav-link${active ? ' active' : ''}`}
       onClick={onClick}
+      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
     >
-      {getIcon(item.label)}
-      <span className="sidebar-text">{item.label}</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        {getIcon(item.label)}
+        <span className="sidebar-text">{item.label}</span>
+      </div>
+      {isNotification && (
+        <span
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minWidth: '20px',
+            height: '20px',
+            padding: '0 6px',
+            borderRadius: '10px',
+            fontSize: '11px',
+            fontWeight: 800,
+            background: unreadCount > 0 ? '#ef4444' : 'rgba(255,255,255,0.1)',
+            color: '#ffffff',
+            boxShadow: unreadCount > 0 ? '0 0 8px rgba(239, 68, 68, 0.6)' : 'none',
+          }}
+          title={`${unreadCount} unread`}
+        >
+          {unreadCount}
+        </span>
+      )}
     </Link>
   );
 }
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const { user, loading, isAdmin, logout } = useAuth();
+  const { unreadCount, triggerSoundTest } = useNotifications();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -298,7 +327,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             </svg>
           </div>
           {crmOpen && CRM_NAV.filter((item) => hasUserPermission(user, item.permission)).map((item) => (
-            <NavLink key={item.href} item={item} pathname={pathname} />
+            <NavLink key={item.href} item={item} pathname={pathname} unreadCount={unreadCount} />
           ))}
         </div>
 
@@ -384,13 +413,63 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               <input type="text" placeholder="Search Console..." disabled />
             </div>
 
-            {/* Notification Icon (Visual Link to CRM Notifications) */}
-            <Link href="/crm/notifications" className="nav-badge-icon" title="Notifications">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" style={{ width: 20, height: 20 }}>
+            {/* Notification Icon with Live Number Badge */}
+            <Link
+              href="/crm/notifications"
+              className="nav-badge-icon"
+              title={`${unreadCount} unread notifications`}
+              style={{ position: 'relative', display: 'flex', alignItems: 'center' }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" style={{ width: 22, height: 22 }}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
               </svg>
-              <span className="nav-badge-dot" />
+              {unreadCount > 0 ? (
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: '-6px',
+                    right: '-8px',
+                    background: '#ef4444',
+                    color: '#ffffff',
+                    fontSize: '11px',
+                    fontWeight: 800,
+                    minWidth: '18px',
+                    height: '18px',
+                    borderRadius: '9px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '0 4px',
+                    boxShadow: '0 0 8px rgba(239, 68, 68, 0.7)',
+                  }}
+                >
+                  {unreadCount}
+                </span>
+              ) : (
+                <span className="nav-badge-dot" style={{ background: '#22c55e' }} />
+              )}
             </Link>
+
+            {/* Audio Sound Test Button */}
+            <button
+              onClick={triggerSoundTest}
+              style={{
+                background: 'rgba(249, 115, 22, 0.15)',
+                border: '1px solid rgba(249, 115, 22, 0.4)',
+                borderRadius: '8px',
+                padding: '5px 12px',
+                color: '#fdba74',
+                cursor: 'pointer',
+                fontSize: '12px',
+                fontWeight: 600,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+              title="Test audio chime sound"
+            >
+              <span>🔊</span> Test Sound
+            </button>
           </div>
         </header>
 

@@ -51,8 +51,17 @@ function LoginForm() {
   return (
     <div className="auth-wrap">
       <form className="auth-card" onSubmit={onSubmit}>
-        <h1 className="auth-title">Sunseekers Staff CRM</h1>
-        <p className="auth-sub">Sign in to the travel management platform</p>
+        <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+          <img
+            src="/logo.png"
+            alt="Sunseekers Tours"
+            style={{ height: '78px', width: 'auto', margin: '0 auto', objectFit: 'contain' }}
+          />
+        </div>
+        <h1 className="auth-title" style={{ textAlign: 'center' }}>Sunseekers Staff CRM</h1>
+        <p className="auth-sub" style={{ textAlign: 'center', fontStyle: 'italic', color: '#86efac' }}>
+          ...Memories of our Tours are Forever
+        </p>
 
         {isExpired ? (
           <div

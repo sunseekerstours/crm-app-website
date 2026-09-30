@@ -51,3 +51,7 @@ bk*.txt
 
 # Local PRD spec (kept out of public repo)
 TRAVEL OPERATIONS PLATFORM.docx
+fleet_sheet.xlsx
+scripts/*.json
+scripts/*.sql
+

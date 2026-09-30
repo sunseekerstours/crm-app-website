@@ -2207,17 +2207,25 @@ export default function FleetPage() {
               }}
             >
               {/* Brand Header */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '3px solid #008744', paddingBottom: '24px', marginBottom: '24px' }}>
-                <div>
-                  <div style={{ fontSize: '26px', fontWeight: '900', color: '#008744', letterSpacing: '-0.5px' }}>
-                    SUNSEEKERS TOURS
-                  </div>
-                  <div style={{ fontSize: '13px', color: '#64748b', marginTop: '2px', fontWeight: '600' }}>
-                    Discover Ghana &amp; Beyond • Premium Fleet &amp; Corporate Bus Charters
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#475569', marginTop: '6px', lineHeight: 1.5 }}>
-                    Accra, Ghana • Tel: +233 (0) 302 225 311 / +233 24 431 2345<br />
-                    Email: info@sunseekerstours.com • Web: www.sunseekerstours.com
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '3px solid #16a34a', paddingBottom: '20px', marginBottom: '24px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
+                  <img
+                    src="/logo.png"
+                    alt="Sunseekers Tours"
+                    style={{ height: '76px', width: 'auto', objectFit: 'contain' }}
+                  />
+                  <div>
+                    <div style={{ fontSize: '24px', fontWeight: '900', color: '#15803d', letterSpacing: '-0.5px' }}>
+                      SUNSEEKERS TOURS
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#16a34a', fontStyle: 'italic', fontWeight: '700', marginBottom: '4px' }}>
+                      ...Memories of our Tours are Forever
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#334155', lineHeight: 1.5 }}>
+                      <strong>Address:</strong> Opp. Trust Towers, 9 Farrar Ave, Accra<br />
+                      <strong>Phone:</strong> 030 222 5393 • <strong>Email:</strong> info@sunseekerstours.com<br />
+                      <strong>Web:</strong> www.sunseekerstours.com
+                    </div>
                   </div>
                 </div>
 
