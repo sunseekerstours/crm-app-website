@@ -1,7 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { api, Paginated } from '@/lib/api';
+import { exportToCSV } from '@/lib/export';
 import {
   Badge,
   Button,
@@ -48,6 +50,9 @@ interface NoteItem {
 
 function getTagBadgeStyle(tag: string): { bg: string; color: string; border: string } {
   const t = tag.toLowerCase();
+  if (t === 'fleet' || t.includes('fleet')) {
+    return { bg: '#ecfdf5', color: '#047857', border: '#a7f3d0' }; // Emerald for fleet clients
+  }
   if (t.includes('wtm') || t.includes('itb') || t.includes('clia') || t.includes('kenya') || t.includes('seatrade') || t.includes('blitz') || t.includes('sales trip') || t.includes('fair')) {
     return { bg: '#eff6ff', color: '#1d4ed8', border: '#bfdbfe' }; // Blue for trade fairs
   }
@@ -291,6 +296,36 @@ export default function CrmCustomersPage() {
       <PageHeader
         title="Customers"
         subtitle="Manage customer profiles, Jetpack CRM data tags, preferences, and products"
+        action={
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <Link href={selectedTag ? `/crm/campaigns?tag=${selectedTag}` : '/crm/campaigns'}>
+              <Button variant="secondary">
+                📢 Broadcast Bulk Email / SMS
+              </Button>
+            </Link>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                if (!data?.items || data.items.length === 0) {
+                  alert('No customers to export');
+                  return;
+                }
+                exportToCSV(data.items, `sunseekers_customers${selectedTag ? `_${selectedTag}` : ''}`, [
+                  { key: 'firstName', label: 'First Name / Company' },
+                  { key: 'lastName', label: 'Last Name' },
+                  { key: 'email', label: 'Email Address', format: (c) => c.email || '' },
+                  { key: 'phone', label: 'Phone Number', format: (c) => c.phone || '0200000000' },
+                  { key: 'tags', label: 'Tags', format: (c) => (c.tags || []).join('; ') },
+                  { key: 'status', label: 'Status' },
+                  { key: 'country', label: 'Country' },
+                  { key: 'company', label: 'Company Organization', format: (c) => c.company?.name || '' },
+                ]);
+              }}
+            >
+              📥 Export CSV
+            </Button>
+          </div>
+        }
       />
 
       {/* Filter and Search Bar */}

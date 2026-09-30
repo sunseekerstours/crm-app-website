@@ -20,6 +20,8 @@ interface Customer {
   email?: string | null;
   phone?: string | null;
   status: string;
+  tags?: string[];
+  company?: { id: string; name: string } | null;
   products?: { id: string; name: string; category?: string | null }[];
 }
 interface Lead { id: string; firstName?: string; lastName?: string; email?: string | null; company?: string; stage: string; }
@@ -38,11 +40,25 @@ export const RESOURCES: Record<string, ResourceConfig<any>> = {
     addRoute: { name: 'customerForm' },
     detailRoute: (id: string): Route => ({ name: 'customerDetail', id }),
     columns: [
-      { key: 'name', label: 'Name', render: (r: Customer) => `${r.firstName} ${r.lastName}`.trim() },
+      {
+        key: 'name',
+        label: 'Name',
+        render: (r: Customer) => {
+          const name = `${r.firstName} ${r.lastName}`.trim();
+          const tagInfo = r.tags && r.tags.length > 0 ? ` [${r.tags.join(', ')}]` : '';
+          return `${name}${tagInfo}`;
+        },
+      },
       {
         key: 'contact',
         label: 'Contact',
-        render: (r: Customer) => `${r.email ?? ''}${r.phone ? ` · ${r.phone}` : ''}`,
+        render: (r: Customer) => {
+          const parts: string[] = [];
+          if (r.phone) parts.push(`📞 ${r.phone}`);
+          if (r.email) parts.push(`✉️ ${r.email}`);
+          if (r.company?.name) parts.push(`🏢 ${r.company.name}`);
+          return parts.length > 0 ? parts.join('  ·  ') : 'No contact details';
+        },
       },
     ],
   },

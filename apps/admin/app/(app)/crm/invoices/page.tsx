@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api, Paginated } from '@/lib/api';
+import { exportToCSV } from '@/lib/export';
 import {
   Badge,
   Button,
@@ -413,7 +414,48 @@ export default function CrmInvoicesQuotesPage() {
         title="Financial Documents & Billing"
         subtitle="Generate, track, and print Invoices, Quotations, and Payment Receipts with official Sunseekers branding"
         action={
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                if (activeTab === 'invoices' && invoicesData?.items?.length) {
+                  exportToCSV(invoicesData.items, 'sunseekers_invoices', [
+                    { key: 'invoiceNumber', label: 'Invoice No' },
+                    { key: 'customer', label: 'Customer', format: (r) => r.customer ? `${r.customer.firstName} ${r.customer.lastName}` : '' },
+                    { key: 'amount', label: 'Total Amount' },
+                    { key: 'amountPaid', label: 'Amount Paid' },
+                    { key: 'currency', label: 'Currency' },
+                    { key: 'status', label: 'Status' },
+                    { key: 'issueDate', label: 'Issue Date' },
+                    { key: 'dueDate', label: 'Due Date' },
+                  ]);
+                } else if (activeTab === 'quotes' && quotesData?.items?.length) {
+                  exportToCSV(quotesData.items, 'sunseekers_quotes', [
+                    { key: 'quoteNumber', label: 'Quote No' },
+                    { key: 'customer', label: 'Customer', format: (r) => r.customer ? `${r.customer.firstName} ${r.customer.lastName}` : '' },
+                    { key: 'amount', label: 'Total Amount' },
+                    { key: 'currency', label: 'Currency' },
+                    { key: 'status', label: 'Status' },
+                    { key: 'validUntil', label: 'Valid Until' },
+                  ]);
+                } else if (activeTab === 'receipts' && paymentsData?.items?.length) {
+                  exportToCSV(paymentsData.items, 'sunseekers_receipts', [
+                    { key: 'receiptNumber', label: 'Receipt No' },
+                    { key: 'paymentNumber', label: 'Payment No' },
+                    { key: 'customer', label: 'Customer', format: (r) => r.customer ? `${r.customer.firstName} ${r.customer.lastName}` : '' },
+                    { key: 'amount', label: 'Amount Paid' },
+                    { key: 'currency', label: 'Currency' },
+                    { key: 'method', label: 'Payment Method' },
+                    { key: 'status', label: 'Status' },
+                    { key: 'paidAt', label: 'Paid At' },
+                  ]);
+                } else {
+                  alert('No records available to export in current tab.');
+                }
+              }}
+            >
+              📥 Export CSV
+            </Button>
             <Button
               onClick={() => {
                 setEditingQuote(null);

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { api, type Paginated } from '@/lib/api';
+import { exportToCSV } from '@/lib/export';
 import { PageHeader, Spinner, ErrorState, Button } from '@/components/ui';
 
 interface Vehicle {
@@ -673,7 +674,50 @@ export default function FleetPage() {
             Interactive Gantt schedule, automated invoice generation, and conflict-sensitive dispatching
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              if (activeTab === 'vehicles') {
+                exportToCSV(vehicles, 'sunseekers_fleet_vehicles', [
+                  { key: 'name', label: 'Vehicle Name' },
+                  { key: 'registrationNo', label: 'Registration No' },
+                  { key: 'type', label: 'Type' },
+                  { key: 'capacity', label: 'Passenger Capacity' },
+                  { key: 'driver', label: 'Assigned Driver', format: (v) => v.driver ? `${v.driver.firstName} ${v.driver.lastName}` : '' },
+                  { key: 'notes', label: 'Notes' },
+                  { key: 'isActive', label: 'Active Status' },
+                ]);
+              } else if (activeTab === 'drivers') {
+                exportToCSV(drivers, 'sunseekers_fleet_drivers', [
+                  { key: 'firstName', label: 'First Name' },
+                  { key: 'lastName', label: 'Last Name' },
+                  { key: 'phone', label: 'Phone Number' },
+                  { key: 'email', label: 'Email' },
+                  { key: 'licenseNumber', label: 'Driver License' },
+                  { key: 'isActive', label: 'Active Status' },
+                ]);
+              } else {
+                exportToCSV(bookings, 'sunseekers_fleet_bookings', [
+                  { key: 'company', label: 'Client / Company' },
+                  { key: 'destination', label: 'Trip Destination' },
+                  { key: 'startDate', label: 'Start Date' },
+                  { key: 'endDate', label: 'End Date' },
+                  { key: 'vehicle', label: 'Bus / Vehicle', format: (b) => b.vehicle?.name || '' },
+                  { key: 'driverName', label: 'Assigned Driver' },
+                  { key: 'departTime', label: 'Departure Time' },
+                  { key: 'paxCount', label: 'Pax Count' },
+                  { key: 'ratePerDay', label: 'Rate Per Day' },
+                  { key: 'totalAmount', label: 'Total Amount (GHS)' },
+                  { key: 'paymentStatus', label: 'Payment Status' },
+                  { key: 'invoiceNumber', label: 'Invoice No' },
+                  { key: 'quoteNumber', label: 'Quote No' },
+                ]);
+              }
+            }}
+          >
+            📥 Export CSV
+          </Button>
           {activeTab === 'scheduler' && (
             <Button onClick={() => openNewBooking()}>+ New Bus Booking</Button>
           )}

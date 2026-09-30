@@ -67,6 +67,19 @@ interface PaymentItem {
   method: string;
 }
 
+interface FleetBookingItem {
+  id: string;
+  company: string;
+  destination?: string;
+  startDate: string;
+  endDate: string;
+  vehicle?: { name: string; registrationNo?: string };
+  driverName?: string;
+  totalAmount?: number;
+  paymentStatus?: string;
+  currency?: string;
+}
+
 const LEAD_STAGES = ['NEW', 'CONTACTED', 'QUALIFIED', 'PROPOSAL', 'NEGOTIATION', 'WON', 'LOST'];
 const DEAL_STAGES = ['NEW', 'QUALIFIED', 'PROPOSAL', 'NEGOTIATION', 'DEPOSIT', 'WON', 'LOST'];
 const PRODUCT_CATEGORIES = ['GHANA_TOUR', 'INTERNATIONAL_TOUR', 'FLIGHT', 'HOTEL', 'CAR_RENTAL', 'OTHER'];
@@ -94,6 +107,7 @@ export default function CustomerDetailScreen({
   const [bookings, setBookings] = useState<BookingItem[]>([]);
   const [invoices, setInvoices] = useState<InvoiceItem[]>([]);
   const [payments, setPayments] = useState<PaymentItem[]>([]);
+  const [fleetBookings, setFleetBookings] = useState<FleetBookingItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -103,18 +117,20 @@ export default function CustomerDetailScreen({
   const load = useCallback(async () => {
     setError(null);
     try {
-      const [c, n, b, inv, p] = await Promise.all([
+      const [c, n, b, inv, p, fb] = await Promise.all([
         api.get<CustomerDetail>(`/customers/${customerId}`),
         api.get<{ items: Note[] }>(`/notes?customerId=${customerId}&limit=50`).catch(() => ({ items: [] })),
         api.get<{ items: BookingItem[] }>(`/bookings?customerId=${customerId}&limit=50`).catch(() => ({ items: [] })),
         api.get<{ items: InvoiceItem[] }>(`/invoices?customerId=${customerId}&limit=50`).catch(() => ({ items: [] })),
         api.get<{ items: PaymentItem[] }>(`/payments?customerId=${customerId}&limit=50`).catch(() => ({ items: [] })),
+        api.get<{ items: FleetBookingItem[] }>(`/fleet?customerId=${customerId}&limit=50`).catch(() => ({ items: [] })),
       ]);
       setCustomer(c);
       setNotes(n.items ?? []);
       setBookings(b.items ?? []);
       setInvoices(inv.items ?? []);
       setPayments(p.items ?? []);
+      setFleetBookings(fb.items ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load customer');
     } finally {
@@ -206,8 +222,8 @@ export default function CustomerDetailScreen({
           </View>
           {customer.company ? <Text style={styles.company}>{customer.company.name}</Text> : null}
           <View style={styles.infoGrid}>
+            <Text style={styles.info}>📞 {customer.phone || '0200000000'}</Text>
             {customer.email ? <Text style={styles.info}>✉ {customer.email}</Text> : null}
-            {customer.phone ? <Text style={styles.info}>📞 {customer.phone}</Text> : null}
             {customer.whatsapp ? <Text style={styles.info}>💬 {customer.whatsapp}</Text> : null}
             {customer.country ? <Text style={styles.info}>🌍 {customer.country}{customer.nationality ? ` · ${customer.nationality}` : ''}</Text> : null}
             {customer.address ? <Text style={styles.info}>📍 {customer.address}</Text> : null}
@@ -225,6 +241,24 @@ export default function CustomerDetailScreen({
 
         {/* Bookings & Financials */}
         <Card title="Bookings & Invoices">
+          {fleetBookings.length > 0 ? (
+            <View style={styles.group}>
+              <SectionLabel>Fleet &amp; Bus Bookings ({fleetBookings.length})</SectionLabel>
+              {fleetBookings.map((fb) => (
+                <View key={fb.id} style={styles.finRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.finTitle}>🚌 {fb.vehicle?.name || 'Charter Vehicle'}</Text>
+                    <Text style={styles.finSub}>
+                      {fb.destination || 'Ghana Tour'} · {fb.startDate.split('T')[0]} to {fb.endDate.split('T')[0]}
+                    </Text>
+                  </View>
+                  <Text style={styles.finAmt}>₵{fb.totalAmount ?? '0'}</Text>
+                  <Badge label={fb.paymentStatus ?? 'UNPAID'} tone={toneForStatus(fb.paymentStatus)} />
+                </View>
+              ))}
+            </View>
+          ) : null}
+
           {bookings.length > 0 ? (
             <View style={styles.group}>
               <SectionLabel>Bookings ({bookings.length})</SectionLabel>

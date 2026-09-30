@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api, Paginated } from '@/lib/api';
+import { exportToCSV } from '@/lib/export';
 import {
   Badge,
   Button,
@@ -282,7 +283,28 @@ export default function CrmBookingsPage() {
         title="Bookings & Reservations"
         subtitle={editing ? `Edit Booking: ${editing.bookingNumber}` : 'Manage tour bookings, customer reservations, and generate invoices/receipts'}
         action={
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                if (!data?.items || data.items.length === 0) {
+                  alert('No bookings to export.');
+                  return;
+                }
+                exportToCSV(data.items, 'sunseekers_tour_bookings', [
+                  { key: 'bookingNumber', label: 'Booking No' },
+                  { key: 'customer', label: 'Customer', format: (b) => b.customer ? `${b.customer.firstName ?? ''} ${b.customer.lastName ?? ''}`.trim() : '' },
+                  { key: 'tourName', label: 'Tour / Trip Name' },
+                  { key: 'paxCount', label: 'Pax Count' },
+                  { key: 'totalPrice', label: 'Total Price' },
+                  { key: 'currency', label: 'Currency' },
+                  { key: 'status', label: 'Status' },
+                  { key: 'bookedAt', label: 'Booking Date' },
+                ]);
+              }}
+            >
+              📥 Export CSV
+            </Button>
             {editing ? (
               <Button variant="secondary" onClick={reset}>
                 Cancel Edit

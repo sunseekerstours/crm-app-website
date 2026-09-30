@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api, Paginated } from '@/lib/api';
+import { exportToCSV } from '@/lib/export';
 import {
   Badge,
   Button,
@@ -231,7 +232,26 @@ export default function CrmDealsPage() {
         title="Sales Deals & Pipelines"
         subtitle={editing ? `Edit Deal: ${editing.name}` : 'Track sales opportunities, customer values, and generate proposals'}
         action={
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                if (!data?.items || data.items.length === 0) {
+                  alert('No deals to export.');
+                  return;
+                }
+                exportToCSV(data.items, 'sunseekers_sales_deals', [
+                  { key: 'name', label: 'Deal Name' },
+                  { key: 'customer', label: 'Customer', format: (d) => d.customer ? `${d.customer.firstName ?? ''} ${d.customer.lastName ?? ''}`.trim() : '' },
+                  { key: 'stage', label: 'Stage' },
+                  { key: 'amount', label: 'Deal Amount' },
+                  { key: 'currency', label: 'Currency' },
+                  { key: 'expectedCloseDate', label: 'Expected Close Date' },
+                ]);
+              }}
+            >
+              📥 Export CSV
+            </Button>
             {editing ? (
               <Button variant="secondary" onClick={reset}>
                 Cancel Edit

@@ -13,6 +13,7 @@ export interface FleetListParams {
   page: number;
   limit: number;
   vehicleId?: string;
+  customerId?: string;
   from?: string;
   to?: string;
 }
@@ -215,6 +216,7 @@ export class FleetService {
   async findAll(params: FleetListParams) {
     const where: Record<string, unknown> = {};
     if (params.vehicleId) where.vehicleId = params.vehicleId;
+    if (params.customerId) where.customerId = params.customerId;
     if (params.from || params.to) {
       where.AND = [
         ...(params.from ? [{ endDate:   { gte: new Date(params.from) } }] : []),

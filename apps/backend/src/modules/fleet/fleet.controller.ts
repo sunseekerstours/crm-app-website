@@ -26,6 +26,7 @@ export class FleetController {
     @Query('page') page = '1',
     @Query('limit') limit = '200',
     @Query('vehicleId') vehicleId?: string,
+    @Query('customerId') customerId?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
   ) {
@@ -33,6 +34,7 @@ export class FleetController {
       page:      parseInt(page, 10) || 1,
       limit:     parseInt(limit, 10) || 200,
       vehicleId,
+      customerId,
       from,
       to,
     });

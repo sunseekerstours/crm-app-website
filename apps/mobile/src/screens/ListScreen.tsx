@@ -90,7 +90,7 @@ export default function ListScreen<T extends { id: string }>({
               <View style={styles.rowMain}>
                 <Text style={styles.rowTitle}>{columns[0].render(item)}</Text>
                 {columns[1] ? (
-                  <Text style={styles.rowSub} numberOfLines={1}>
+                  <Text style={styles.rowSub} numberOfLines={2}>
                     {columns[1].render(item)}
                   </Text>
                 ) : null}
