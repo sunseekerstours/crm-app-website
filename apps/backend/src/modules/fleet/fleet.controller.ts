@@ -1,4 +1,4 @@
-﻿import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 import { RequirePermissions } from '@app/common/decorators/permissions.decorator';
@@ -51,7 +51,7 @@ export class FleetController {
   }
 
   @Delete(':id')
-  @RequirePermissions(Permission.BOOKING_DELETE)
+  @RequirePermissions(Permission.BOOKING_CANCEL)
   remove(@Param('id') id: string, @Req() req: Request, @CurrentUser('id') userId: string) {
     return this.fleetService.remove(id, toRequestContext(req, userId));
   }
