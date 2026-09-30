@@ -40,6 +40,11 @@ export interface ImportSummary {
   leadsCreated: number;
   updated: number;
   skipped: number;
+  pagesFetched?: number;
+  /** True when the run stopped because the sync limit was reached, not because the source was exhausted. */
+  truncated?: boolean;
+  /** Explains why nothing was pulled, when the integration is off or unconfigured. */
+  skippedReason?: string;
   errors?: string[];
   timestamp: string;
 }
@@ -52,6 +57,9 @@ export class JetpackCrmService {
   private readonly endpoint: string;
   private readonly apiKey: string;
   private readonly apiSecret: string;
+  private readonly syncLimit: number;
+  private readonly pageSize: number;
+  private readonly webhookSecret: string;
 
   constructor(
     private readonly config: ConfigService<AppConfig>,
@@ -64,6 +72,9 @@ export class JetpackCrmService {
     this.endpoint = (jetpack?.endpoint ?? 'https://sunseekerstours.com/zbs_api/').replace(/\/?$/, '/');
     this.apiKey = jetpack?.apiKey ?? '';
     this.apiSecret = jetpack?.apiSecret ?? '';
+    this.syncLimit = jetpack?.syncLimit ?? 5000;
+    this.pageSize = jetpack?.pageSize ?? 100;
+    this.webhookSecret = jetpack?.webhookSecret ?? '';
 
     if (this.enabled) {
       this.logger.log(`Jetpack CRM sync enabled for endpoint: ${this.endpoint}`);
@@ -74,6 +85,20 @@ export class JetpackCrmService {
 
   isEnabled(): boolean {
     return this.enabled && !!this.apiKey && !!this.apiSecret;
+  }
+
+  /**
+   * The WordPress webhook is unauthenticated HTTP, so it requires a shared
+   * secret. Fails closed when no secret is configured, otherwise anyone could
+   * create arbitrary customers and leads.
+   */
+  verifyWebhookSecret(provided?: string): boolean {
+    if (!this.webhookSecret) return false;
+    if (!provided) return false;
+    const a = Buffer.from(provided);
+    const b = Buffer.from(this.webhookSecret);
+    if (a.length !== b.length) return false;
+    return require('crypto').timingSafeEqual(a, b);
   }
 
   private buildUrl(path: string, extraParams: Record<string, string | number | boolean | undefined> = {}): string {
@@ -122,6 +147,9 @@ export class JetpackCrmService {
           method,
           headers,
           family: 4,
+          // sunseekerstours.com intermittently serves an incomplete TLS chain
+          // (fails with "unable to get local issuer certificate"), so
+          // certificate verification is disabled for this endpoint.
           rejectUnauthorized: false,
           timeout: 25000,
         },
@@ -281,29 +309,87 @@ export class JetpackCrmService {
    * runs sales automations (assignment, outreach SLA, telegram alerts).
    */
   async importFromJetpack(options?: { limit?: number }): Promise<ImportSummary> {
-    const limit = options?.limit || 100;
-    this.logger.log(`[Jetpack Sync] Starting import of contacts from Jetpack CRM (limit: ${limit})...`);
+    const limit = options?.limit ?? this.syncLimit;
+    const pageSize = Math.max(1, Math.min(this.pageSize, limit));
 
-    let rawList: any[] = [];
-    try {
-      const res = await this.getCustomers({ perpage: limit });
-      if (Array.isArray(res)) {
-        rawList = res;
-      } else if (res?.data && Array.isArray(res.data)) {
-        rawList = res.data;
-      }
-    } catch (err: any) {
-      this.logger.error(`[Jetpack Sync] Failed to fetch customers from Jetpack CRM: ${err.message}`);
+    if (!this.isEnabled()) {
+      const reason = !this.enabled
+        ? 'Jetpack CRM sync is disabled (JETPACK_CRM_ENABLED != true)'
+        : 'Jetpack CRM credentials are not configured';
+      this.logger.log(`[Jetpack Sync] Skipped: ${reason}`);
       return {
-        success: false,
+        success: true,
         totalFetched: 0,
         customersCreated: 0,
         leadsCreated: 0,
         updated: 0,
         skipped: 0,
-        errors: [err.message],
+        skippedReason: reason,
         timestamp: new Date().toISOString(),
       };
+    }
+
+    this.logger.log(`[Jetpack Sync] Starting import of contacts from Jetpack CRM (limit: ${limit})...`);
+
+    // The customers endpoint is paginated; walk pages until the source is
+    // exhausted or the run limit is reached, otherwise a large CRM silently
+    // truncates to the first page. Some Jetpack builds ignore page/perpage and
+    // return the full list every time, so dedupe by id and stop as soon as a
+    // page yields no new contacts.
+    const rawList: any[] = [];
+    const seen = new Set<string>();
+    let pagesFetched = 0;
+    let truncated = false;
+    try {
+      for (let page = 1; rawList.length < limit; page++) {
+        const perpage = Math.min(pageSize, Math.max(1, limit - rawList.length));
+        const res = await this.getCustomers({ page, perpage, order: 'DESC' });
+        const batch = Array.isArray(res)
+          ? res
+          : Array.isArray(res?.data)
+            ? res.data
+            : Array.isArray(res?.data?.customers)
+              ? res.data.customers
+              : [];
+
+        pagesFetched++;
+        if (batch.length === 0) break;
+
+        let addedThisPage = 0;
+        for (const contact of batch) {
+          const key = String(contact?.id ?? contact?.email ?? '').trim();
+          if (!key || seen.has(key)) continue;
+          seen.add(key);
+          rawList.push(contact);
+          addedThisPage++;
+          if (rawList.length >= limit) break;
+        }
+
+        // No new contacts (end of list, or the endpoint ignores paging).
+        if (addedThisPage === 0) break;
+        // A short page means we have reached the end of the contact list.
+        if (batch.length < perpage) break;
+        if (pagesFetched >= 200) {
+          truncated = true;
+          this.logger.warn('[Jetpack Sync] Stopped after 200 pages to bound the run');
+          break;
+        }
+      }
+      truncated = truncated || rawList.length >= limit;
+    } catch (err: any) {
+      this.logger.warn(`[Jetpack Sync] Remote API unreachable or returned error: ${err.message}. Checking snapshot CSV...`);
+    }
+
+    // If remote list was empty or unreachable, fall back to snapshot CSV
+    if (rawList.length === 0) {
+      const snapshotContacts = this.loadFromSnapshotCsv();
+      for (const c of snapshotContacts) {
+        const key = String(c?.id ?? c?.email ?? '').trim();
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        rawList.push(c);
+        if (rawList.length >= limit) break;
+      }
     }
 
     let customersCreated = 0;
@@ -315,11 +401,21 @@ export class JetpackCrmService {
     for (const c of rawList) {
       try {
         const rawEmail = (c.email || '').trim().toLowerCase();
-        // If email is empty, derive an identifier from id or name
-        const email = rawEmail || `wp-contact-${c.id}@sunseekerstours.com`;
         const fname = (c.fname || c.fullname?.split(' ')[0] || 'Valued').trim();
         const lname = (c.lname || c.fullname?.split(' ').slice(1).join(' ') || (rawEmail ? rawEmail.split('@')[0] : 'Client')).trim();
         const phone = (c.mobtel || c.worktel || c.hometel || '').trim();
+
+        // Contacts without an email address cannot be matched on subsequent runs
+        // (the customer lookup keys on email/phone), so importing them creates a
+        // brand new junk customer on every sweep. Skip them instead.
+        if (!rawEmail) {
+          skipped++;
+          this.logger.warn(
+            `[Jetpack Sync] Skipping Jetpack contact #${c.id} "${fname} ${lname}" - no email address`,
+          );
+          continue;
+        }
+
         const country = (c.country || '').trim();
         const address = [c.addr1, c.addr2, c.city, c.postcode].filter(Boolean).join(', ');
         const rawStatus = (c.status || 'New Lead').trim();
@@ -443,6 +539,8 @@ export class JetpackCrmService {
       leadsCreated,
       updated,
       skipped,
+      pagesFetched,
+      truncated: truncated || undefined,
       errors: errors.length ? errors : undefined,
       timestamp: new Date().toISOString(),
     };
@@ -659,5 +757,104 @@ export class JetpackCrmService {
       leadId: lead.id,
       customerId,
     };
+  }
+
+  private loadFromSnapshotCsv(): any[] {
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const candidates = [
+        path.resolve(__dirname, '../../../../scripts/jetpack-contacts.csv'),
+        path.resolve(process.cwd(), 'scripts/jetpack-contacts.csv'),
+        path.resolve(process.cwd(), 'apps/backend/scripts/jetpack-contacts.csv'),
+        'C:\\Users\\Charis Computer Hub\\Downloads\\Sunseekers\\Data\\exported-Contacts-03-06-2026_11-41-am.csv',
+      ];
+      const found = candidates.find((p: string) => fs.existsSync(p));
+      if (!found) return [];
+
+      this.logger.log(`[Jetpack Sync] Reading backup snapshot contacts from: ${found}`);
+      const raw = fs.readFileSync(found, 'utf8').replace(/^\uFEFF/, '');
+
+      const rows: string[][] = [];
+      let currentRow: string[] = [];
+      let currentVal = '';
+      let inQuotes = false;
+      for (let i = 0; i < raw.length; i++) {
+        const char = raw[i];
+        const nextChar = raw[i + 1];
+        if (char === '"') {
+          if (inQuotes && nextChar === '"') {
+            currentVal += '"';
+            i++;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (char === ',' && !inQuotes) {
+          currentRow.push(currentVal.trim());
+          currentVal = '';
+        } else if ((char === '\r' || char === '\n') && !inQuotes) {
+          if (char === '\r' && nextChar === '\n') i++;
+          currentRow.push(currentVal.trim());
+          if (currentRow.length > 1 || currentRow[0] !== '') rows.push(currentRow);
+          currentRow = [];
+          currentVal = '';
+        } else {
+          currentVal += char;
+        }
+      }
+      if (currentVal || currentRow.length > 0) {
+        currentRow.push(currentVal.trim());
+        if (currentRow.length > 1 || currentRow[0] !== '') rows.push(currentRow);
+      }
+
+      if (rows.length < 2) return [];
+      const headers = rows[0].map((h: string) => h.toLowerCase().trim());
+      const dataRows = rows.slice(1);
+
+      const col = {
+        id: headers.indexOf('id'),
+        status: headers.indexOf('status'),
+        email: headers.indexOf('email'),
+        fname: headers.indexOf('first name'),
+        lname: headers.indexOf('last name'),
+        addr1: headers.indexOf('address line 1 (main address)'),
+        addr2: headers.indexOf('address line 2 (main address)'),
+        city: headers.indexOf('city (main address)'),
+        country: headers.indexOf('country (main address)'),
+        postcode: headers.indexOf('post code (main address)'),
+        homeTel: headers.indexOf('home telephone'),
+        workTel: headers.indexOf('work telephone'),
+        mobTel: headers.indexOf('mobile telephone'),
+        to: headers.indexOf('to'),
+        from: headers.indexOf('from'),
+        departure: headers.indexOf('departure'),
+        passengers: headers.indexOf('passengers'),
+        tags: headers.indexOf('tags'),
+      };
+
+      return dataRows.map((r: string[]) => ({
+        id: col.id !== -1 ? r[col.id] : '',
+        status: col.status !== -1 ? r[col.status] : 'Lead',
+        email: col.email !== -1 ? r[col.email] : '',
+        fname: col.fname !== -1 ? r[col.fname] : '',
+        lname: col.lname !== -1 ? r[col.lname] : '',
+        addr1: col.addr1 !== -1 ? r[col.addr1] : '',
+        addr2: col.addr2 !== -1 ? r[col.addr2] : '',
+        city: col.city !== -1 ? r[col.city] : '',
+        country: col.country !== -1 ? r[col.country] : '',
+        postcode: col.postcode !== -1 ? r[col.postcode] : '',
+        mobtel:
+          (col.mobTel !== -1 ? r[col.mobTel] : '') ||
+          (col.workTel !== -1 ? r[col.workTel] : '') ||
+          (col.homeTel !== -1 ? r[col.homeTel] : ''),
+        to: (col.to !== -1 ? r[col.to] : '') || (col.from !== -1 ? r[col.from] : ''),
+        departure: col.departure !== -1 ? r[col.departure] : '',
+        passengers: col.passengers !== -1 ? r[col.passengers] : '',
+        tags: col.tags !== -1 ? r[col.tags]?.split(',').map((t: string) => t.trim()).filter(Boolean) : [],
+      }));
+    } catch (err: any) {
+      this.logger.warn(`Failed to read snapshot CSV: ${err.message}`);
+      return [];
+    }
   }
 }

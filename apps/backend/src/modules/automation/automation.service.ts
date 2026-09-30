@@ -60,6 +60,26 @@ export class AutomationService implements OnModuleInit, OnModuleDestroy {
     if (this.timer) clearInterval(this.timer);
   }
 
+  /**
+   * Pull new Jetpack CRM contacts into Customers/Leads. Jetpack CRM is the hub:
+   * WordPress form submissions land there first, then flow into the CRM here.
+   * Idempotent - contacts already present are matched on email/phone and skipped.
+   */
+  private async syncJetpackContacts() {
+    if (!this.jetpackCrm.isEnabled()) return null;
+
+    const enabled = await this.salesAutomation.isRuleEnabled('automation_jetpack_sync_enabled', true);
+    if (!enabled) {
+      this.logger.log('Jetpack CRM auto-sync disabled by automation_jetpack_sync_enabled');
+      return null;
+    }
+
+    return this.jetpackCrm.importFromJetpack().catch((err) => {
+      this.logger.warn(`Jetpack CRM auto-sync failed: ${err?.message}`);
+      return null;
+    });
+  }
+
   /** Runs the full reminder sweep and returns a summary of dispatched items. */
   async run(): Promise<RunSummary> {
     const now = new Date();
@@ -71,10 +91,7 @@ export class AutomationService implements OnModuleInit, OnModuleDestroy {
       return { inactivityEscalations: 0, quoteFollowUps: 0 };
     });
 
-    const jetpackSync = await this.jetpackCrm.importFromJetpack({ limit: 50 }).catch((err) => {
-      this.logger.warn(`Jetpack CRM auto-sync skipped: ${err?.message}`);
-      return null;
-    });
+    const jetpackSync = await this.syncJetpackContacts();
 
     const summary: RunSummary = {
       invoiceOverdue: await this.remindInvoicesOverdue(now),

@@ -144,6 +144,7 @@ async function main(): Promise<void> {
     { key: 'automation_post_sale_sla_hours', group: 'automation', value: '48', description: 'Hours after payment to dispatch welcome pack', isPublic: false },
     { key: 'automation_duplicate_detection', group: 'automation', value: 'true', description: 'Check for duplicate email/phone and link to existing customer', isPublic: false },
     { key: 'automation_duplicate_strategy', group: 'automation', value: 'BOTH', description: 'Duplicate detection strategy (BOTH, EMAIL, PHONE)', isPublic: false },
+    { key: 'automation_jetpack_sync_enabled', group: 'automation', value: 'true', description: 'Automatically pull new Jetpack CRM contacts into Customers and Leads on each automation sweep', isPublic: false },
     { key: 'automation_sales_inactivity_escalation', group: 'automation', value: 'true', description: 'Monitor pipeline and escalate neglected leads/deals to manager via Telegram', isPublic: false },
     { key: 'automation_inactivity_escalate_hours', group: 'automation', value: '48', description: 'Hours without pipeline activity before manager escalation', isPublic: false },
     { key: 'automation_quote_follow_up', group: 'automation', value: 'true', description: 'Remind salesperson when quote has been pending', isPublic: false },

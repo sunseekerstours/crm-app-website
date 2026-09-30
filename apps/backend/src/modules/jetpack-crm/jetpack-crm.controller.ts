@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, Headers, Post, Query } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { Public } from '@app/common/decorators/public.decorator';
 import { RequirePermissions } from '@app/common/decorators/permissions.decorator';
@@ -17,11 +17,18 @@ export class JetpackCrmController {
   }
 
   /**
-   * Public webhook endpoint for WordPress forms (CF7, Elementor, WPForms, Jetpack Forms)
+   * Public webhook endpoint for WordPress forms (CF7, Elementor, WPForms, Jetpack Forms).
+   * Requires the shared secret in the x-jetpack-webhook-secret header.
    */
   @Public()
   @Post('webhook')
-  async handleWebhook(@Body() body: Record<string, any>) {
+  async handleWebhook(
+    @Body() body: Record<string, any>,
+    @Headers('x-jetpack-webhook-secret') secret?: string,
+  ) {
+    if (!this.jetpackService.verifyWebhookSecret(secret)) {
+      throw new ForbiddenException('Invalid or missing webhook secret');
+    }
     return this.jetpackService.handleWordPressWebhook(body);
   }
 
@@ -32,7 +39,7 @@ export class JetpackCrmController {
   @Post('sync')
   @RequirePermissions(Permission.SETTINGS_UPDATE)
   async syncFromJetpack(@Body() body?: { limit?: number }) {
-    return this.jetpackService.importFromJetpack({ limit: body?.limit || 100 });
+    return this.jetpackService.importFromJetpack({ limit: body?.limit });
   }
 
   /**
@@ -45,8 +52,9 @@ export class JetpackCrmController {
     return this.jetpackService.getCustomers({ perpage: perpage ? parseInt(perpage, 10) : 50 });
   }
 
-  @Public()
+  @ApiBearerAuth()
   @Post('sync-test')
+  @RequirePermissions(Permission.SETTINGS_UPDATE)
   syncTest(@Body() body: Partial<JetpackContactInput>) {
     const contact: JetpackContactInput = {
       email: body.email || `test-${Date.now()}@sunseekerstours.com`,

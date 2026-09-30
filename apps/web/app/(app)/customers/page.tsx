@@ -147,19 +147,46 @@ export default function CustomersPage() {
           </div>
         </form>
       </Card>
-      <Card title="Customers">
+      <Card
+        title={
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+            <span>Customers {data?.total !== undefined ? `(${data.total})` : ''}</span>
+          </div>
+        }
+      >
         {loading ? (
           <Spinner />
         ) : error ? (
-          <ErrorState message={error} />
+          <div style={{ padding: '16px 0' }}>
+            <ErrorState message={error} />
+            {error.toLowerCase().includes('unauthor') && (
+              <div style={{ marginTop: 14, textAlign: 'center' }}>
+                <p style={{ color: '#64748b', fontSize: 14, marginBottom: 12 }}>
+                  Your session has expired or requires re-authentication.
+                </p>
+                <Button
+                  onClick={() => {
+                    if (typeof window !== 'undefined') {
+                      window.localStorage.removeItem('sunseekers_access_token');
+                      window.localStorage.removeItem('sunseekers_refresh_token');
+                      window.localStorage.removeItem('sunseekers_user');
+                      window.location.href = '/login?expired=1&redirect=/customers';
+                    }
+                  }}
+                >
+                  Sign In Again
+                </Button>
+              </div>
+            )}
+          </div>
         ) : (
           <>
             <Table
               columns={[
                 { key: 'name', label: 'Name', render: (r) => `${r.firstName} ${r.lastName}` },
-                { key: 'email', label: 'Email' },
-                { key: 'phone', label: 'Phone' },
-                { key: 'country', label: 'Country' },
+                { key: 'email', label: 'Email', render: (r) => r.email || <span style={{ color: '#94a3b8' }}>—</span> },
+                { key: 'phone', label: 'Phone', render: (r) => r.phone || <span style={{ color: '#94a3b8' }}>—</span> },
+                { key: 'country', label: 'Country', render: (r) => r.country || <span style={{ color: '#94a3b8' }}>—</span> },
                 { key: 'status', label: 'Status', render: (r) => <Badge>{r.status}</Badge> },
               ]}
               rows={data?.items ?? []}

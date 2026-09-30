@@ -78,6 +78,9 @@ services:
       JETPACK_CRM_ENDPOINT: ${JETPACK_CRM_ENDPOINT:-https://sunseekerstours.com/zbs_api/}
       JETPACK_CRM_API_KEY: ${JETPACK_CRM_API_KEY:-}
       JETPACK_CRM_API_SECRET: ${JETPACK_CRM_API_SECRET:-}
+      JETPACK_CRM_SYNC_LIMIT: ${JETPACK_CRM_SYNC_LIMIT:-200}
+      JETPACK_CRM_PAGE_SIZE: ${JETPACK_CRM_PAGE_SIZE:-100}
+      JETPACK_CRM_WEBHOOK_SECRET: ${JETPACK_CRM_WEBHOOK_SECRET:-}
     networks:
       - default
       - dokploy-network

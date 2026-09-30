@@ -10,14 +10,13 @@ const NAV = [
   { href: '/customers', label: 'Customers' },
   { href: '/leads', label: 'Leads' },
   { href: '/deals', label: 'Deals' },
-  { href: '/tours', label: 'Tours' },
   { href: '/bookings', label: 'Bookings' },
   { href: '/payments', label: 'Payments' },
   { href: '/notifications', label: 'Notifications' },
 ];
 
 export default function AppLayout({ children }: { children: ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, loading, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -43,9 +42,25 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           );
         })}
         <div className="nav-label">Account</div>
-        <span className="nav-link" style={{ fontSize: 13, color: '#7a9388' }}>
+        <div style={{ padding: '4px 14px', fontSize: 13, color: '#7a9388', wordBreak: 'break-all' }}>
           {user.email}
-        </span>
+        </div>
+        <button
+          onClick={logout}
+          style={{
+            margin: '8px 14px',
+            background: 'transparent',
+            border: '1px solid rgba(255,255,255,0.15)',
+            borderRadius: 6,
+            padding: '6px 12px',
+            color: '#cbd5e1',
+            cursor: 'pointer',
+            fontSize: 12,
+            textAlign: 'left',
+          }}
+        >
+          Sign out
+        </button>
       </aside>
       <main className="main">{children}</main>
     </div>

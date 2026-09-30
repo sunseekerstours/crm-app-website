@@ -281,6 +281,15 @@ const RULES: AutomationRuleConfig[] = [
       },
     ],
   },
+  {
+    id: 'jetpack_sync',
+    number: 13,
+    settingKey: 'automation_jetpack_sync_enabled',
+    title: 'Jetpack CRM Contact Ingestion (WordPress Hub)',
+    badge: 'Hourly Sweep',
+    summary: 'Pulls new contacts captured by your WordPress site into Jetpack CRM and mirrors them as Customers and pipeline Leads. Jetpack is the hub; WordPress form entries flow in automatically. Duplicates are skipped by email/phone.',
+    example: 'Visitor submits a WordPress inquiry → stored in Jetpack CRM → next sweep imports the contact and creates a lead for round-robin assignment.',
+  },
 ];
 
 export default function AutomationsPage() {
@@ -712,6 +721,8 @@ export default function AutomationsPage() {
           </div>
 
           <div style={{ marginTop: '12px', fontSize: '12px', color: '#64748b', lineHeight: 1.6 }}>
+            <strong>Required header:</strong> <code>x-jetpack-webhook-secret: &lt;JETPACK_CRM_WEBHOOK_SECRET&gt;</code>. Requests without the matching secret are rejected.
+            <br />
             <strong>Accepted Form Fields (JSON or Form URL-encoded):</strong> <code>first_name</code>, <code>last_name</code> (or <code>name</code>/<code>full_name</code>), <code>email</code> (required), <code>phone</code>, <code>tour</code> (or <code>interestedTour</code>), <code>dates</code>, <code>passengers</code>, <code>message</code>.
             <br />
             Supports Contact Form 7 (with Webhook extension), Elementor Pro Forms (Webhook action), WPForms, and custom WordPress hooks.

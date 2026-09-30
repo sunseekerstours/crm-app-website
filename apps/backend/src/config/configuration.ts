@@ -39,6 +39,12 @@ export interface AppConfig {
     endpoint: string;
     apiKey: string;
     apiSecret: string;
+    /** Max contacts to pull per sync run (paginated internally). */
+    syncLimit: number;
+    /** Page size requested from the Jetpack customers endpoint. */
+    pageSize: number;
+    /** Shared secret required by the public WordPress webhook. */
+    webhookSecret: string;
   };
   telegram: {
     enabled: boolean;
@@ -88,6 +94,9 @@ export const configuration = (): AppConfig => ({
     endpoint: process.env.JETPACK_CRM_ENDPOINT ?? 'https://sunseekerstours.com/zbs_api/',
     apiKey: process.env.JETPACK_CRM_API_KEY ?? '',
     apiSecret: process.env.JETPACK_CRM_API_SECRET ?? '',
+    syncLimit: parseInt(process.env.JETPACK_CRM_SYNC_LIMIT ?? '200', 10),
+    pageSize: parseInt(process.env.JETPACK_CRM_PAGE_SIZE ?? '100', 10),
+    webhookSecret: process.env.JETPACK_CRM_WEBHOOK_SECRET ?? '',
   },
   telegram: {
     enabled: process.env.TELEGRAM_ENABLED === 'true',

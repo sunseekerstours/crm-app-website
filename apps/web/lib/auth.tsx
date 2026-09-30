@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from 'react';
 import { useRouter } from 'next/navigation';
-import { api, setToken, clearToken, getToken } from './api';
+import { api, setToken, setRefreshToken, clearAllAuth, getToken } from './api';
 
 export interface SessionUser {
   id: string;
@@ -44,11 +44,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let active = true;
     try {
       const stored = window.localStorage.getItem(USER_KEY);
-      if (stored && getToken()) {
-        setUser(JSON.parse(stored) as SessionUser);
+      const token = getToken();
+      if (stored && token) {
+        const parsed = JSON.parse(stored) as SessionUser;
+        setUser(parsed);
+        // Verify session validity with backend in the background
+        api
+          .get<SessionUser>('/auth/me')
+          .then((freshUser) => {
+            if (active && freshUser) {
+              setUser(freshUser);
+              window.localStorage.setItem(USER_KEY, JSON.stringify(freshUser));
+            }
+          })
+          .catch(() => {
+            // Token expired and refresh failed
+            if (active) {
+              clearAllAuth();
+              setUser(null);
+            }
+          });
+      } else {
+        clearAllAuth();
+        setUser(null);
       }
     } catch {
-      /* ignore */
+      clearAllAuth();
+      setUser(null);
     }
     if (active) setLoading(false);
     return () => {
@@ -60,6 +82,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (email: string, password: string) => {
       const data = await api.post<LoginResponse>('/auth/login', { email, password });
       setToken(data.accessToken);
+      if (data.refreshToken) {
+        setRefreshToken(data.refreshToken);
+      }
       window.localStorage.setItem(USER_KEY, JSON.stringify(data.user));
       setUser(data.user);
       router.push('/');
@@ -68,8 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(() => {
-    clearToken();
-    window.localStorage.removeItem(USER_KEY);
+    clearAllAuth();
     setUser(null);
     router.push('/login');
   }, [router]);
