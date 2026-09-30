@@ -132,6 +132,9 @@ enum AuditableAction {
   PRODUCT_CREATED
   PRODUCT_UPDATED
   PRODUCT_DELETED
+  FLEET_BOOKING_CREATED
+  FLEET_BOOKING_UPDATED
+  FLEET_BOOKING_DELETED
 }
 
 model User {
@@ -1116,11 +1119,36 @@ model Vehicle {
   notes            String?
   isActive         Boolean     @default(true)
 
+  fleetBookings    FleetBooking[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([ownerSupplierId])
   @@map("vehicles")
+}
+
+/// A fleet/bus booking for scheduling purposes
+model FleetBooking {
+  id          String   @id @default(uuid())
+  company     String
+  destination String?
+  startDate   DateTime
+  endDate     DateTime
+  vehicleId   String
+  vehicle     Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  driverName  String?
+  departTime  String?
+  paxCount    Int?
+  notes       String?
+  createdById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([vehicleId])
+  @@index([startDate, endDate])
+  @@map("fleet_bookings")
 }
 
 /// A tour guide

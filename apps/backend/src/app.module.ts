@@ -28,6 +28,7 @@ import { PaymentsModule } from '@app/modules/payments/payments.module';
 import { SuppliersModule } from '@app/modules/suppliers/suppliers.module';
 import { HotelsModule } from '@app/modules/hotels/hotels.module';
 import { VehiclesModule } from '@app/modules/vehicles/vehicles.module';
+import { FleetModule } from '@app/modules/fleet/fleet.module';
 import { GuidesModule } from '@app/modules/guides/guides.module';
 import { DriversModule } from '@app/modules/drivers/drivers.module';
 import { ChecklistsModule } from '@app/modules/checklists/checklists.module';
@@ -74,6 +75,7 @@ import { AllExceptionsFilter } from '@app/common/filters/all-exceptions.filter';
     SuppliersModule,
     HotelsModule,
     VehiclesModule,
+    FleetModule,
     GuidesModule,
     DriversModule,
     ChecklistsModule,
