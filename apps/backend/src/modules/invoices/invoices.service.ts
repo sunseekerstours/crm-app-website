@@ -91,6 +91,7 @@ export class InvoicesService {
     if (params.search) {
       where.OR = [
         { invoiceNumber: { contains: params.search, mode: 'insensitive' } },
+        { notes: { contains: params.search, mode: 'insensitive' } },
         { customer: { firstName: { contains: params.search, mode: 'insensitive' } } },
         { customer: { lastName: { contains: params.search, mode: 'insensitive' } } },
       ];

@@ -90,6 +90,7 @@ export class QuotesService {
       where.OR = [
         { quoteNumber: { contains: params.search, mode: 'insensitive' } },
         { tourName: { contains: params.search, mode: 'insensitive' } },
+        { notes: { contains: params.search, mode: 'insensitive' } },
         { customer: { firstName: { contains: params.search, mode: 'insensitive' } } },
         { customer: { lastName: { contains: params.search, mode: 'insensitive' } } },
       ];

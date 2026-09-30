@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import Link from 'next/link';
 import { api, type Paginated } from '@/lib/api';
 import { PageHeader, Spinner, ErrorState, Button } from '@/components/ui';
 
@@ -35,10 +36,34 @@ interface FleetBooking {
   vehicleId: string;
   vehicle?: { id: string; name: string; registrationNo?: string | null };
   driverName?: string | null;
+  driverId?: string | null;
   departTime?: string | null;
   paxCount?: number | null;
   notes?: string | null;
   color?: string | null;
+  ratePerDay?: number | null;
+  totalAmount?: number | null;
+  currency?: string | null;
+  invoiceId?: string | null;
+  invoiceNumber?: string | null;
+  quoteId?: string | null;
+  quoteNumber?: string | null;
+  customerId?: string | null;
+  paymentStatus?: string | null;
+}
+
+interface FleetSummary {
+  year: number;
+  month: number;
+  totalVehicles: number;
+  totalDrivers: number;
+  activeBusesToday: number;
+  activeDriversToday: number;
+  standbyBusesToday: number;
+  monthBookingsCount: number;
+  monthRevenue: number;
+  paidRevenue: number;
+  utilizationRate: number;
 }
 
 const COLOR_PRESETS = [
@@ -76,6 +101,14 @@ function toISOLocal(d: Date) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+function calculateDays(startIso: string, endIso: string): number {
+  if (!startIso || !endIso) return 1;
+  const s = parseLocalDate(startIso);
+  const e = parseLocalDate(endIso);
+  if (e < s) return 1;
+  return Math.max(1, Math.round((e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+}
+
 const thStyle: React.CSSProperties = {
   padding: '8px 10px',
   fontWeight: 700,
@@ -96,7 +129,7 @@ const tdStyle: React.CSSProperties = {
   borderBottom: '1px solid rgba(255,255,255,0.05)'
 };
 
-export default function AdminFleetPage() {
+export default function FleetPage() {
   const today = new Date();
   const [activeTab, setActiveTab] = useState<'scheduler' | 'vehicles' | 'drivers'>('scheduler');
 
@@ -117,26 +150,43 @@ export default function AdminFleetPage() {
   const [bLoading, setBLoading] = useState(true);
   const [bError, setBError] = useState<string | null>(null);
 
+  const [summary, setSummary] = useState<FleetSummary | null>(null);
+
   // Search/Filter in scheduler
   const [searchFilter, setSearchFilter] = useState('');
 
   // ── Booking Modal state ────────────────────────────────────
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [editBookingId, setEditBookingId] = useState<string | null>(null);
+  const [selectedBooking, setSelectedBooking] = useState<FleetBooking | null>(null);
   const [submittingBooking, setSubmittingBooking] = useState(false);
   const [bookingFormError, setBookingFormError] = useState<string | null>(null);
+  const [customers, setCustomers] = useState<{ id: string; firstName: string; lastName: string; email?: string }[]>([]);
+  const [previewDoc, setPreviewDoc] = useState<{
+    type: 'INVOICE' | 'QUOTE' | 'RECEIPT';
+    data: any;
+  } | null>(null);
 
   const blankBooking = {
     company: '',
+    customerId: '',
     destination: '',
     startDate: toISOLocal(today),
     endDate: toISOLocal(today),
     vehicleId: '',
     driverName: '',
+    driverId: '',
     departTime: '',
     paxCount: '',
     notes: '',
     color: '#2563eb',
+    ratePerDay: '',
+    totalAmount: '',
+    currency: 'GHS',
+    paymentStatus: 'UNPAID',
+    createInvoice: true,
+    createQuote: true,
+    allowOverlap: false,
   };
   const [bookingForm, setBookingForm] = useState(blankBooking);
 
@@ -195,14 +245,124 @@ export default function AdminFleetPage() {
       .finally(() => setBLoading(false));
   }, [year, month]);
 
+  const loadSummary = useCallback(() => {
+    api.get<FleetSummary>(`/fleet/summary?year=${year}&month=${month + 1}`)
+      .then(s => setSummary(s))
+      .catch(() => {});
+  }, [year, month]);
+
+  const loadCustomers = useCallback(() => {
+    api.get<Paginated<any>>('/customers?limit=200')
+      .then(r => setCustomers(r.items || []))
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     loadVehicles();
     loadDrivers();
-  }, [loadVehicles, loadDrivers]);
+    loadCustomers();
+  }, [loadVehicles, loadDrivers, loadCustomers]);
 
   useEffect(() => {
     loadBookings();
-  }, [loadBookings]);
+    loadSummary();
+  }, [loadBookings, loadSummary]);
+
+  // ── Document View & Printable Handlers ───────────────────────
+  async function handleViewInvoice(b: FleetBooking) {
+    if (b.invoiceId) {
+      try {
+        const inv = await api.get<any>(`/invoices/${b.invoiceId}`);
+        setPreviewDoc({ type: 'INVOICE', data: inv });
+        return;
+      } catch (e) {
+        console.warn('Could not fetch invoice from API, falling back to local info', e);
+      }
+    }
+    const diffDays = calculateDays(b.startDate.split('T')[0], b.endDate.split('T')[0]);
+    setPreviewDoc({
+      type: 'INVOICE',
+      data: {
+        invoiceNumber: b.invoiceNumber || 'SST-PENDING',
+        issueDate: b.startDate,
+        dueDate: b.endDate,
+        currency: b.currency || 'GHS',
+        amount: b.totalAmount || 0,
+        amountPaid: b.paymentStatus === 'PAID' ? (b.totalAmount || 0) : 0,
+        status: b.paymentStatus === 'PAID' ? 'PAID' : 'ISSUED',
+        customer: { firstName: b.company, lastName: '' },
+        notes: `Charter Rental: ${b.vehicle?.name || 'Bus'} for ${b.company}${b.destination ? ` to ${b.destination}` : ''}`,
+        items: [
+          {
+            description: `${b.vehicle?.name || 'Bus'} Charter - ${b.destination || 'Rental'} (${b.company})`,
+            quantity: diffDays,
+            unitPrice: b.ratePerDay || Math.round((b.totalAmount || 0) / diffDays),
+            total: b.totalAmount || 0,
+          },
+        ],
+      },
+    });
+  }
+
+  async function handleViewQuote(b: FleetBooking) {
+    if (b.quoteId) {
+      try {
+        const qte = await api.get<any>(`/quotes/${b.quoteId}`);
+        setPreviewDoc({ type: 'QUOTE', data: qte });
+        return;
+      } catch (e) {
+        console.warn('Could not fetch quote from API, falling back to local info', e);
+      }
+    }
+    const diffDays = calculateDays(b.startDate.split('T')[0], b.endDate.split('T')[0]);
+    setPreviewDoc({
+      type: 'QUOTE',
+      data: {
+        quoteNumber: b.quoteNumber || 'QTE-PENDING',
+        issueDate: b.startDate,
+        validUntil: b.endDate,
+        currency: b.currency || 'GHS',
+        totalPrice: b.totalAmount || 0,
+        status: 'ACCEPTED',
+        customer: { firstName: b.company, lastName: '' },
+        tourName: `${b.vehicle?.name || 'Bus'} Charter - ${b.destination || 'Rental'} (${b.company})`,
+        notes: `Charter Quotation: ${b.vehicle?.name || 'Bus'} for ${b.company}${b.destination ? ` to ${b.destination}` : ''}`,
+        items: [
+          {
+            description: `${b.vehicle?.name || 'Bus'} Charter - ${b.destination || 'Rental'} (${b.company})`,
+            quantity: diffDays,
+            unitPrice: b.ratePerDay || Math.round((b.totalAmount || 0) / diffDays),
+            total: b.totalAmount || 0,
+          },
+        ],
+      },
+    });
+  }
+
+  function handleViewReceipt(b: FleetBooking) {
+    setPreviewDoc({
+      type: 'RECEIPT',
+      data: {
+        paymentNumber: `PAY-${b.invoiceNumber || 'SST'}`,
+        receiptNumber: `RCT-${b.invoiceNumber || 'SST'}`,
+        paidAt: b.startDate,
+        currency: b.currency || 'GHS',
+        amount: b.totalAmount || 0,
+        method: 'BANK_TRANSFER',
+        status: 'COMPLETED',
+        customer: { firstName: b.company, lastName: '' },
+        reference: `TRX-${b.id.substring(0, 8).toUpperCase()}`,
+        items: [
+          {
+            description: `Charter Payment: ${b.vehicle?.name || 'Bus'} (${b.company})`,
+            quantity: 1,
+            unitPrice: b.totalAmount || 0,
+            total: b.totalAmount || 0,
+          },
+        ],
+      },
+    });
+  }
 
   // ── Month nav ──────────────────────────────────────────────
   function prevMonth() {
@@ -232,12 +392,74 @@ export default function AdminFleetPage() {
     });
   }
 
+  // ── Conflict Engine (Client-side real-time warning) ────────
+  const conflictWarnings = useMemo(() => {
+    if (!bookingForm.startDate || !bookingForm.endDate) return { vehicleConflict: null, driverConflict: null };
+    const s = parseLocalDate(bookingForm.startDate);
+    const e = parseLocalDate(bookingForm.endDate);
+    if (e < s) return { vehicleConflict: null, driverConflict: null };
+
+    // Check vehicle collision
+    let vehicleConflict: FleetBooking | null = null;
+    if (bookingForm.vehicleId) {
+      vehicleConflict = bookings.find(b => {
+        if (editBookingId && b.id === editBookingId) return false;
+        if (b.vehicleId !== bookingForm.vehicleId) return false;
+        const bStart = parseLocalDate(b.startDate);
+        const bEnd = parseLocalDate(b.endDate);
+        return s <= bEnd && e >= bStart;
+      }) || null;
+    }
+
+    // Check driver collision
+    let driverConflict: FleetBooking | null = null;
+    if (bookingForm.driverId || bookingForm.driverName) {
+      driverConflict = bookings.find(b => {
+        if (editBookingId && b.id === editBookingId) return false;
+        const matchId = bookingForm.driverId && b.driverId === bookingForm.driverId;
+        const matchName = bookingForm.driverName && b.driverName && b.driverName.toLowerCase() === bookingForm.driverName.toLowerCase();
+        if (!matchId && !matchName) return false;
+        const bStart = parseLocalDate(b.startDate);
+        const bEnd = parseLocalDate(b.endDate);
+        return s <= bEnd && e >= bStart;
+      }) || null;
+    }
+
+    return { vehicleConflict, driverConflict };
+  }, [bookingForm.startDate, bookingForm.endDate, bookingForm.vehicleId, bookingForm.driverId, bookingForm.driverName, bookings, editBookingId]);
+
+  // ── Automatic Rate × Days Calculation ─────────────────────
+  const bookingDays = useMemo(() => {
+    return calculateDays(bookingForm.startDate, bookingForm.endDate);
+  }, [bookingForm.startDate, bookingForm.endDate]);
+
+  function handleRateChange(rateVal: string) {
+    const rateNum = parseFloat(rateVal);
+    const newTotal = !isNaN(rateNum) ? String(rateNum * bookingDays) : '';
+    setBookingForm(prev => ({ ...prev, ratePerDay: rateVal, totalAmount: newTotal }));
+  }
+
+  function handleStartDateChange(dateVal: string) {
+    const newDays = calculateDays(dateVal, bookingForm.endDate);
+    const rateNum = parseFloat(bookingForm.ratePerDay);
+    const newTotal = !isNaN(rateNum) ? String(rateNum * newDays) : bookingForm.totalAmount;
+    setBookingForm(prev => ({ ...prev, startDate: dateVal, totalAmount: newTotal }));
+  }
+
+  function handleEndDateChange(dateVal: string) {
+    const newDays = calculateDays(bookingForm.startDate, dateVal);
+    const rateNum = parseFloat(bookingForm.ratePerDay);
+    const newTotal = !isNaN(rateNum) ? String(rateNum * newDays) : bookingForm.totalAmount;
+    setBookingForm(prev => ({ ...prev, endDate: dateVal, totalAmount: newTotal }));
+  }
+
   // ── Booking Handlers ───────────────────────────────────────
   function openNewBooking(vId?: string, day?: number) {
     const defaultDate = day
       ? `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
       : toISOLocal(today);
 
+    setSelectedBooking(null);
     setBookingForm({
       ...blankBooking,
       vehicleId: vId || (vehicles[0]?.id || ''),
@@ -251,17 +473,27 @@ export default function AdminFleetPage() {
   }
 
   function openEditBooking(b: FleetBooking) {
+    setSelectedBooking(b);
     setBookingForm({
       company: b.company,
+      customerId: b.customerId || '',
       destination: b.destination || '',
       startDate: b.startDate.split('T')[0],
       endDate: b.endDate.split('T')[0],
       vehicleId: b.vehicleId,
       driverName: b.driverName || '',
+      driverId: b.driverId || '',
       departTime: b.departTime || '',
       paxCount: b.paxCount ? String(b.paxCount) : '',
       notes: b.notes || '',
       color: b.color || '#2563eb',
+      ratePerDay: b.ratePerDay ? String(b.ratePerDay) : '',
+      totalAmount: b.totalAmount ? String(b.totalAmount) : '',
+      currency: b.currency || 'GHS',
+      paymentStatus: b.paymentStatus || 'UNPAID',
+      createInvoice: false,
+      createQuote: false,
+      allowOverlap: false,
     });
     setEditBookingId(b.id);
     setBookingFormError(null);
@@ -278,19 +510,40 @@ export default function AdminFleetPage() {
       return;
     }
 
+    // Check collision warnings if not overriding
+    if (!bookingForm.allowOverlap) {
+      if (conflictWarnings.vehicleConflict) {
+        setBookingFormError(`Vehicle collision: Selected bus is already booked by "${conflictWarnings.vehicleConflict.company}". Please check the override box below if this is intentional.`);
+        return;
+      }
+      if (conflictWarnings.driverConflict) {
+        setBookingFormError(`Driver collision: Selected driver is already scheduled on another trip. Please check the override box below if this is intentional.`);
+        return;
+      }
+    }
+
     setSubmittingBooking(true);
     try {
       const payload = {
         company: bookingForm.company.trim(),
+        customerId: bookingForm.customerId || undefined,
         destination: bookingForm.destination.trim() || undefined,
         startDate: bookingForm.startDate,
         endDate: bookingForm.endDate,
         vehicleId: bookingForm.vehicleId,
         driverName: bookingForm.driverName.trim() || undefined,
+        driverId: bookingForm.driverId || undefined,
         departTime: bookingForm.departTime.trim() || undefined,
         paxCount: bookingForm.paxCount ? parseInt(bookingForm.paxCount, 10) : undefined,
         notes: bookingForm.notes.trim() || undefined,
         color: bookingForm.color || '#2563eb',
+        ratePerDay: bookingForm.ratePerDay ? parseFloat(bookingForm.ratePerDay) : undefined,
+        totalAmount: bookingForm.totalAmount ? parseFloat(bookingForm.totalAmount) : undefined,
+        currency: bookingForm.currency || 'GHS',
+        paymentStatus: bookingForm.paymentStatus || 'UNPAID',
+        createInvoice: bookingForm.createInvoice,
+        createQuote: bookingForm.createQuote,
+        allowOverlap: bookingForm.allowOverlap,
       };
 
       if (editBookingId) {
@@ -300,6 +553,7 @@ export default function AdminFleetPage() {
       }
       setShowBookingModal(false);
       loadBookings();
+      loadSummary();
     } catch (err: unknown) {
       setBookingFormError(err instanceof Error ? err.message : 'Failed to save booking');
     } finally {
@@ -313,6 +567,7 @@ export default function AdminFleetPage() {
       await api.delete(`/fleet/${id}`);
       setShowBookingModal(false);
       loadBookings();
+      loadSummary();
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : 'Failed to delete booking');
     }
@@ -338,6 +593,7 @@ export default function AdminFleetPage() {
       setShowVehicleModal(false);
       setVehicleForm(blankVehicle);
       loadVehicles();
+      loadSummary();
     } catch (err: unknown) {
       setVehicleFormError(err instanceof Error ? err.message : 'Failed to create vehicle');
     } finally {
@@ -351,6 +607,7 @@ export default function AdminFleetPage() {
       await api.delete(`/vehicles/${id}`);
       loadVehicles();
       loadBookings();
+      loadSummary();
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : 'Failed to delete vehicle');
     }
@@ -378,6 +635,7 @@ export default function AdminFleetPage() {
       setShowDriverModal(false);
       setDriverForm(blankDriver);
       loadDrivers();
+      loadSummary();
     } catch (err: unknown) {
       setDriverFormError(err instanceof Error ? err.message : 'Failed to create driver');
     } finally {
@@ -390,6 +648,7 @@ export default function AdminFleetPage() {
     try {
       await api.delete(`/drivers/${id}`);
       loadDrivers();
+      loadSummary();
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : 'Failed to delete driver');
     }
@@ -411,7 +670,7 @@ export default function AdminFleetPage() {
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 700, color: '#f8fafc', margin: 0 }}>Fleet Management & Scheduling</h1>
           <p style={{ fontSize: 13, color: '#94a3b8', margin: '4px 0 0' }}>
-            Admin fleet calendar, vehicle management, and driver dispatching
+            Interactive Gantt schedule, automated invoice generation, and conflict-sensitive dispatching
           </p>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
@@ -428,6 +687,81 @@ export default function AdminFleetPage() {
               + Add Driver
             </Button>
           )}
+        </div>
+      </div>
+
+      {/* ── Dashboard Executive Summary KPI Cards ─────────────── */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+        gap: 14,
+        marginBottom: 20
+      }}>
+        {/* KPI 1: Fleet Utilization */}
+        <div style={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '14px 16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Fleet Utilization
+            </span>
+            <span style={{ fontSize: 16 }}>📊</span>
+          </div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: '#38bdf8' }}>
+            {summary ? `${summary.utilizationRate}%` : '0%'}
+          </div>
+          <div style={{ width: '100%', height: 6, background: '#334155', borderRadius: 3, marginTop: 8, overflow: 'hidden' }}>
+            <div style={{ width: `${summary ? summary.utilizationRate : 0}%`, height: '100%', background: '#38bdf8', borderRadius: 3 }} />
+          </div>
+          <div style={{ fontSize: 11, color: '#64748b', marginTop: 6 }}>
+            {MONTH_NAMES[month]} booking occupancy rate
+          </div>
+        </div>
+
+        {/* KPI 2: Buses on the Road Today */}
+        <div style={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '14px 16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Buses on the Road
+            </span>
+            <span style={{ fontSize: 16 }}>🚌</span>
+          </div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: '#34d399' }}>
+            {summary ? `${summary.activeBusesToday} Active` : '0'}
+          </div>
+          <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>
+            {summary ? `${summary.standbyBusesToday} on Standby (${summary.totalVehicles} Total Fleet)` : `${vehicles.length} Total`}
+          </div>
+        </div>
+
+        {/* KPI 3: Drivers Dispatched Today */}
+        <div style={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '14px 16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Drivers on Duty
+            </span>
+            <span style={{ fontSize: 16 }}>👨‍✈️</span>
+          </div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: '#a78bfa' }}>
+            {summary ? `${summary.activeDriversToday} on Duty` : '0'}
+          </div>
+          <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>
+            {summary ? `${Math.max(0, summary.totalDrivers - summary.activeDriversToday)} Available (${summary.totalDrivers} Total)` : `${drivers.length} Total`}
+          </div>
+        </div>
+
+        {/* KPI 4: Month Charter Revenue */}
+        <div style={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '14px 16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Charter Invoiced
+            </span>
+            <span style={{ fontSize: 16 }}>💰</span>
+          </div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: '#fbbf24' }}>
+            GHS {summary ? Number(summary.monthRevenue).toLocaleString() : '0'}
+          </div>
+          <div style={{ fontSize: 12, color: '#34d399', marginTop: 4 }}>
+            GHS {summary ? Number(summary.paidRevenue).toLocaleString() : '0'} Paid ({summary ? summary.monthBookingsCount : 0} Bookings)
+          </div>
         </div>
       </div>
 
@@ -547,7 +881,7 @@ export default function AdminFleetPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <input
                 type="text"
-                placeholder="Filter bus or company..."
+                placeholder="Filter bus, company, destination..."
                 value={searchFilter}
                 onChange={e => setSearchFilter(e.target.value)}
                 style={{
@@ -558,7 +892,7 @@ export default function AdminFleetPage() {
                   color: '#fff',
                   fontSize: 13,
                   outline: 'none',
-                  width: 220
+                  width: 260
                 }}
               />
               {searchFilter && (
@@ -696,7 +1030,7 @@ export default function AdminFleetPage() {
                                 padding: 0,
                                 minWidth: 34,
                                 maxWidth: 42,
-                                height: 48,
+                                height: 50,
                                 borderLeft: '1px solid rgba(255,255,255,0.04)',
                                 background: isCurrentDay
                                   ? 'rgba(3, 105, 161, 0.15)'
@@ -719,8 +1053,8 @@ export default function AdminFleetPage() {
                                 return (
                                   <div
                                     key={b.id}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
+                                    onClick={(ev) => {
+                                      ev.stopPropagation();
                                       openEditBooking(b);
                                     }}
                                     style={{
@@ -739,12 +1073,15 @@ export default function AdminFleetPage() {
                                       borderTop: '1px solid rgba(255,255,255,0.25)',
                                       lineHeight: 1.3,
                                     }}
-                                    title={`${b.company}${b.destination ? ` → ${b.destination}` : ''}\n${b.startDate.split('T')[0]} to ${b.endDate.split('T')[0]}\n${b.driverName ? `Driver: ${b.driverName}` : ''}\n${b.paxCount ? `Pax: ${b.paxCount}` : ''}\n${b.departTime ? `Depart: ${b.departTime}` : ''}\nClick to view / edit / delete`}
+                                    title={`${b.company}${b.destination ? ` → ${b.destination}` : ''}\n${b.startDate.split('T')[0]} to ${b.endDate.split('T')[0]}\n${b.totalAmount ? `Rate: ${b.currency || 'GHS'} ${b.totalAmount} (${b.paymentStatus || 'UNPAID'})` : ''}\n${b.invoiceNumber ? `Invoice: ${b.invoiceNumber}` : ''}\n${b.quoteNumber ? `Quotation: ${b.quoteNumber}` : ''}\n${b.driverName ? `Driver: ${b.driverName}` : ''}\n${b.paxCount ? `Pax: ${b.paxCount}` : ''}\n${b.departTime ? `Depart: ${b.departTime}` : ''}\nClick to view / edit / documents`}
                                   >
                                     {isStart ? (
                                       <span>
                                         {b.company}
                                         {b.destination ? ` • ${b.destination}` : ''}
+                                        {b.totalAmount ? ` (${b.currency || 'GHS'} ${b.totalAmount.toLocaleString()})` : ''}
+                                        {b.invoiceNumber ? ` • 🧾 ${b.invoiceNumber}` : ''}
+                                        {b.quoteNumber ? ` • 📄 ${b.quoteNumber}` : ''}
                                       </span>
                                     ) : (
                                       <span style={{ opacity: 0.6 }}>&nbsp;</span>
@@ -775,7 +1112,7 @@ export default function AdminFleetPage() {
             gap: 12
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-              <span>💡 <b>Tip:</b> Click any empty cell to schedule a bus. Click any colored bar to view, edit, or delete.</span>
+              <span>💡 <b>Tip:</b> Click any empty cell to schedule a bus. Invoices & quotes are automatically generated on booking.</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span>Color indicators:</span>
@@ -1024,15 +1361,20 @@ export default function AdminFleetPage() {
             borderRadius: 12,
             padding: 24,
             width: '100%',
-            maxWidth: 580,
-            maxHeight: '90vh',
+            maxWidth: 620,
+            maxHeight: '92vh',
             overflowY: 'auto',
             boxShadow: '0 20px 40px rgba(0,0,0,0.5)'
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#f8fafc' }}>
-                {editBookingId ? 'Edit Bus Booking' : 'New Bus Booking'}
-              </h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div>
+                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#f8fafc' }}>
+                  {editBookingId ? 'Edit Bus Booking' : 'New Bus Booking & Charter'}
+                </h2>
+                {editBookingId && bookingForm.company && (
+                  <span style={{ fontSize: 12, color: '#94a3b8' }}>{bookingForm.company}</span>
+                )}
+              </div>
               <button
                 onClick={() => setShowBookingModal(false)}
                 style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: 20, cursor: 'pointer' }}
@@ -1041,28 +1383,102 @@ export default function AdminFleetPage() {
               </button>
             </div>
 
+            {/* Error Message */}
             {bookingFormError && (
-              <div style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid #ef4444', color: '#fca5a5', padding: '8px 12px', borderRadius: 6, marginBottom: 14, fontSize: 13 }}>
+              <div style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid #ef4444', color: '#fca5a5', padding: '10px 14px', borderRadius: 8, marginBottom: 14, fontSize: 13 }}>
                 {bookingFormError}
+              </div>
+            )}
+
+            {/* Real-time Conflict Alert Box */}
+            {(conflictWarnings.vehicleConflict || conflictWarnings.driverConflict) && (
+              <div style={{
+                background: 'rgba(245, 158, 11, 0.12)',
+                border: '1px solid #f59e0b',
+                color: '#fde68a',
+                padding: '10px 14px',
+                borderRadius: 8,
+                marginBottom: 14,
+                fontSize: 12,
+                lineHeight: 1.5
+              }}>
+                <div style={{ fontWeight: 700, marginBottom: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span>⚠️ Scheduling Conflict Detected</span>
+                </div>
+                {conflictWarnings.vehicleConflict && (
+                  <div>
+                    • <b>Bus collision:</b> {vehicles.find(v => v.id === bookingForm.vehicleId)?.name || 'Selected bus'} is already booked for <b>{conflictWarnings.vehicleConflict.company}</b> ({conflictWarnings.vehicleConflict.startDate.split('T')[0]} to {conflictWarnings.vehicleConflict.endDate.split('T')[0]}).
+                  </div>
+                )}
+                {conflictWarnings.driverConflict && (
+                  <div>
+                    • <b>Driver collision:</b> {bookingForm.driverName || 'Selected driver'} is already assigned to a trip during these dates ({conflictWarnings.driverConflict.startDate.split('T')[0]} to {conflictWarnings.driverConflict.endDate.split('T')[0]}).
+                  </div>
+                )}
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, cursor: 'pointer', color: '#fef08a', fontWeight: 600 }}>
+                  <input
+                    type="checkbox"
+                    checked={bookingForm.allowOverlap}
+                    onChange={e => setBookingForm({ ...bookingForm, allowOverlap: e.target.checked })}
+                  />
+                  <span>Allow booking overlap anyway (Override conflict)</span>
+                </label>
               </div>
             )}
 
             <form onSubmit={handleBookingSubmit}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                {/* Company Name & Customer Lookup */}
                 <div style={{ gridColumn: 'span 2' }}>
-                  <label style={{ display: 'block', fontSize: 12, color: '#94a3b8', marginBottom: 4 }}>
-                    Company / Organization *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. TotalEnergies, Standard Chartered, Gold Fields"
-                    value={bookingForm.company}
-                    onChange={e => setBookingForm({ ...bookingForm, company: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', background: '#0f172a', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, color: '#fff', fontSize: 13 }}
-                  />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                    <label style={{ fontSize: 12, color: '#94a3b8' }}>
+                      Company / Organization / Customer *
+                    </label>
+                    {customers.length > 0 && (
+                      <span style={{ fontSize: 11, color: '#64748b' }}>
+                        Type or pick CRM client
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: customers.length > 0 ? '1.2fr 1fr' : '1fr', gap: 8 }}>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. TotalEnergies, Standard Chartered, Gold Fields"
+                      value={bookingForm.company}
+                      onChange={e => setBookingForm({ ...bookingForm, company: e.target.value })}
+                      style={{ width: '100%', padding: '9px 12px', background: '#0f172a', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, color: '#fff', fontSize: 13 }}
+                    />
+                    {customers.length > 0 && (
+                      <select
+                        value={bookingForm.customerId}
+                        onChange={e => {
+                          const custId = e.target.value;
+                          const cust = customers.find(c => c.id === custId);
+                          if (cust) {
+                            setBookingForm({
+                              ...bookingForm,
+                              customerId: cust.id,
+                              company: `${cust.firstName} ${cust.lastName}`.trim(),
+                            });
+                          } else {
+                            setBookingForm({ ...bookingForm, customerId: '' });
+                          }
+                        }}
+                        style={{ width: '100%', padding: '9px 12px', background: '#0f172a', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, color: '#94a3b8', fontSize: 12 }}
+                      >
+                        <option value="">-- Quick Select CRM Client --</option>
+                        {customers.map(c => (
+                          <option key={c.id} value={c.id}>
+                            {c.firstName} {c.lastName} {c.email ? `(${c.email})` : ''}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
                 </div>
 
+                {/* Bus / Vehicle Selector */}
                 <div style={{ gridColumn: 'span 2' }}>
                   <label style={{ display: 'block', fontSize: 12, color: '#94a3b8', marginBottom: 4 }}>
                     Select Bus / Vehicle *
@@ -1070,7 +1486,16 @@ export default function AdminFleetPage() {
                   <select
                     required
                     value={bookingForm.vehicleId}
-                    onChange={e => setBookingForm({ ...bookingForm, vehicleId: e.target.value })}
+                    onChange={e => {
+                      const selectedId = e.target.value;
+                      const selectedV = vehicles.find(v => v.id === selectedId);
+                      setBookingForm({
+                        ...bookingForm,
+                        vehicleId: selectedId,
+                        driverId: selectedV?.driverId || bookingForm.driverId,
+                        driverName: selectedV?.driver ? `${selectedV.driver.firstName} ${selectedV.driver.lastName}` : bookingForm.driverName,
+                      });
+                    }}
                     style={{ width: '100%', padding: '9px 12px', background: '#0f172a', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, color: '#fff', fontSize: 13 }}
                   >
                     <option value="">-- Choose a Vehicle --</option>
@@ -1082,6 +1507,7 @@ export default function AdminFleetPage() {
                   </select>
                 </div>
 
+                {/* Start Date */}
                 <div>
                   <label style={{ display: 'block', fontSize: 12, color: '#94a3b8', marginBottom: 4 }}>
                     Start / Departure Date *
@@ -1090,11 +1516,12 @@ export default function AdminFleetPage() {
                     type="date"
                     required
                     value={bookingForm.startDate}
-                    onChange={e => setBookingForm({ ...bookingForm, startDate: e.target.value })}
+                    onChange={e => handleStartDateChange(e.target.value)}
                     style={{ width: '100%', padding: '8px 10px', background: '#0f172a', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, color: '#fff', fontSize: 13 }}
                   />
                 </div>
 
+                {/* End Date */}
                 <div>
                   <label style={{ display: 'block', fontSize: 12, color: '#94a3b8', marginBottom: 4 }}>
                     End / Return Date *
@@ -1103,11 +1530,12 @@ export default function AdminFleetPage() {
                     type="date"
                     required
                     value={bookingForm.endDate}
-                    onChange={e => setBookingForm({ ...bookingForm, endDate: e.target.value })}
+                    onChange={e => handleEndDateChange(e.target.value)}
                     style={{ width: '100%', padding: '8px 10px', background: '#0f172a', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, color: '#fff', fontSize: 13 }}
                   />
                 </div>
 
+                {/* Destination */}
                 <div>
                   <label style={{ display: 'block', fontSize: 12, color: '#94a3b8', marginBottom: 4 }}>
                     Trip Destination
@@ -1121,19 +1549,34 @@ export default function AdminFleetPage() {
                   />
                 </div>
 
+                {/* Driver Selector */}
                 <div>
                   <label style={{ display: 'block', fontSize: 12, color: '#94a3b8', marginBottom: 4 }}>
                     Assigned Driver
                   </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Kofi Mensah"
-                    value={bookingForm.driverName}
-                    onChange={e => setBookingForm({ ...bookingForm, driverName: e.target.value })}
+                  <select
+                    value={bookingForm.driverId}
+                    onChange={e => {
+                      const selId = e.target.value;
+                      const selD = drivers.find(d => d.id === selId);
+                      setBookingForm({
+                        ...bookingForm,
+                        driverId: selId,
+                        driverName: selD ? `${selD.firstName} ${selD.lastName}` : bookingForm.driverName,
+                      });
+                    }}
                     style={{ width: '100%', padding: '9px 12px', background: '#0f172a', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, color: '#fff', fontSize: 13 }}
-                  />
+                  >
+                    <option value="">-- Custom / Unassigned --</option>
+                    {drivers.map(d => (
+                      <option key={d.id} value={d.id}>
+                        {d.firstName} {d.lastName} ({d.phone || 'No phone'})
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
+                {/* Departure Time */}
                 <div>
                   <label style={{ display: 'block', fontSize: 12, color: '#94a3b8', marginBottom: 4 }}>
                     Departure Time
@@ -1147,9 +1590,10 @@ export default function AdminFleetPage() {
                   />
                 </div>
 
+                {/* Pax Count */}
                 <div>
                   <label style={{ display: 'block', fontSize: 12, color: '#94a3b8', marginBottom: 4 }}>
-                    Pax Count
+                    Pax Count (Passengers)
                   </label>
                   <input
                     type="number"
@@ -1161,8 +1605,172 @@ export default function AdminFleetPage() {
                   />
                 </div>
 
+                {/* ── Rates & Invoicing Section ──────────────────────── */}
+                <div style={{
+                  gridColumn: 'span 2',
+                  background: 'rgba(15, 23, 42, 0.85)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: 8,
+                  padding: 14,
+                  marginTop: 4
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: '#f8fafc' }}>
+                      💰 Charter Pricing &amp; Automated Financials
+                    </span>
+                    <span style={{ fontSize: 11, background: '#1e293b', color: '#93c5fd', padding: '3px 9px', borderRadius: 4, border: '1px solid rgba(255,255,255,0.1)' }}>
+                      Duration: <b>{bookingDays} {bookingDays === 1 ? 'day' : 'days'}</b>
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10 }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>
+                        Daily Rate
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="any"
+                        placeholder="e.g. 2500"
+                        value={bookingForm.ratePerDay}
+                        onChange={e => handleRateChange(e.target.value)}
+                        style={{ width: '100%', padding: '7px 10px', background: '#1e293b', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, color: '#fff', fontSize: 13, fontWeight: 600 }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>
+                        Total Amount
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="any"
+                        placeholder="e.g. 7500"
+                        value={bookingForm.totalAmount}
+                        onChange={e => setBookingForm({ ...bookingForm, totalAmount: e.target.value })}
+                        style={{ width: '100%', padding: '7px 10px', background: '#1e293b', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, color: '#fbbf24', fontSize: 13, fontWeight: 700 }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>
+                        Currency
+                      </label>
+                      <select
+                        value={bookingForm.currency}
+                        onChange={e => setBookingForm({ ...bookingForm, currency: e.target.value })}
+                        style={{ width: '100%', padding: '7px 10px', background: '#1e293b', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, color: '#fff', fontSize: 13 }}
+                      >
+                        <option value="GHS">GHS (₵)</option>
+                        <option value="USD">USD ($)</option>
+                        <option value="EUR">EUR (€)</option>
+                        <option value="GBP">GBP (£)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>
+                        Payment Status
+                      </label>
+                      <select
+                        value={bookingForm.paymentStatus}
+                        onChange={e => setBookingForm({ ...bookingForm, paymentStatus: e.target.value })}
+                        style={{ width: '100%', padding: '7px 10px', background: '#1e293b', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, color: '#fff', fontSize: 13 }}
+                      >
+                        <option value="UNPAID">Unpaid (Invoice Issued)</option>
+                        <option value="PARTIAL">Partially Paid</option>
+                        <option value="PAID">Paid (Auto-Issue Receipt)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {!editBookingId ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 12, background: '#1e293b', padding: '10px 12px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 12, color: '#cbd5e1' }}>
+                        <input
+                          type="checkbox"
+                          checked={bookingForm.createInvoice}
+                          onChange={e => setBookingForm({ ...bookingForm, createInvoice: e.target.checked })}
+                        />
+                        <span>🧾 Auto-generate official invoice (format <b>SST 00110</b>) &amp; list in Invoices &amp; Quotes</span>
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 12, color: '#cbd5e1' }}>
+                        <input
+                          type="checkbox"
+                          checked={bookingForm.createQuote}
+                          onChange={e => setBookingForm({ ...bookingForm, createQuote: e.target.checked })}
+                        />
+                        <span>📄 Auto-generate formal quotation proposal (format <b>QTE 00110</b>)</span>
+                      </label>
+                    </div>
+                  ) : (
+                    /* Linked invoice, quote, and receipt section */
+                    <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', marginBottom: 8 }}>
+                        Generated Invoices &amp; Quotes for this Booking:
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                        {selectedBooking?.invoiceNumber ? (
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#0284c7', padding: '4px 8px', borderRadius: 5 }}>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: '#fff' }}>
+                              🧾 {selectedBooking.invoiceNumber}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => selectedBooking && handleViewInvoice(selectedBooking)}
+                              style={{ background: '#fff', color: '#0369a1', border: 'none', borderRadius: 4, padding: '2px 7px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                            >
+                              🖨️ View Invoice
+                            </button>
+                          </div>
+                        ) : null}
+
+                        {selectedBooking?.quoteNumber ? (
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#16a34a', padding: '4px 8px', borderRadius: 5 }}>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: '#fff' }}>
+                              📄 {selectedBooking.quoteNumber}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => selectedBooking && handleViewQuote(selectedBooking)}
+                              style={{ background: '#fff', color: '#15803d', border: 'none', borderRadius: 4, padding: '2px 7px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                            >
+                              📄 View Quote
+                            </button>
+                          </div>
+                        ) : null}
+
+                        {selectedBooking?.paymentStatus === 'PAID' && (
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#ca8a04', padding: '4px 8px', borderRadius: 5 }}>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: '#fff' }}>
+                              🧾 Receipt Paid
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => selectedBooking && handleViewReceipt(selectedBooking)}
+                              style={{ background: '#fff', color: '#854d0e', border: 'none', borderRadius: 4, padding: '2px 7px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                            >
+                              🧾 View Receipt
+                            </button>
+                          </div>
+                        )}
+
+                        <Link
+                          href="/invoices"
+                          target="_blank"
+                          style={{ fontSize: 11, color: '#38bdf8', textDecoration: 'none', padding: '4px 8px', border: '1px solid #0284c7', borderRadius: 4 }}
+                        >
+                          All Invoices &amp; Quotes ↗
+                        </Link>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 {/* ── Color Picker Section ──────────────────────────── */}
-                <div style={{ gridColumn: 'span 2', marginTop: 4 }}>
+                <div style={{ gridColumn: 'span 2' }}>
                   <label style={{ display: 'block', fontSize: 12, color: '#94a3b8', marginBottom: 6 }}>
                     Gantt Color Coding (Choose block color)
                   </label>
@@ -1202,13 +1810,14 @@ export default function AdminFleetPage() {
                   </div>
                 </div>
 
+                {/* Notes */}
                 <div style={{ gridColumn: 'span 2' }}>
                   <label style={{ display: 'block', fontSize: 12, color: '#94a3b8', marginBottom: 4 }}>
                     Notes / Remarks
                   </label>
                   <textarea
                     rows={2}
-                    placeholder="Special requirements, contact on ground, etc."
+                    placeholder="Special requirements, contact on ground, driver instructions, etc."
                     value={bookingForm.notes}
                     onChange={e => setBookingForm({ ...bookingForm, notes: e.target.value })}
                     style={{ width: '100%', padding: '9px 12px', background: '#0f172a', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, color: '#fff', fontSize: 13 }}
@@ -1236,7 +1845,7 @@ export default function AdminFleetPage() {
                     Cancel
                   </button>
                   <Button type="submit" disabled={submittingBooking}>
-                    {submittingBooking ? 'Saving…' : editBookingId ? 'Update Booking' : 'Create Booking'}
+                    {submittingBooking ? 'Saving…' : editBookingId ? 'Update Booking' : 'Create & Invoiced'}
                   </Button>
                 </div>
               </div>
@@ -1525,6 +2134,213 @@ export default function AdminFleetPage() {
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ════════════════════════════════════════════════════════ */}
+      {/* MODAL 4: PRINTABLE DOCUMENT VIEWER (INVOICE/QUOTE/RECEIPT) */}
+      {/* ════════════════════════════════════════════════════════ */}
+      {previewDoc && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.75)',
+            backdropFilter: 'blur(5px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000,
+            padding: '20px',
+            overflowY: 'auto',
+          }}
+        >
+          <div
+            style={{
+              background: '#fff',
+              borderRadius: '12px',
+              maxWidth: '800px',
+              width: '100%',
+              maxHeight: '92vh',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.4)',
+              overflow: 'hidden',
+            }}
+          >
+            {/* Modal Header Toolbar */}
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '16px 24px',
+                background: '#f8fafc',
+                borderBottom: '1px solid #e2e8f0',
+              }}
+            >
+              <div style={{ fontWeight: '800', color: '#0f172a', fontSize: '16px' }}>
+                {previewDoc.type === 'INVOICE' && `Invoice: ${previewDoc.data.invoiceNumber || 'SST Document'}`}
+                {previewDoc.type === 'QUOTE' && `Quotation: ${previewDoc.data.quoteNumber || 'QTE Proposal'}`}
+                {previewDoc.type === 'RECEIPT' && `Receipt: ${previewDoc.data.receiptNumber || previewDoc.data.paymentNumber}`}
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <Button onClick={() => window.print()}>
+                  🖨️ Print / Save PDF
+                </Button>
+                <Button variant="secondary" onClick={() => setPreviewDoc(null)}>
+                  ✕ Close
+                </Button>
+              </div>
+            </div>
+
+            {/* Printable Document Body */}
+            <div
+              id="printable-fleet-document"
+              style={{
+                padding: '40px',
+                overflowY: 'auto',
+                background: '#ffffff',
+                color: '#0f172a',
+                fontFamily: 'system-ui, -apple-system, sans-serif',
+              }}
+            >
+              {/* Brand Header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '3px solid #008744', paddingBottom: '24px', marginBottom: '24px' }}>
+                <div>
+                  <div style={{ fontSize: '26px', fontWeight: '900', color: '#008744', letterSpacing: '-0.5px' }}>
+                    SUNSEEKERS TOURS
+                  </div>
+                  <div style={{ fontSize: '13px', color: '#64748b', marginTop: '2px', fontWeight: '600' }}>
+                    Discover Ghana &amp; Beyond • Premium Fleet &amp; Corporate Bus Charters
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#475569', marginTop: '6px', lineHeight: 1.5 }}>
+                    Accra, Ghana • Tel: +233 (0) 302 225 311 / +233 24 431 2345<br />
+                    Email: info@sunseekerstours.com • Web: www.sunseekerstours.com
+                  </div>
+                </div>
+
+                <div style={{ textAlign: 'right' }}>
+                  <div
+                    style={{
+                      fontSize: '22px',
+                      fontWeight: '900',
+                      color: previewDoc.type === 'RECEIPT' ? '#166534' : '#0f172a',
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    {previewDoc.type === 'INVOICE' && 'TAX INVOICE'}
+                    {previewDoc.type === 'QUOTE' && 'PRICE PROPOSAL'}
+                    {previewDoc.type === 'RECEIPT' && 'OFFICIAL RECEIPT'}
+                  </div>
+                  <div style={{ fontSize: '15px', fontWeight: '800', fontFamily: 'monospace', marginTop: '4px', color: '#008744' }}>
+                    {previewDoc.type === 'INVOICE' && (previewDoc.data.invoiceNumber || 'SST PENDING')}
+                    {previewDoc.type === 'QUOTE' && (previewDoc.data.quoteNumber || 'QTE PENDING')}
+                    {previewDoc.type === 'RECEIPT' && (previewDoc.data.receiptNumber || previewDoc.data.paymentNumber)}
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+                    Date: {new Date(previewDoc.data.issueDate || previewDoc.data.paidAt || previewDoc.data.createdAt || new Date()).toLocaleDateString()}
+                  </div>
+                  {previewDoc.type === 'INVOICE' && previewDoc.data.dueDate && (
+                    <div style={{ fontSize: '12px', color: '#dc2626', fontWeight: '700' }}>
+                      Due: {new Date(previewDoc.data.dueDate).toLocaleDateString()}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Bill To / Customer Block */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '28px' }}>
+                <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ fontSize: '11px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px' }}>
+                    {previewDoc.type === 'RECEIPT' ? 'RECEIVED FROM' : 'BILLED TO'}
+                  </div>
+                  <div style={{ fontSize: '16px', fontWeight: '800', color: '#0f172a' }}>
+                    {previewDoc.data.customer?.firstName
+                      ? `${previewDoc.data.customer.firstName} ${previewDoc.data.customer.lastName || ''}`
+                      : (previewDoc.data.notes?.split('for ')[1]?.split(' (')[0] || previewDoc.data.tourName || previewDoc.data.invoice?.customer?.firstName || 'Charter Client')}
+                  </div>
+                  {previewDoc.data.customer?.email && (
+                    <div style={{ fontSize: '13px', color: '#475569', marginTop: '2px' }}>
+                      ✉️ {previewDoc.data.customer.email}
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ fontSize: '11px', fontWeight: '800', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px' }}>
+                    CHARTER &amp; BOOKING REFERENCE
+                  </div>
+                  <div style={{ fontSize: '13px', color: '#334155', lineHeight: 1.6 }}>
+                    <div><strong>Service:</strong> Vehicle Charter &amp; Driver Transportation</div>
+                    <div><strong>Status:</strong> <span style={{ fontWeight: 700, color: '#008744' }}>{previewDoc.data.status || 'CONFIRMED'}</span></div>
+                    {previewDoc.data.currency && <div><strong>Currency:</strong> {previewDoc.data.currency}</div>}
+                  </div>
+                </div>
+              </div>
+
+              {/* Line Items Table */}
+              <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '24px' }}>
+                <thead>
+                  <tr style={{ background: '#f1f5f9', borderBottom: '2px solid #cbd5e1' }}>
+                    <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: '12px', color: '#475569' }}>Description</th>
+                    <th style={{ padding: '10px 12px', textAlign: 'center', fontSize: '12px', color: '#475569', width: '80px' }}>Days / Qty</th>
+                    <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: '12px', color: '#475569', width: '130px' }}>Unit Rate</th>
+                    <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: '12px', color: '#475569', width: '130px' }}>Total Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(Array.isArray(previewDoc.data.items) && previewDoc.data.items.length > 0
+                    ? previewDoc.data.items
+                    : [{ description: previewDoc.data.tourName || 'Bus Charter Service', quantity: 1, unitPrice: previewDoc.data.amount || previewDoc.data.totalPrice || 0, total: previewDoc.data.amount || previewDoc.data.totalPrice || 0 }]
+                  ).map((item: any, idx: number) => (
+                    <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                      <td style={{ padding: '12px', fontSize: '13px', color: '#1e293b' }}>
+                        <div style={{ fontWeight: '600' }}>{item.description}</div>
+                      </td>
+                      <td style={{ padding: '12px', textAlign: 'center', fontSize: '13px', color: '#475569' }}>
+                        {item.quantity}
+                      </td>
+                      <td style={{ padding: '12px', textAlign: 'right', fontSize: '13px', color: '#475569' }}>
+                        {previewDoc.data.currency} {(Number(item.unitPrice) || 0).toLocaleString()}
+                      </td>
+                      <td style={{ padding: '12px', textAlign: 'right', fontSize: '13px', fontWeight: '700', color: '#0f172a' }}>
+                        {previewDoc.data.currency} {(Number(item.total) || 0).toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {/* Totals Summary */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '24px' }}>
+                <div style={{ width: '280px', display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderTop: '2px solid #0f172a', fontWeight: '800', fontSize: '16px', color: '#0f172a' }}>
+                    <span>Total:</span>
+                    <span>{previewDoc.data.currency} {(Number(previewDoc.data.amount || previewDoc.data.totalPrice) || 0).toLocaleString()}</span>
+                  </div>
+                  {previewDoc.type === 'INVOICE' && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#16a34a', fontWeight: '600' }}>
+                      <span>Paid to Date:</span>
+                      <span>{previewDoc.data.currency} {(Number(previewDoc.data.amountPaid) || 0).toLocaleString()}</span>
+                    </div>
+                  )}
+                  {previewDoc.type === 'INVOICE' && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#dc2626', fontWeight: '800', borderTop: '1px solid #e2e8f0', paddingTop: '6px' }}>
+                      <span>Balance Due:</span>
+                      <span>{previewDoc.data.currency} {Math.max(0, (Number(previewDoc.data.amount) || 0) - (Number(previewDoc.data.amountPaid) || 0)).toLocaleString()}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Notes & Terms */}
+              <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '16px', fontSize: '11px', color: '#64748b' }}>
+                <div style={{ fontWeight: '700', color: '#334155', marginBottom: '2px' }}>Terms &amp; Payment Details:</div>
+                <div>Bank Transfer / Cheque payable to Sunseekers Tours Ltd. • Standard Net 7 payment terms apply.</div>
+              </div>
+            </div>
           </div>
         </div>
       )}

@@ -61,6 +61,36 @@ export function Input({
   );
 }
 
+export function Textarea({
+  label,
+  name,
+  value,
+  onChange,
+  placeholder,
+  rows = 4,
+}: {
+  label?: string;
+  name: string;
+  value?: string | number;
+  onChange?: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  placeholder?: string;
+  rows?: number;
+}) {
+  return (
+    <label className="field">
+      {label ? <span className="field-label">{label}</span> : null}
+      <textarea
+        className="input"
+        name={name}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        rows={rows}
+      />
+    </label>
+  );
+}
+
 export function Select({
   label,
   name,

@@ -1140,9 +1140,19 @@ model FleetBooking {
   driverName  String?
   departTime  String?
   paxCount    Int?
-  notes       String?
-  color       String?
-  createdById String?
+  notes         String?
+  color         String?
+  ratePerDay    Float?
+  totalAmount   Float?
+  currency      String?  @default("GHS")
+  invoiceId     String?
+  invoiceNumber String?
+  quoteId       String?
+  quoteNumber   String?
+  customerId    String?
+  paymentStatus String?  @default("UNPAID")
+  driverId      String?
+  createdById   String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

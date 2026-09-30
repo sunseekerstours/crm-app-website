@@ -38,6 +38,14 @@ export class FleetController {
     });
   }
 
+  @Get('summary')
+  @RequirePermissions(Permission.BOOKING_VIEW)
+  getSummary(@Query('year') year?: string, @Query('month') month?: string) {
+    const y = parseInt(year || '', 10) || new Date().getFullYear();
+    const m = parseInt(month || '', 10) || (new Date().getMonth() + 1);
+    return this.fleetService.getSummary(y, m);
+  }
+
   @Get(':id')
   @RequirePermissions(Permission.BOOKING_VIEW)
   findById(@Param('id') id: string) {
