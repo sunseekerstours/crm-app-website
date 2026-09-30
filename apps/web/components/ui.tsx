@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react';
+import React, { type ReactNode } from 'react';
 
 export function Button({
   children,
@@ -97,20 +97,8 @@ export function Select({
       </select>
     </label>
   );
-}
-  return (
-    <label className="field">
-      {label ? <span className="field-label">{label}</span> : null}
-      <select className="input" name={name} value={value} onChange={onChange}>
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
-}
+
+
 
 export function Card({
   title,
