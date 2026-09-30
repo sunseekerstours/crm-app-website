@@ -41,7 +41,7 @@ export class InvoicesService {
 
     const invoice = await this.prisma.invoice.create({
       data: {
-        invoiceNumber: await this.nextNumber('INV'),
+        invoiceNumber: await this.nextNumber('SST'),
         bookingId: dto.bookingId,
         customerId: dto.customerId,
         dealId: dto.dealId,
@@ -273,10 +273,30 @@ export class InvoicesService {
   }
 
   private async nextNumber(prefix: string): Promise<string> {
-    const ts = Date.now().toString(36).toUpperCase();
-    const rand = Math.floor(Math.random() * 46655)
-      .toString(36)
-      .toUpperCase();
-    return `${prefix}-${ts}${rand}`;
+    // Compute current month as two-digit string
+    const now = new Date();
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    // Find latest invoice for this prefix and month
+    const latest = await this.prisma.invoice.findFirst({
+      where: {
+        AND: [
+          { invoiceNumber: { startsWith: `${prefix}` } },
+          { invoiceNumber: { endsWith: month } },
+        ],
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    let nextSeq = 1;
+    if (latest && latest.invoiceNumber) {
+      const seqPart = latest.invoiceNumber.slice(prefix.length, -month.length);
+      const seqNum = parseInt(seqPart, 10);
+      if (!isNaN(seqNum)) {
+        nextSeq = seqNum + 1;
+      }
+    }
+    const seqStr = nextSeq.toString().padStart(3, '0');
+    return `${prefix}${seqStr}${month}`;
   }
+  
+  
 }

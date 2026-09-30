@@ -74,6 +74,30 @@ export function Select({
   onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void;
   options: { value: string; label: string }[];
 }) {
+  const [filter, setFilter] = React.useState('');
+  const filtered = options.filter((o) =>
+    o.label.toLowerCase().includes(filter.toLowerCase()),
+  );
+  return (
+    <label className="field">
+      {label ? <span className="field-label">{label}</span> : null}
+      <input
+        className="input"
+        type="text"
+        placeholder="Search..."
+        value={filter}
+        onChange={(e) => setFilter(e.target.value)}
+      />
+      <select className="input" name={name} value={value} onChange={onChange}>
+        {filtered.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
   return (
     <label className="field">
       {label ? <span className="field-label">{label}</span> : null}
