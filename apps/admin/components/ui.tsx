@@ -118,12 +118,24 @@ export function Select({
   );
 }
 
-export function Card({ title, children, action }: { title?: string; children: ReactNode; action?: ReactNode }) {
+export function Card({
+  title,
+  children,
+  action,
+  style,
+  className,
+}: {
+  title?: ReactNode;
+  children: ReactNode;
+  action?: ReactNode;
+  style?: React.CSSProperties;
+  className?: string;
+}) {
   return (
-    <section className="card">
+    <section className={`card ${className ?? ''}`} style={style}>
       {title || action ? (
         <header className="card-header">
-          {title ? <h2 className="card-title">{title}</h2> : null}
+          {title ? (typeof title === 'string' ? <h2 className="card-title">{title}</h2> : title) : null}
           {action}
         </header>
       ) : null}
