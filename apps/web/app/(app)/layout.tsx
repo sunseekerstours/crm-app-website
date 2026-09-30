@@ -11,7 +11,7 @@ const NAV = [
   { href: '/leads', label: 'Leads' },
   { href: '/deals', label: 'Deals' },
   { href: '/bookings', label: 'Bookings' },
-  { href: '/fleet', label: 'Fleet Scheduler' },
+  { href: '/fleet', label: 'Fleet Management' },
   { href: '/payments', label: 'Payments' },
   { href: '/notifications', label: 'Notifications' },
 ];

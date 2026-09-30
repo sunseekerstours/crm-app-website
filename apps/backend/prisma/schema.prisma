@@ -1136,11 +1136,12 @@ model FleetBooking {
   startDate   DateTime
   endDate     DateTime
   vehicleId   String
-  vehicle     Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  vehicle     Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   driverName  String?
   departTime  String?
   paxCount    Int?
   notes       String?
+  color       String?
   createdById String?
 
   createdAt DateTime @default(now())

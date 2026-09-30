@@ -96,7 +96,7 @@ const tdStyle: React.CSSProperties = {
   borderBottom: '1px solid rgba(255,255,255,0.05)'
 };
 
-export default function FleetPage() {
+export default function AdminFleetPage() {
   const today = new Date();
   const [activeTab, setActiveTab] = useState<'scheduler' | 'vehicles' | 'drivers'>('scheduler');
 
@@ -411,7 +411,7 @@ export default function FleetPage() {
         <div>
           <h1 style={{ fontSize: 24, fontWeight: 700, color: '#f8fafc', margin: 0 }}>Fleet Management & Scheduling</h1>
           <p style={{ fontSize: 13, color: '#94a3b8', margin: '4px 0 0' }}>
-            Interactive Gantt schedule, vehicle roster, and driver dispatch
+            Admin fleet calendar, vehicle management, and driver dispatching
           </p>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>

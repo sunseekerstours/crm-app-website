@@ -1,4 +1,4 @@
-﻿import { Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@app/prisma/prisma.service';
 import { AuditService } from '@app/modules/audit/audit.service';
 import { ApiNotFoundException, ApiConflictException, ErrorCode } from '@app/common/errors';
@@ -22,6 +22,10 @@ export class FleetService {
     private readonly audit: AuditService,
   ) {}
 
+  private get fleetBooking(): any {
+    return (this.prisma as any).fleetBooking;
+  }
+
   async create(dto: CreateFleetBookingDto, ctx: RequestContext) {
     const vehicle = await this.prisma.vehicle.findUnique({ where: { id: dto.vehicleId } });
     if (!vehicle) throw new ApiNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, 'Vehicle not found');
@@ -30,7 +34,7 @@ export class FleetService {
     const end   = new Date(dto.endDate);
     if (end < start) throw new ApiConflictException(ErrorCode.BAD_REQUEST, 'endDate must be on or after startDate');
 
-    const booking = await this.prisma.fleetBooking.create({
+    const booking = await this.fleetBooking.create({
       data: {
         company:     dto.company,
         destination: dto.destination,
@@ -41,6 +45,7 @@ export class FleetService {
         departTime:  dto.departTime,
         paxCount:    dto.paxCount,
         notes:       dto.notes,
+        color:       dto.color,
         createdById: ctx.userId,
       },
       include: { vehicle: { select: { id: true, name: true, registrationNo: true } } },
@@ -48,7 +53,7 @@ export class FleetService {
 
     await this.audit.record({
       userId: ctx.userId,
-      action: AuditableAction.FLEET_BOOKING_CREATED,
+      action: AuditableAction.BOOKING_CREATED,
       entityType: 'FleetBooking',
       entityId: booking.id,
       after: { company: booking.company, vehicleId: booking.vehicleId },
@@ -71,21 +76,21 @@ export class FleetService {
     }
 
     const [items, total] = await Promise.all([
-      this.prisma.fleetBooking.findMany({
+      this.fleetBooking.findMany({
         where,
         skip:     (params.page - 1) * params.limit,
         take:     params.limit,
         orderBy:  { startDate: 'asc' },
         include:  { vehicle: { select: { id: true, name: true, registrationNo: true } } },
       }),
-      this.prisma.fleetBooking.count({ where }),
+      this.fleetBooking.count({ where }),
     ]);
 
     return { items, total, page: params.page, limit: params.limit, totalPages: Math.ceil(total / params.limit), paginated: true as const };
   }
 
   async findById(id: string) {
-    const b = await this.prisma.fleetBooking.findUnique({
+    const b = await this.fleetBooking.findUnique({
       where: { id },
       include: { vehicle: { select: { id: true, name: true, registrationNo: true } } },
     });
@@ -94,14 +99,14 @@ export class FleetService {
   }
 
   async update(id: string, dto: UpdateFleetBookingDto, ctx: RequestContext) {
-    const existing = await this.prisma.fleetBooking.findUnique({ where: { id } });
+    const existing = await this.fleetBooking.findUnique({ where: { id } });
     if (!existing) throw new ApiNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, 'Fleet booking not found');
 
     const start = dto.startDate ? new Date(dto.startDate) : existing.startDate;
     const end   = dto.endDate   ? new Date(dto.endDate)   : existing.endDate;
     if (end < start) throw new ApiConflictException(ErrorCode.BAD_REQUEST, 'endDate must be on or after startDate');
 
-    const updated = await this.prisma.fleetBooking.update({
+    const updated = await this.fleetBooking.update({
       where: { id },
       data: {
         company:     dto.company,
@@ -113,13 +118,14 @@ export class FleetService {
         departTime:  dto.departTime,
         paxCount:    dto.paxCount,
         notes:       dto.notes,
+        color:       dto.color !== undefined ? dto.color : existing.color,
       },
       include: { vehicle: { select: { id: true, name: true, registrationNo: true } } },
     });
 
     await this.audit.record({
       userId: ctx.userId,
-      action: AuditableAction.FLEET_BOOKING_UPDATED,
+      action: AuditableAction.BOOKING_UPDATED,
       entityType: 'FleetBooking',
       entityId: id,
       before: { company: existing.company },
@@ -133,14 +139,14 @@ export class FleetService {
   }
 
   async remove(id: string, ctx: RequestContext) {
-    const existing = await this.prisma.fleetBooking.findUnique({ where: { id } });
+    const existing = await this.fleetBooking.findUnique({ where: { id } });
     if (!existing) throw new ApiNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, 'Fleet booking not found');
 
-    await this.prisma.fleetBooking.delete({ where: { id } });
+    await this.fleetBooking.delete({ where: { id } });
 
     await this.audit.record({
       userId: ctx.userId,
-      action: AuditableAction.FLEET_BOOKING_DELETED,
+      action: AuditableAction.BOOKING_DELETED,
       entityType: 'FleetBooking',
       entityId: id,
       before: { company: existing.company },

@@ -1,4 +1,4 @@
-﻿import { IsDateString, IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { IsDateString, IsInt, IsOptional, IsString, Min } from 'class-validator';
 
 export class CreateFleetBookingDto {
   @IsString()
@@ -33,4 +33,8 @@ export class CreateFleetBookingDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  @IsString()
+  color?: string;
 }

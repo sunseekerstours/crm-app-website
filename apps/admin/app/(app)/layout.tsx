@@ -24,6 +24,7 @@ const CRM_NAV = [
   { href: '/crm/leads', label: 'Leads', permission: 'leads.view' },
   { href: '/crm/deals', label: 'Deals', permission: 'deals.view' },
   { href: '/crm/bookings', label: 'Bookings', permission: 'bookings.view' },
+  { href: '/crm/fleet', label: 'Fleet Management', permission: '' },
   { href: '/crm/invoices', label: 'Invoices & Quotes', permission: 'invoices.view' },
   { href: '/crm/payments', label: 'Payments', permission: 'payments.view' },
   { href: '/crm/notifications', label: 'Notifications', permission: 'notifications.view' },
@@ -137,6 +138,12 @@ function getIcon(label: string) {
       return (
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.03 0 1.9.693 2.166 1.638m-7.3 0A48.536 48.536 0 013 6.108V16.5A2.25 2.25 0 005.25 18.75h1.5m.75-16.5h1.5" />
+        </svg>
+      );
+    case 'Fleet Management':
+      return (
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.25V3.75c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v13.5c0 .621.504 1.125 1.125 1.125h2.25m9-11.25H2.25" />
         </svg>
       );
     case 'Payments':
