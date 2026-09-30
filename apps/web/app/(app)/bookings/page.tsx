@@ -64,7 +64,7 @@ export default function BookingsPage() {
       <Card title="New booking">
         <form onSubmit={create}>
           <div className="form-grid">
-            <Input placeholder="Search customers..." value={customerSearch} onChange={(e) => setCustomerSearch(e.target.value)} />
+            <Input name="customerSearch" placeholder="Search customers..." value={customerSearch} onChange={(e) => setCustomerSearch(e.target.value)} />
             <Select label="Customer" name="customerId" value={form.customerId} onChange={(e) => setForm({ ...form, customerId: e.target.value })} options={customers.filter((c) => `${c.firstName} ${c.lastName}`.toLowerCase().includes(customerSearch.toLowerCase())).map((c) => ({ value: c.id, label: `${c.firstName} ${c.lastName}` }))} />
             <Input label="Tour name" name="tourName" value={form.tourName} onChange={(e) => setForm({ ...form, tourName: e.target.value })} />
             <Input label="Pax count" name="paxCount" type="number" value={form.paxCount} onChange={(e) => setForm({ ...form, paxCount: e.target.value })} />
