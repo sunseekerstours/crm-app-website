@@ -83,12 +83,28 @@ export class LeadsService {
     return lead;
   }
 
+  async getTags(): Promise<string[]> {
+    const leads = await this.prisma.lead.findMany({
+      select: { tags: true },
+    });
+    const set = new Set<string>();
+    for (const l of leads) {
+      if (Array.isArray(l.tags)) {
+        for (const t of l.tags) {
+          if (t && t.trim()) set.add(t.trim());
+        }
+      }
+    }
+    return Array.from(set).sort();
+  }
+
   async findAll(params: {
     page: number;
     limit: number;
     search?: string;
     stage?: string;
     source?: string;
+    tag?: string;
   }) {
     const where: Prisma.LeadWhereInput = {};
     if (params.search) {
@@ -101,6 +117,7 @@ export class LeadsService {
     }
     if (params.stage) where.stage = params.stage as LeadStage;
     if (params.source) where.source = params.source as any;
+    if (params.tag) where.tags = { has: params.tag };
 
     const [items, total] = await Promise.all([
       this.prisma.lead.findMany({

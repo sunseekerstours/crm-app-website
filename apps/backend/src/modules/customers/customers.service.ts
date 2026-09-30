@@ -13,6 +13,7 @@ export interface ListParams {
   limit: number;
   search?: string;
   status?: string;
+  tag?: string;
 }
 
 @Injectable()
@@ -271,6 +272,21 @@ export class CustomersService {
     return { success: true };
   }
 
+  async getTags(): Promise<string[]> {
+    const customers = await this.prisma.customer.findMany({
+      select: { tags: true },
+    });
+    const set = new Set<string>();
+    for (const c of customers) {
+      if (Array.isArray(c.tags)) {
+        for (const t of c.tags) {
+          if (t && t.trim()) set.add(t.trim());
+        }
+      }
+    }
+    return Array.from(set).sort();
+  }
+
   private buildWhere(params: ListParams) {
     const where: Record<string, unknown> = {};
     if (params.search) {
@@ -283,6 +299,9 @@ export class CustomersService {
     }
     if (params.status) {
       where.status = params.status;
+    }
+    if (params.tag) {
+      where.tags = { has: params.tag };
     }
     return where;
   }

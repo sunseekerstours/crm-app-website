@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import * as xlsx from 'xlsx';
 import { PrismaClient, CustomerStatus, LeadSource, LeadStage } from '@prisma/client';
 
 const prisma = new PrismaClient();
@@ -55,6 +56,14 @@ function parseDate(dateStr?: string): Date | null {
   return isNaN(d.getTime()) ? null : d;
 }
 
+function cleanTags(raw: string | string[] | undefined): string[] {
+  if (!raw) return [];
+  const parts = Array.isArray(raw) ? raw : String(raw).split(/[,|;]/);
+  return parts
+    .map((t) => t.trim().replace(/^["']|["']$/g, ''))
+    .filter((t) => t && t.length > 1 && !/^\d{7,}$/.test(t) && !t.includes('@'));
+}
+
 export async function importJetpackContacts(csvFilePath?: string): Promise<{
   totalRows: number;
   customersCreated: number;
@@ -73,6 +82,92 @@ export async function importJetpackContacts(csvFilePath?: string): Promise<{
   console.log(`[Jetpack Import] Reading contacts from: ${targetPath}`);
   const raw = fs.readFileSync(targetPath, 'utf8').replace(/^\uFEFF/, '');
   const rows = parseCSV(raw);
+
+  // Pre-load Fair and Company Enrichment from Sunseekers Data.xlsx & upload Crm.csv
+  const enrichmentByEmail = new Map<string, { tags: string[]; company?: string; fair?: string; phone?: string; name?: string }>();
+  const enrichmentByPhone = new Map<string, { tags: string[]; company?: string; fair?: string }>();
+
+  // 1. Check upload Crm.csv
+  const uploadCrmPath = path.resolve(__dirname, 'data/upload Crm.csv');
+  if (fs.existsSync(uploadCrmPath)) {
+    try {
+      const uploadRaw = fs.readFileSync(uploadCrmPath, 'utf8').replace(/^\uFEFF/, '');
+      const uploadRows = parseCSV(uploadRaw);
+      if (uploadRows.length > 1) {
+        const uH = uploadRows[0].map((h) => h.toLowerCase().trim());
+        const uEmailIdx = uH.indexOf('email');
+        const uTagsIdx = uH.indexOf('tags');
+        const uCompIdx = uH.indexOf('company');
+        const uCompTagsIdx = uH.indexOf('company tags');
+        const uTelIdx = uH.indexOf('telephone');
+
+        for (let r = 1; r < uploadRows.length; r++) {
+          const row = uploadRows[r];
+          const email = uEmailIdx !== -1 ? row[uEmailIdx]?.toLowerCase().trim() : '';
+          const tel = uTelIdx !== -1 ? row[uTelIdx]?.trim() : '';
+          const company = uCompIdx !== -1 ? row[uCompIdx]?.trim() : '';
+          const rawTags = [
+            uTagsIdx !== -1 ? row[uTagsIdx] : '',
+            uCompTagsIdx !== -1 ? row[uCompTagsIdx] : '',
+          ].filter(Boolean).join(',');
+
+          const tags = cleanTags(rawTags);
+          if (email) {
+            enrichmentByEmail.set(email, { tags, company, phone: tel });
+          }
+          if (tel) {
+            enrichmentByPhone.set(tel, { tags, company });
+          }
+        }
+        console.log(`[Jetpack Import] Loaded ${uploadRows.length - 1} contact enrichment rows from upload Crm.csv`);
+      }
+    } catch (e: any) {
+      console.warn(`[Jetpack Import] Could not parse upload Crm.csv: ${e.message}`);
+    }
+  }
+
+  // 2. Check Sunseekers Data.xlsx
+  const xlsxPath = path.resolve(__dirname, 'data/Sunseekers Data.xlsx');
+  if (fs.existsSync(xlsxPath)) {
+    try {
+      const wb = xlsx.readFile(xlsxPath);
+      const dataSheet = wb.Sheets['Data'];
+      if (dataSheet) {
+        const sheetRows = xlsx.utils.sheet_to_json<any>(dataSheet);
+        for (const sr of sheetRows) {
+          const email = String(sr['Email'] || '').toLowerCase().trim();
+          const phone = String(sr['Phone'] || '').trim();
+          const company = String(sr['Company'] || '').trim();
+          const fair = String(sr['Type of Fair'] || '').trim();
+          const source = String(sr['Source'] || '').trim();
+          const name = String(sr['Name'] || '').trim();
+
+          const tags = cleanTags([fair, source]);
+          if (email) {
+            const existing = enrichmentByEmail.get(email) || { tags: [] };
+            enrichmentByEmail.set(email, {
+              tags: Array.from(new Set([...existing.tags, ...tags])),
+              company: company || existing.company,
+              fair: fair || existing.fair,
+              phone: phone || existing.phone,
+              name: name || existing.name,
+            });
+          }
+          if (phone) {
+            const existing = enrichmentByPhone.get(phone) || { tags: [] };
+            enrichmentByPhone.set(phone, {
+              tags: Array.from(new Set([...existing.tags, ...tags])),
+              company: company || existing.company,
+              fair: fair || existing.fair,
+            });
+          }
+        }
+        console.log(`[Jetpack Import] Loaded ${sheetRows.length} fair attendance rows from Sunseekers Data.xlsx`);
+      }
+    } catch (e: any) {
+      console.warn(`[Jetpack Import] Could not parse Sunseekers Data.xlsx: ${e.message}`);
+    }
+  }
 
   if (rows.length < 2) {
     console.log('[Jetpack Import] No data rows found in CSV');
@@ -161,23 +256,30 @@ export async function importJetpackContacts(csvFilePath?: string): Promise<{
     const tour = idx.to !== -1 ? row[idx.to]?.trim() : idx.from !== -1 ? row[idx.from]?.trim() : '';
     const departure = idx.departure !== -1 ? row[idx.departure]?.trim() : '';
     const passengers = idx.passengers !== -1 ? row[idx.passengers]?.trim() : '';
-    const company = idx.companyName !== -1 ? row[idx.companyName]?.trim() : '';
+    let company = idx.companyName !== -1 ? row[idx.companyName]?.trim() : '';
     const rawTags = idx.tags !== -1 ? row[idx.tags]?.trim() : '';
     const createdDate = idx.createdDate !== -1 ? parseDate(row[idx.createdDate]) : null;
 
-    const tags: string[] = ['JETPACK_CRM', 'WORDPRESS_SYNC'];
-    if (rawStatus) tags.push(rawStatus.toUpperCase().replace(/\s+/g, '_'));
-    if (rawTags) {
-      rawTags
-        .split(',')
-        .map((t) => t.trim())
-        .filter(Boolean)
-        .forEach((t) => {
-          if (!tags.includes(t)) tags.push(t);
-        });
+    // Check enrichment sources
+    const enrich = (rawEmail ? enrichmentByEmail.get(rawEmail) : null) || (phone ? enrichmentByPhone.get(phone) : null);
+    if (enrich?.company && !company) {
+      company = enrich.company;
     }
 
-    // Match existing customer by Email or Phone or Jetpack Note ID
+    const parsedRowTags = cleanTags(rawTags);
+    const enrichedTags = enrich ? enrich.tags : [];
+
+    const tags: string[] = Array.from(
+      new Set([
+        'JETPACK_CRM',
+        'WORDPRESS_SYNC',
+        ...(rawStatus ? [rawStatus.toUpperCase().replace(/\s+/g, '_')] : []),
+        ...parsedRowTags,
+        ...enrichedTags,
+      ]),
+    );
+
+    // Match existing customer by Email or Phone
     let customer = await prisma.customer.findFirst({
       where: {
         OR: [
@@ -242,7 +344,7 @@ export async function importJetpackContacts(csvFilePath?: string): Promise<{
       customersUpdated++;
     }
 
-    // If it is a Lead/New Lead and has an email, ensure it also appears in the Lead pipeline
+    // If it is a Lead/New Lead and has an email, ensure it also appears in the Lead pipeline with full tags
     if (!isCustomer && rawEmail) {
       const existingLead = await prisma.lead.findFirst({
         where: { email: rawEmail },
@@ -261,7 +363,7 @@ export async function importJetpackContacts(csvFilePath?: string): Promise<{
             interestedTour: tour || null,
             customerId: customer.id,
             campaign: 'WordPress Jetpack CRM Import',
-            tags: ['JETPACK_CRM', 'WORDPRESS_SYNC'],
+            tags,
             createdAt: createdDate || new Date(),
             notes: {
               create: {
@@ -276,6 +378,71 @@ export async function importJetpackContacts(csvFilePath?: string): Promise<{
           },
         });
         leadsCreated++;
+      } else {
+        // Sync tags onto existing lead
+        const currentLeadTags = existingLead.tags || [];
+        const mergedLeadTags = Array.from(new Set([...currentLeadTags, ...tags]));
+        await prisma.lead.update({
+          where: { id: existingLead.id },
+          data: { tags: mergedLeadTags },
+        });
+      }
+    }
+  }
+
+  // Also import any contacts present in Sunseekers Data.xlsx not yet in DB
+  let fairAdded = 0;
+  for (const [email, info] of enrichmentByEmail.entries()) {
+    if (!email) continue;
+    const existing = await prisma.customer.findFirst({ where: { email } });
+    if (!existing && info.name) {
+      const parts = info.name.split(' ');
+      const f = parts[0] || 'Fair';
+      const l = parts.slice(1).join(' ') || 'Attendee';
+      const fairCustomer = await prisma.customer.create({
+        data: {
+          firstName: f,
+          lastName: l,
+          email,
+          phone: info.phone || null,
+          status: CustomerStatus.ACTIVE,
+          leadSource: LeadSource.WEBSITE,
+          tags: Array.from(new Set(['JETPACK_CRM', 'FAIR_ATTENDEE', ...info.tags])),
+        },
+      });
+      fairAdded++;
+      customersCreated++;
+
+      // Also create Lead for fair attendee
+      await prisma.lead.create({
+        data: {
+          firstName: f,
+          lastName: l,
+          email,
+          phone: info.phone || null,
+          source: LeadSource.REFERRAL,
+          stage: LeadStage.QUALIFIED,
+          customerId: fairCustomer.id,
+          campaign: info.fair || 'Tourism Fair / Trade Mission',
+          tags: Array.from(new Set(['JETPACK_CRM', 'FAIR_ATTENDEE', ...info.tags])),
+          notes: {
+            create: {
+              content: `Attendee from ${info.fair || 'Tourism Fair'}\nCompany: ${info.company || 'N/A'}`,
+            },
+          },
+        },
+      });
+      leadsCreated++;
+    } else if (existing) {
+      // Ensure fair tags are present
+      const curr = existing.tags || [];
+      const updated = Array.from(new Set([...curr, ...info.tags]));
+      if (updated.length > curr.length) {
+        await prisma.customer.update({
+          where: { id: existing.id },
+          data: { tags: updated },
+        });
+        customersUpdated++;
       }
     }
   }
@@ -283,12 +450,13 @@ export async function importJetpackContacts(csvFilePath?: string): Promise<{
   const totalInDb = await prisma.customer.count();
 
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log(`[Jetpack Import Complete]`);
-  console.log(`• Total Rows in CSV:       ${dataRows.length}`);
-  console.log(`• New Customers Created:   ${customersCreated}`);
-  console.log(`• Existing Customers Updated: ${customersUpdated}`);
-  console.log(`• New Leads Created:       ${leadsCreated}`);
-  console.log(`• Total Customers in DB:   ${totalInDb}`);
+  console.log(`[Jetpack Import] SUMMARY`);
+  console.log(`  - Total CSV Rows Processed: ${dataRows.length}`);
+  console.log(`  - Additional Fair Contacts Added: ${fairAdded}`);
+  console.log(`  - Customers Created:         ${customersCreated}`);
+  console.log(`  - Customers Updated (tags):  ${customersUpdated}`);
+  console.log(`  - Leads Created / Synced:    ${leadsCreated}`);
+  console.log(`  - Total Customers in DB:     ${totalInDb}`);
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
   return {
@@ -301,15 +469,12 @@ export async function importJetpackContacts(csvFilePath?: string): Promise<{
   };
 }
 
-async function main() {
-  await importJetpackContacts();
-}
-
 if (require.main === module) {
-  main()
+  const filePath = process.argv[2];
+  importJetpackContacts(filePath)
+    .then(() => prisma.$disconnect())
     .catch((err) => {
       console.error('[Jetpack Import Error]', err);
-      process.exit(1);
-    })
-    .finally(() => prisma.$disconnect());
+      prisma.$disconnect().then(() => process.exit(1));
+    });
 }

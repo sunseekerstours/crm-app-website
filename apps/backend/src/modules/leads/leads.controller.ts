@@ -21,15 +21,22 @@ export class LeadsController {
     return this.leadsService.create(dto, toRequestContext(req, userId));
   }
 
+  @Get('tags')
+  @RequirePermissions(Permission.LEAD_VIEW)
+  getTags() {
+    return this.leadsService.getTags();
+  }
+
   @Get()
   @RequirePermissions(Permission.LEAD_VIEW)
-  findAll(@Query() query: LeadListQueryDto) {
+  findAll(@Query() query: LeadListQueryDto, @Query('tag') tag?: string) {
     return this.leadsService.findAll({
       page: query.page ?? 1,
       limit: query.limit ?? 20,
       search: query.search,
       stage: query.stage,
       source: query.source,
+      tag: tag || undefined,
     });
   }
 

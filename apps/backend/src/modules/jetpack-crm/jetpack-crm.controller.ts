@@ -43,6 +43,16 @@ export class JetpackCrmController {
   }
 
   /**
+   * Trigger financial synchronization (Invoices, Payments, Revenue breakdown)
+   */
+  @ApiBearerAuth()
+  @Post('sync-financials')
+  @RequirePermissions(Permission.SETTINGS_UPDATE)
+  async syncFinancials() {
+    return this.jetpackService.syncFinancials();
+  }
+
+  /**
    * View raw contacts from Jetpack CRM
    */
   @ApiBearerAuth()

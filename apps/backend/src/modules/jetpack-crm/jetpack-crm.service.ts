@@ -435,6 +435,24 @@ export class JetpackCrmService {
           },
         });
 
+        const contactTags = Array.isArray(c.tags)
+          ? c.tags
+          : typeof c.tags === 'string'
+            ? (c.tags as string).split(/[,|;]/)
+            : [];
+        const cleanContactTags = contactTags
+          .map((t: string) => String(t).replace(/\s+/g, ' ').trim().replace(/^["']|["']$/g, ''))
+          .filter((t: string) => t && t.length > 1 && !/^\d{7,}$/.test(t) && !t.includes('@'));
+
+        const mergedTags = Array.from(
+          new Set([
+            'JETPACK_CRM',
+            'WORDPRESS_SYNC',
+            ...(rawStatus ? [rawStatus.toUpperCase().replace(/\s+/g, '_')] : []),
+            ...cleanContactTags,
+          ]),
+        );
+
         if (!customer) {
           customer = await this.prisma.customer.create({
             data: {
@@ -446,7 +464,7 @@ export class JetpackCrmService {
               address: address || undefined,
               status: CustomerStatus.ACTIVE,
               leadSource: LeadSource.WEBSITE,
-              tags: ['JETPACK_CRM', 'WORDPRESS_SYNC', rawStatus.toUpperCase().replace(/\s+/g, '_')],
+              tags: mergedTags,
             },
           });
           customersCreated++;
@@ -470,13 +488,14 @@ export class JetpackCrmService {
             });
           }
         } else {
-          // Customer exists; ensure tagged as JETPACK_CRM
+          // Customer exists; ensure enriched tags are merged
           const existingTags = customer.tags || [];
-          if (!existingTags.includes('JETPACK_CRM')) {
+          const updatedTags = Array.from(new Set([...existingTags, ...mergedTags]));
+          if (updatedTags.length > existingTags.length) {
             await this.prisma.customer.update({
               where: { id: customer.id },
               data: {
-                tags: [...existingTags, 'JETPACK_CRM', 'WORDPRESS_SYNC'],
+                tags: updatedTags,
                 phone: customer.phone || phone || undefined,
                 country: customer.country || country || undefined,
               },
@@ -506,7 +525,7 @@ export class JetpackCrmService {
                 interestedTour: tour || undefined,
                 customerId: customer.id,
                 campaign: 'WordPress Site Lead',
-                tags: ['JETPACK_CRM', 'WORDPRESS_SYNC'],
+                tags: mergedTags,
                 notes: {
                   create: {
                     content: `Inbound WordPress Lead (WP ID #${c.id})\n` +
@@ -667,6 +686,38 @@ export class JetpackCrmService {
     // 1. Run Duplicate Detection
     const dup = await this.salesAutomation.detectDuplicate({ email, phone });
 
+    const rawPayloadTags = payload.tags || payload.tag || payload['data-tags'] || payload.data_tags || [];
+    const payloadTagsList = Array.isArray(rawPayloadTags)
+      ? rawPayloadTags
+      : typeof rawPayloadTags === 'string'
+        ? rawPayloadTags.split(/[,|;]/)
+        : [];
+
+    const formName = (
+      payload.form_name ||
+      payload.form_title ||
+      payload.formName ||
+      payload['form-title'] ||
+      payload.form ||
+      ''
+    ).trim();
+
+    const cleanPayloadTags = payloadTagsList
+      .map((t: any) => String(t).replace(/\s+/g, ' ').trim().replace(/^["']|["']$/g, ''))
+      .filter((t: string) => t && t.length > 1 && !/^\d{7,}$/.test(t) && !t.includes('@'));
+
+    const inboundTags = Array.from(
+      new Set([
+        'WORDPRESS_FORM',
+        'WEBSITE_REQUEST',
+        'JETPACK_CRM',
+        ...(formName ? [formName] : []),
+        ...(tour ? [tour] : []),
+        ...(dup.isDuplicate ? ['EXISTING_CUSTOMER'] : []),
+        ...cleanPayloadTags,
+      ]),
+    );
+
     // 2. Create or Update Customer
     let customerId = dup.existingCustomerId;
     if (!customerId) {
@@ -678,17 +729,26 @@ export class JetpackCrmService {
           phone: phone || undefined,
           leadSource: LeadSource.WEBSITE,
           status: CustomerStatus.ACTIVE,
-          tags: ['WORDPRESS_FORM', 'WEBSITE_REQUEST', 'JETPACK_CRM'],
+          tags: inboundTags,
         },
       });
       customerId = newCustomer.id;
+    } else {
+      const existingCustomer = await this.prisma.customer.findUnique({
+        where: { id: customerId },
+        select: { tags: true },
+      });
+      if (existingCustomer) {
+        await this.prisma.customer.update({
+          where: { id: customerId },
+          data: {
+            tags: Array.from(new Set([...(existingCustomer.tags || []), ...inboundTags])),
+          },
+        });
+      }
     }
 
     // 3. Create Lead in Pipeline
-    const tags = ['WORDPRESS_FORM', 'WEBSITE_REQUEST'];
-    if (dup.isDuplicate) tags.push('EXISTING_CUSTOMER');
-    if (tour) tags.push(tour.toUpperCase().replace(/\s+/g, '_'));
-
     const leadNoteContent = [
       `🌐 Real-Time Inbound WordPress Form Submission:`,
       fullName ? `• Name: ${fullName}` : null,
@@ -713,8 +773,8 @@ export class JetpackCrmService {
         interestedTour: tour || undefined,
         customerId,
         assignedUserId: dup.assignedStaffId,
-        campaign: 'WordPress Inbound Webhook',
-        tags,
+        campaign: formName || 'WordPress Inbound Webhook',
+        tags: inboundTags,
         notes: {
           create: {
             content: leadNoteContent,
@@ -849,12 +909,25 @@ export class JetpackCrmService {
           (col.homeTel !== -1 ? r[col.homeTel] : ''),
         to: (col.to !== -1 ? r[col.to] : '') || (col.from !== -1 ? r[col.from] : ''),
         departure: col.departure !== -1 ? r[col.departure] : '',
-        passengers: col.passengers !== -1 ? r[col.passengers] : '',
-        tags: col.tags !== -1 ? r[col.tags]?.split(',').map((t: string) => t.trim()).filter(Boolean) : [],
+        tags: col.tags !== -1 && r[col.tags]
+          ? r[col.tags]
+              .split(/[,|;]/)
+              .map((t: string) => t.trim().replace(/^["']|["']$/g, ''))
+              .filter((t: string) => t && t.length > 1 && !/^\d{7,}$/.test(t) && !t.includes('@'))
+          : [],
       }));
     } catch (err: any) {
       this.logger.warn(`Failed to read snapshot CSV: ${err.message}`);
       return [];
     }
   }
+
+  /**
+   * Sync financial statements, invoices, and payments from Jetpack CRM & local financial dataset
+   */
+  async syncFinancials(): Promise<any> {
+    const { executeFinancialSync } = await import('./jetpack-financials');
+    return executeFinancialSync(this.prisma as any);
+  }
 }
+

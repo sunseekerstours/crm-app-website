@@ -21,14 +21,21 @@ export class CustomersController {
     return this.customersService.create(dto, toRequestContext(req, userId));
   }
 
+  @Get('tags')
+  @RequirePermissions(Permission.CUSTOMER_VIEW)
+  getTags() {
+    return this.customersService.getTags();
+  }
+
   @Get()
   @RequirePermissions(Permission.CUSTOMER_VIEW)
-  findAll(@Query() query: ListQueryDto) {
+  findAll(@Query() query: ListQueryDto, @Query('tag') tag?: string) {
     return this.customersService.findAll({
       page: query.page ?? 1,
       limit: query.limit ?? 20,
       search: query.search,
       status: query.status,
+      tag: tag || undefined,
     });
   }
 
