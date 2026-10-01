@@ -22,7 +22,6 @@ export class ProductsController {
   }
 
   @Get()
-  @RequirePermissions(Permission.PRODUCT_VIEW)
   findAll(@Query() query: ListQueryDto) {
     return this.productsService.findAll({
       page: query.page ?? 1,
@@ -33,7 +32,6 @@ export class ProductsController {
   }
 
   @Get(':id')
-  @RequirePermissions(Permission.PRODUCT_VIEW)
   findById(@Param('id') id: string) {
     return this.productsService.findById(id);
   }

@@ -18,6 +18,7 @@ import {
 } from '@/components/ui';
 import { CustomerSearchPicker, CustomerSummary } from '@/components/CustomerSearchPicker';
 import { CustomerDetailsModal } from '@/components/CustomerDetailsModal';
+import ProductSearchPicker from '@/components/ProductSearchPicker';
 
 interface CustomerOption {
   id: string;
@@ -371,8 +372,26 @@ export default function CrmBookingsPage() {
               />
             </div>
 
+            {/* Product / Service Selection */}
+            <div style={{ gridColumn: '1 / -1' }}>
+              <ProductSearchPicker
+                label="Select Product / Service (Tours, Fleet Rental, Hotel, Flight Bookings)"
+                placeholder="🔍 Select from product catalog (or type custom tour name below)..."
+                onSelect={(prod) => {
+                  if (prod) {
+                    setForm((f) => ({
+                      ...f,
+                      tourName: prod.name,
+                      totalPrice: prod.price != null ? String(prod.price) : f.totalPrice,
+                      currency: prod.currency || f.currency,
+                    }));
+                  }
+                }}
+              />
+            </div>
+
             <Input
-              label="Tour Package / Trip Name"
+              label="Tour Package / Product / Trip Name"
               name="tourName"
               value={form.tourName}
               placeholder="e.g. December in Ghana 12 Days"
@@ -519,15 +538,25 @@ export default function CrmBookingsPage() {
               },
               {
                 key: 'tour',
-                label: 'Tour / Package',
-                render: (b) => (
-                  <div>
-                    <div style={{ fontWeight: '700', color: '#0f172a' }}>
-                      {b.tourName || 'Custom Booking'}
+                label: 'Tour / Product / Package',
+                render: (b) => {
+                  const name = b.tourName || 'Custom Booking';
+                  let icon = '🎯';
+                  const lower = name.toLowerCase();
+                  if (lower.includes('tour') || lower.includes('ghana') || lower.includes('cape coast') || lower.includes('castle')) icon = '🌍';
+                  else if (lower.includes('fleet') || lower.includes('bus') || lower.includes('car') || lower.includes('van') || lower.includes('rental')) icon = '🚐';
+                  else if (lower.includes('hotel') || lower.includes('resort') || lower.includes('suite') || lower.includes('lodge')) icon = '🏨';
+                  else if (lower.includes('flight') || lower.includes('airline') || lower.includes('air') || lower.includes('ticket')) icon = '✈️';
+                  return (
+                    <div>
+                      <div style={{ fontWeight: '700', color: '#0f172a', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span>{icon}</span>
+                        <span>{name}</span>
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#64748b' }}>{b.paxCount ?? 1} Pax</div>
                     </div>
-                    <div style={{ fontSize: '11px', color: '#64748b' }}>{b.paxCount ?? 1} Pax</div>
-                  </div>
-                ),
+                  );
+                },
               },
               {
                 key: 'customer',
@@ -551,6 +580,7 @@ export default function CrmBookingsPage() {
                             fontWeight: 700,
                             padding: '2px 6px',
                             cursor: 'pointer',
+                            whiteSpace: 'nowrap',
                           }}
                           title="View customer profile and history"
                         >

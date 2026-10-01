@@ -23,6 +23,7 @@ const NAV = [
 
 const CRM_NAV = [
   { href: '/crm/customers', label: 'Customers', permission: 'customers.view' },
+  { href: '/crm/products', label: 'Product Management', permission: 'products.view' },
   { href: '/crm/campaigns', label: 'Bulk Email & SMS', permission: '' },
   { href: '/crm/leads', label: 'Leads', permission: 'leads.view' },
   { href: '/crm/deals', label: 'Sales Stages (Deals)', permission: 'deals.view' },
@@ -185,6 +186,13 @@ function getIcon(label: string) {
       return (
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18v-1.5c0-1.03.83-1.875 1.875-1.875H5.25M2.25 18v.11a12.319 12.319 0 003.228.14m-3.228-.25a12.308 12.308 0 013.228-.25m0 0H18.75m-15 0a12.28 12.28 0 013.228.25m0 0V9.75M9 9.75a3 3 0 116 0M9 9.75a3 3 0 006 0" />
+        </svg>
+      );
+    case 'Product Management':
+    case 'Products & Services':
+      return (
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
         </svg>
       );
     case 'Leave':

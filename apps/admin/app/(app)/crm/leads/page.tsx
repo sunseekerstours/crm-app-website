@@ -17,6 +17,7 @@ import {
 } from '@/components/ui';
 import { CustomerSearchPicker, CustomerSummary } from '@/components/CustomerSearchPicker';
 import { CustomerDetailsModal } from '@/components/CustomerDetailsModal';
+import ProductSearchPicker, { ProductItem } from '@/components/ProductSearchPicker';
 
 interface LeadItem {
   id: string;
@@ -365,12 +366,35 @@ export default function CrmLeadsPage() {
             />
           </div>
 
+          <div style={{ marginBottom: 16 }}>
+            <ProductSearchPicker
+              label="Select Product / Service of Interest (Optional - Tours, Fleet, Hotel, Flight)"
+              placeholder="🔍 Search and attach a product (e.g. Cape Coast Tour, VIP Bus, Labadi Hotel)..."
+              onSelect={(prod) => {
+                if (prod) {
+                  setForm((f) => {
+                    const categoryTag = prod.category ? prod.category.replace('_', ' ') : '';
+                    const existingTags = f.tagsInput ? f.tagsInput.split(',').map((t) => t.trim()).filter(Boolean) : [];
+                    if (categoryTag && !existingTags.includes(categoryTag)) {
+                      existingTags.push(categoryTag);
+                    }
+                    return {
+                      ...f,
+                      destination: prod.name,
+                      tagsInput: existingTags.join(', '),
+                    };
+                  });
+                }
+              }}
+            />
+          </div>
+
           <div className="form-grid">
             <Input label="First name" name="firstName" value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} />
             <Input label="Last name" name="lastName" value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} />
             <Input label="Email" name="email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
             <Input label="Phone" name="phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-            <Input label="Destination / Package" name="destination" placeholder="e.g. Ghana Heritage Circuit" value={form.destination} onChange={(e) => setForm({ ...form, destination: e.target.value })} />
+            <Input label="Destination / Package / Tour" name="destination" placeholder="e.g. Ghana Heritage Circuit" value={form.destination} onChange={(e) => setForm({ ...form, destination: e.target.value })} />
             <Input
               label="Data Tags (comma-separated)"
               name="tagsInput"
@@ -393,167 +417,205 @@ export default function CrmLeadsPage() {
       {error ? <ErrorState message={error} /> : null}
       {data ? (
         <>
-          <Table<LeadItem>
-            keyOf={(l) => l.id}
-            rows={data.items}
-            columns={[
-              {
-                key: 'name',
-                label: 'Lead Name & Customer Profile',
-                render: (l) => {
-                  const leadName = `${l.firstName ?? ''} ${l.lastName ?? ''}`.trim() || '—';
-                  const custId = l.customerId ?? l.customer?.id;
-                  const initials = `${l.firstName?.[0] || ''}${l.lastName?.[0] || ''}`.toUpperCase() || '👤';
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', width: '100%', borderRadius: 8 }}>
+            <div style={{ minWidth: 1050 }}>
+              <Table<LeadItem>
+                keyOf={(l) => l.id}
+                rows={data.items}
+                columns={[
+                  {
+                    key: 'name',
+                    label: 'Lead Name & Customer Profile',
+                    render: (l) => {
+                      const leadName = `${l.firstName ?? ''} ${l.lastName ?? ''}`.trim() || '—';
+                      const custId = l.customerId ?? l.customer?.id;
+                      const initials = `${l.firstName?.[0] || ''}${l.lastName?.[0] || ''}`.toUpperCase() || '👤';
 
-                  return (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <div
-                        style={{
-                          width: 34,
-                          height: 34,
-                          borderRadius: '50%',
-                          background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
-                          color: '#ffffff',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: 12,
-                          fontWeight: 700,
-                          flexShrink: 0,
-                        }}
-                      >
-                        {initials}
-                      </div>
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{ fontWeight: 700, color: '#0f172a', fontSize: 13 }}>{leadName}</span>
-                          {custId && (
-                            <button
-                              type="button"
-                              onClick={() => setViewCustomerId(custId)}
-                              style={{
-                                background: '#eff6ff',
-                                border: '1px solid #bfdbfe',
-                                color: '#1d4ed8',
-                                fontSize: 11,
-                                fontWeight: 700,
-                                borderRadius: 4,
-                                padding: '2px 6px',
-                                cursor: 'pointer',
-                              }}
-                            >
-                              👁️ View Details
-                            </button>
-                          )}
-                        </div>
-                        {l.email && <span style={{ fontSize: 11, color: '#64748b', display: 'block' }}>✉️ {l.email}</span>}
-                      </div>
-                    </div>
-                  );
-                },
-              },
-              { key: 'phone', label: 'Phone', render: (l) => (l.phone ? <a href={`tel:${l.phone}`} style={{ color: '#0284c7', textDecoration: 'none' }}>📞 {l.phone}</a> : '—') },
-              {
-                key: 'interest',
-                label: 'Destination / Tour',
-                render: (l) => l.destination || l.interestedTour || '—',
-              },
-              {
-                key: 'tags',
-                label: 'Data Tags',
-                render: (l) => {
-                  const tags = l.tags || [];
-                  if (tags.length === 0) return <span style={{ color: '#94a3b8' }}>—</span>;
-                  const displayTags = tags.slice(0, 3);
-                  const remaining = tags.length - 3;
-                  return (
-                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', maxWidth: 260 }}>
-                      {displayTags.map((t) => {
-                        const style = getTagBadgeStyle(t);
-                        return (
-                          <span
-                            key={t}
-                            onClick={() => setSelectedTag(t)}
-                            title={`Filter by ${t}`}
+                      return (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div
                             style={{
-                              display: 'inline-block',
-                              fontSize: 11,
-                              padding: '2px 8px',
-                              borderRadius: 12,
-                              background: style.bg,
-                              color: style.color,
-                              border: `1px solid ${style.border}`,
-                              fontWeight: 500,
-                              cursor: 'pointer',
-                              whiteSpace: 'nowrap',
+                              width: 36,
+                              height: 36,
+                              borderRadius: '50%',
+                              background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                              color: '#ffffff',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: 12,
+                              fontWeight: 700,
+                              flexShrink: 0,
                             }}
                           >
-                            {t}
-                          </span>
-                        );
-                      })}
-                      {remaining > 0 && (
+                            {initials}
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'flex-start' }}>
+                            <span style={{ fontWeight: 700, color: '#0f172a', fontSize: 13, lineHeight: 1.3 }}>{leadName}</span>
+                            {custId && (
+                              <button
+                                type="button"
+                                onClick={() => setViewCustomerId(custId)}
+                                style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                  background: '#eff6ff',
+                                  border: '1px solid #bfdbfe',
+                                  color: '#1d4ed8',
+                                  fontSize: 10,
+                                  fontWeight: 700,
+                                  borderRadius: 4,
+                                  padding: '2px 8px',
+                                  cursor: 'pointer',
+                                  whiteSpace: 'nowrap',
+                                  width: 'fit-content',
+                                }}
+                                title="View customer profile & CRM history"
+                              >
+                                👁️ View Details
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    },
+                  },
+                  {
+                    key: 'phone',
+                    label: 'Phone & Email',
+                    render: (l) => (
+                      <div style={{ whiteSpace: 'nowrap' }}>
+                        {l.email && <div>✉️ {l.email}</div>}
+                        {l.phone && (
+                          <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+                            <a href={`tel:${l.phone}`} style={{ color: '#0284c7', textDecoration: 'none' }}>
+                              📞 {l.phone}
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    ),
+                  },
+                  {
+                    key: 'interest',
+                    label: 'Destination / Tour / Product',
+                    render: (l) => {
+                      const text = l.destination || l.interestedTour;
+                      if (!text) return <span style={{ color: '#94a3b8' }}>—</span>;
+                      let icon = '🎯';
+                      const lower = text.toLowerCase();
+                      if (lower.includes('tour') || lower.includes('ghana') || lower.includes('cape coast') || lower.includes('castle')) icon = '🌍';
+                      else if (lower.includes('fleet') || lower.includes('bus') || lower.includes('car') || lower.includes('van') || lower.includes('rental')) icon = '🚐';
+                      else if (lower.includes('hotel') || lower.includes('resort') || lower.includes('suite') || lower.includes('lodge')) icon = '🏨';
+                      else if (lower.includes('flight') || lower.includes('airline') || lower.includes('air') || lower.includes('ticket')) icon = '✈️';
+                      return (
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                          <span>{icon}</span>
+                          <span style={{ fontWeight: 600, color: '#1e293b' }}>{text}</span>
+                        </div>
+                      );
+                    },
+                  },
+                  {
+                    key: 'tags',
+                    label: 'Data Tags',
+                    render: (l) => {
+                      const tags = l.tags || [];
+                      if (tags.length === 0) return <span style={{ color: '#94a3b8' }}>—</span>;
+                      const displayTags = tags.slice(0, 3);
+                      const remaining = tags.length - 3;
+                      return (
+                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', maxWidth: 260 }}>
+                          {displayTags.map((t) => {
+                            const style = getTagBadgeStyle(t);
+                            return (
+                              <span
+                                key={t}
+                                onClick={() => setSelectedTag(t)}
+                                title={`Filter by ${t}`}
+                                style={{
+                                  display: 'inline-block',
+                                  fontSize: 11,
+                                  padding: '2px 8px',
+                                  borderRadius: 12,
+                                  background: style.bg,
+                                  color: style.color,
+                                  border: `1px solid ${style.border}`,
+                                  fontWeight: 500,
+                                  cursor: 'pointer',
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
+                                {t}
+                              </span>
+                            );
+                          })}
+                          {remaining > 0 && (
+                            <span
+                              title={tags.slice(3).join(', ')}
+                              style={{
+                                fontSize: 11,
+                                padding: '2px 6px',
+                                borderRadius: 12,
+                                background: '#f1f5f9',
+                                color: '#64748b',
+                                border: '1px solid #cbd5e1',
+                                fontWeight: 500,
+                              }}
+                            >
+                              +{remaining} more
+                            </span>
+                          )}
+                        </div>
+                      );
+                    },
+                  },
+                  {
+                    key: 'stage',
+                    label: 'Sales Stage',
+                    render: (l) => {
+                      const st = stages.find((s) => s.key === l.stage);
+                      return (
                         <span
-                          title={tags.slice(3).join(', ')}
                           style={{
-                            fontSize: 11,
-                            padding: '2px 6px',
-                            borderRadius: 12,
-                            background: '#f1f5f9',
-                            color: '#64748b',
-                            border: '1px solid #cbd5e1',
-                            fontWeight: 500,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            padding: '3px 10px',
+                            borderRadius: '12px',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            background: st?.color ? `${st.color}15` : '#f1f5f9',
+                            color: st?.color || '#334155',
+                            border: `1px solid ${st?.color ? `${st.color}40` : '#cbd5e1'}`,
+                            whiteSpace: 'nowrap',
                           }}
                         >
-                          +{remaining} more
+                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: st?.color || '#64748b' }} />
+                          {st?.name || l.stage || '—'}
                         </span>
-                      )}
-                    </div>
-                  );
-                },
-              },
-              {
-                key: 'stage',
-                label: 'Sales Stage',
-                render: (l) => {
-                  const st = stages.find((s) => s.key === l.stage);
-                  return (
-                    <span
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 6,
-                        padding: '3px 10px',
-                        borderRadius: '12px',
-                        fontSize: '11px',
-                        fontWeight: 700,
-                        background: st?.color ? `${st.color}15` : '#f1f5f9',
-                        color: st?.color || '#334155',
-                        border: `1px solid ${st?.color ? `${st.color}40` : '#cbd5e1'}`,
-                      }}
-                    >
-                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: st?.color || '#64748b' }} />
-                      {st?.name || l.stage || '—'}
-                    </span>
-                  );
-                },
-              },
-              {
-                key: 'actions',
-                label: 'Actions',
-                render: (l) => (
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <Button variant="secondary" onClick={() => loadIntoForm(l)}>
-                      Edit
-                    </Button>
-                    <Button variant="danger" onClick={() => remove(l)}>
-                      Delete
-                    </Button>
-                  </div>
-                ),
-              },
-            ]}
-          />
+                      );
+                    },
+                  },
+                  {
+                    key: 'actions',
+                    label: 'Actions',
+                    render: (l) => (
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <Button variant="secondary" onClick={() => loadIntoForm(l)}>
+                          Edit
+                        </Button>
+                        <Button variant="danger" onClick={() => remove(l)}>
+                          Delete
+                        </Button>
+                      </div>
+                    ),
+                  },
+                ]}
+              />
+            </div>
+          </div>
           <Pagination page={data.page} totalPages={data.totalPages} onChange={setPage} />
         </>
       ) : (
