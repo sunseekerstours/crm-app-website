@@ -196,9 +196,27 @@ export default function BookingsPage() {
           </div>
 
           {/* Product Selection with Category Tabs */}
-          <div style={{ marginBottom: 16 }}>
+          <div
+            style={{
+              marginBottom: 18,
+              padding: '12px 14px',
+              background: '#f8fafc',
+              border: '1.5px solid #cbd5e1',
+              borderRadius: '10px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexWrap: 'wrap', gap: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 16 }}>📦</span>
+                <span style={{ fontWeight: 700, fontSize: 13, color: '#0f172a' }}>
+                  Select Available Product / Package (Tours, Fleet Rental, Hotels, Flights, Custom)
+                </span>
+              </div>
+              <span style={{ fontSize: 11, color: '#64748b' }}>
+                Auto-calculates total price (unit price × pax) into editable financials
+              </span>
+            </div>
             <ProductSearchPicker
-              label="Select Available Product / Package (Tours, Fleet Rental, Hotels, Flights)"
               placeholder="🔍 Search available products or click a category tab above..."
               selectedProductName={form.tourName}
               onSelect={handleProductSelect}

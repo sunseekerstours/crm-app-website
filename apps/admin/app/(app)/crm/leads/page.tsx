@@ -430,9 +430,28 @@ export default function CrmLeadsPage() {
             />
           </div>
 
-          <div style={{ marginBottom: 16 }}>
+          {/* Product Selection with Category Tabs */}
+          <div
+            style={{
+              marginBottom: 18,
+              padding: '12px 14px',
+              background: '#f8fafc',
+              border: '1.5px solid #cbd5e1',
+              borderRadius: '10px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexWrap: 'wrap', gap: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: 16 }}>📦</span>
+                <span style={{ fontWeight: 700, fontSize: 13, color: '#0f172a' }}>
+                  Select Available Product / Package of Interest (Tours, Fleet, Hotels, Flights, Custom)
+                </span>
+              </div>
+              <span style={{ fontSize: 11, color: '#64748b' }}>
+                Selecting a product auto-sets destination, tags &amp; expected financials
+              </span>
+            </div>
             <ProductSearchPicker
-              label="Select Available Product / Package of Interest (Tours, Fleet, Hotels, Flights)"
               placeholder="🔍 Search available products or click a category tab above..."
               selectedProductName={form.destination}
               onSelect={(prod) => {
@@ -542,18 +561,18 @@ export default function CrmLeadsPage() {
                 columns={[
                   {
                     key: 'name',
-                    label: 'Lead Name & Customer Profile',
+                    label: 'Prospect / Lead',
                     render: (l) => {
                       const leadName = `${l.firstName ?? ''} ${l.lastName ?? ''}`.trim() || '—';
                       const custId = l.customerId ?? l.customer?.id;
                       const initials = `${l.firstName?.[0] || ''}${l.lastName?.[0] || ''}`.toUpperCase() || '👤';
 
                       return (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, maxWidth: 200 }}>
                           <div
                             style={{
-                              width: 36,
-                              height: 36,
+                              width: 34,
+                              height: 34,
                               borderRadius: '50%',
                               background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
                               color: '#ffffff',
@@ -567,8 +586,20 @@ export default function CrmLeadsPage() {
                           >
                             {initials}
                           </div>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'flex-start' }}>
-                            <span style={{ fontWeight: 700, color: '#0f172a', fontSize: 13, lineHeight: 1.3 }}>{leadName}</span>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden' }}>
+                            <span
+                              style={{
+                                fontWeight: 700,
+                                color: '#0f172a',
+                                fontSize: 13,
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                              }}
+                              title={leadName}
+                            >
+                              {leadName}
+                            </span>
                             {custId && (
                               <button
                                 type="button"
@@ -576,14 +607,14 @@ export default function CrmLeadsPage() {
                                 style={{
                                   display: 'inline-flex',
                                   alignItems: 'center',
-                                  gap: 4,
+                                  gap: 3,
                                   background: '#eff6ff',
                                   border: '1px solid #bfdbfe',
                                   color: '#1d4ed8',
                                   fontSize: 10,
                                   fontWeight: 700,
                                   borderRadius: 4,
-                                  padding: '2px 8px',
+                                  padding: '1px 6px',
                                   cursor: 'pointer',
                                   whiteSpace: 'nowrap',
                                   width: 'fit-content',
@@ -600,17 +631,51 @@ export default function CrmLeadsPage() {
                   },
                   {
                     key: 'phone',
-                    label: 'Phone & Email',
+                    label: 'Contact Info',
                     render: (l) => (
-                      <div style={{ whiteSpace: 'nowrap' }}>
-                        {l.email && <div>✉️ {l.email}</div>}
-                        {l.phone && (
-                          <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
-                            <a href={`tel:${l.phone}`} style={{ color: '#0284c7', textDecoration: 'none' }}>
-                              📞 {l.phone}
-                            </a>
-                          </div>
-                        )}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxWidth: 190, minWidth: 140 }}>
+                        {l.phone ? (
+                          <a
+                            href={`tel:${l.phone}`}
+                            style={{
+                              fontSize: 12,
+                              fontWeight: 600,
+                              color: '#0284c7',
+                              textDecoration: 'none',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                            }}
+                            title={`Call ${l.phone}`}
+                          >
+                            <span>📞</span>
+                            <span>{l.phone}</span>
+                          </a>
+                        ) : null}
+                        {l.email ? (
+                          <a
+                            href={`mailto:${l.email}`}
+                            style={{
+                              fontSize: 11,
+                              color: '#475569',
+                              textDecoration: 'none',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                            }}
+                            title={`Email ${l.email}`}
+                          >
+                            <span>✉️</span>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{l.email}</span>
+                          </a>
+                        ) : null}
+                        {!l.phone && !l.email && <span style={{ color: '#94a3b8', fontSize: 12 }}>—</span>}
                       </div>
                     ),
                   },

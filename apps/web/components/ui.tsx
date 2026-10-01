@@ -112,33 +112,26 @@ export function Textarea({
 
 export function Select({
   label,
-  name,
+  name = '',
   value,
   onChange,
   options,
+  style,
+  className,
 }: {
   label?: string;
-  name: string;
+  name?: string;
   value?: string;
   onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void;
   options: { value: string; label: string }[];
+  style?: React.CSSProperties;
+  className?: string;
 }) {
-  const [filter, setFilter] = React.useState('');
-  const filtered = options.filter((o) =>
-    o.label.toLowerCase().includes(filter.toLowerCase()),
-  );
   return (
-    <label className="field">
+    <label className="field" style={style}>
       {label ? <span className="field-label">{label}</span> : null}
-      <input
-        className="input"
-        type="text"
-        placeholder="Search..."
-        value={filter}
-        onChange={(e) => setFilter(e.target.value)}
-      />
-      <select className="input" name={name} value={value} onChange={onChange}>
-        {filtered.map((o) => (
+      <select className={`input ${className || ''}`.trim()} name={name} value={value} onChange={onChange}>
+        {options.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}
           </option>
