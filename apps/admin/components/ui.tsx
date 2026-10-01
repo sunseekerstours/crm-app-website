@@ -48,6 +48,9 @@ export function Input({
   required,
   style,
   className,
+  min,
+  max,
+  step,
 }: {
   label?: string;
   name?: string;
@@ -58,6 +61,9 @@ export function Input({
   required?: boolean;
   style?: React.CSSProperties;
   className?: string;
+  min?: string | number;
+  max?: string | number;
+  step?: string | number;
 }) {
   return (
     <label className="field" style={style}>
@@ -70,6 +76,9 @@ export function Input({
         onChange={onChange}
         placeholder={placeholder}
         required={required}
+        min={min}
+        max={max}
+        step={step}
       />
     </label>
   );

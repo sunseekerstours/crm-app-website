@@ -186,10 +186,21 @@ export class BookingsService {
       requestId: ctx.requestId,
     });
 
+    if (statusChanged && updated.status === BookingStatus.CONFIRMED && updated.customerId) {
+      await this.timeline.record({
+        entityType: 'CUSTOMER',
+        entityId: updated.customerId,
+        type: 'booking.confirmed',
+        title: 'Booking confirmed',
+        description: `${updated.bookingNumber} confirmed`,
+        actorId: ctx.userId,
+      });
+    }
+
     return updated;
   }
 
-  async confirm(id: string, ctx: RequestContext) {
+  async confirm(id: string, dto: UpdateBookingDto = {}, ctx: RequestContext) {
     const existing = await this.prisma.booking.findUnique({ where: { id } });
     if (!existing)
       throw new ApiNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, 'Booking not found');
@@ -200,7 +211,15 @@ export class BookingsService {
 
     const updated = await this.prisma.booking.update({
       where: { id },
-      data: { status: BookingStatus.CONFIRMED },
+      data: {
+        status: BookingStatus.CONFIRMED,
+        tourName: dto.tourName !== undefined ? dto.tourName : existing.tourName,
+        startDate: dto.startDate ? new Date(dto.startDate) : existing.startDate,
+        paxCount: dto.paxCount !== undefined ? dto.paxCount : existing.paxCount,
+        totalPrice: dto.totalPrice !== undefined ? dto.totalPrice : existing.totalPrice,
+        currency: dto.currency !== undefined ? dto.currency : existing.currency,
+        notes: dto.notes !== undefined ? dto.notes : existing.notes,
+      },
     });
 
     await this.audit.record({
@@ -208,8 +227,8 @@ export class BookingsService {
       action: AuditableAction.BOOKING_STATUS_CHANGED,
       entityType: 'Booking',
       entityId: id,
-      before: { status: existing.status },
-      after: { status: BookingStatus.CONFIRMED },
+      before: { status: existing.status, totalPrice: existing.totalPrice?.toString() },
+      after: { status: BookingStatus.CONFIRMED, totalPrice: updated.totalPrice?.toString() },
       ipAddress: ctx.ipAddress,
       userAgent: ctx.userAgent,
       requestId: ctx.requestId,

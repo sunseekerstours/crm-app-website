@@ -57,6 +57,7 @@ const initialForm = {
   tourName: '',
   status: 'PENDING',
   paxCount: '1',
+  unitPrice: 0,
   totalPrice: '',
   currency: 'USD',
 };
@@ -89,6 +90,57 @@ export default function CrmBookingsPage() {
     reference: '',
     notes: '',
   });
+
+  // Confirm Booking & Review Financials Modal State
+  const [confirmModalBooking, setConfirmModalBooking] = useState<BookingItem | null>(null);
+  const [confirmForm, setConfirmForm] = useState({
+    tourName: '',
+    paxCount: 1,
+    unitPrice: 0,
+    totalPrice: '',
+    currency: 'USD',
+    status: 'CONFIRMED',
+    notes: '',
+  });
+  const [confirmSubmitting, setConfirmSubmitting] = useState(false);
+
+  function openConfirmModal(b: BookingItem) {
+    setConfirmModalBooking(b);
+    const pax = b.paxCount ?? 1;
+    const uPrice = b.totalPrice && pax ? Number(b.totalPrice) / pax : 0;
+    setConfirmForm({
+      tourName: b.tourName || '',
+      paxCount: pax,
+      unitPrice: uPrice,
+      totalPrice: b.totalPrice != null ? String(b.totalPrice) : '',
+      currency: b.currency || 'USD',
+      status: 'CONFIRMED',
+      notes: '',
+    });
+  }
+
+  async function submitConfirmModal(e: React.FormEvent) {
+    e.preventDefault();
+    if (!confirmModalBooking) return;
+    setConfirmSubmitting(true);
+    try {
+      await api.patch(`/bookings/${confirmModalBooking.id}`, {
+        tourName: confirmForm.tourName || undefined,
+        paxCount: Number(confirmForm.paxCount) || 1,
+        totalPrice: confirmForm.totalPrice ? Number(confirmForm.totalPrice) : undefined,
+        currency: confirmForm.currency,
+        status: confirmForm.status,
+        notes: confirmForm.notes || undefined,
+      });
+      alert(`Booking ${confirmModalBooking.bookingNumber} confirmed and financials saved!`);
+      setConfirmModalBooking(null);
+      await load();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to update booking financials');
+    } finally {
+      setConfirmSubmitting(false);
+    }
+  }
 
   const load = useCallback(async () => {
     setError(null);
@@ -123,11 +175,14 @@ export default function CrmBookingsPage() {
   function loadIntoForm(b: BookingItem) {
     setEditing(b);
     setFormError(null);
+    const pax = b.paxCount ?? 1;
+    const uPrice = b.totalPrice && pax ? Number(b.totalPrice) / pax : 0;
     setForm({
       customerId: b.customerId ?? b.customer?.id ?? '',
       tourName: b.tourName ?? '',
       status: b.status ?? 'PENDING',
       paxCount: b.paxCount != null ? String(b.paxCount) : '1',
+      unitPrice: uPrice,
       totalPrice: b.totalPrice != null ? String(b.totalPrice) : '',
       currency: b.currency ?? 'USD',
     });
@@ -375,14 +430,19 @@ export default function CrmBookingsPage() {
             {/* Product / Service Selection */}
             <div style={{ gridColumn: '1 / -1' }}>
               <ProductSearchPicker
-                label="Select Product / Service (Tours, Fleet Rental, Hotel, Flight Bookings)"
-                placeholder="🔍 Select from product catalog (or type custom tour name below)..."
+                label="Select Available Product / Service (Tours, Fleet Rental, Hotel, Flight Bookings)"
+                selectedProductName={form.tourName}
+                placeholder="🔍 Select from product catalog or click a category tab above..."
                 onSelect={(prod) => {
                   if (prod) {
+                    const uPrice = prod.price != null ? Number(prod.price) : 0;
+                    const pax = Number(form.paxCount) || 1;
+                    const calc = uPrice > 0 ? (uPrice * pax).toFixed(0) : form.totalPrice;
                     setForm((f) => ({
                       ...f,
                       tourName: prod.name,
-                      totalPrice: prod.price != null ? String(prod.price) : f.totalPrice,
+                      unitPrice: uPrice,
+                      totalPrice: calc,
                       currency: prod.currency || f.currency,
                     }));
                   }
@@ -410,26 +470,66 @@ export default function CrmBookingsPage() {
               label="Guests (Pax Count)"
               name="paxCount"
               type="number"
+              min="1"
               value={form.paxCount}
-              onChange={(e) => setForm({ ...form, paxCount: e.target.value })}
+              onChange={(e) => {
+                const pax = Number(e.target.value) || 1;
+                setForm((f) => ({
+                  ...f,
+                  paxCount: e.target.value,
+                  totalPrice: f.unitPrice > 0 ? (f.unitPrice * pax).toFixed(0) : f.totalPrice,
+                }));
+              }}
             />
 
-            <Input
-              label="Total Price ($/₵)"
-              name="totalPrice"
-              type="number"
-              value={form.totalPrice}
-              placeholder="3160"
-              onChange={(e) => setForm({ ...form, totalPrice: e.target.value })}
-            />
+            {/* FINANCIALS & EXPECTED AMOUNT SECTION */}
+            <div
+              style={{
+                gridColumn: '1 / -1',
+                padding: '14px 16px',
+                background: '#f0fdf4',
+                border: '1.5px solid #86efac',
+                borderRadius: '10px',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 18 }}>💰</span>
+                  <span style={{ fontWeight: 800, color: '#166534', fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Financials &amp; Expected Pricing
+                  </span>
+                </div>
+                {form.unitPrice > 0 && (
+                  <div style={{ fontSize: 12, color: '#15803d', fontWeight: 600 }}>
+                    Catalog: {form.currency} {form.unitPrice.toLocaleString()} × {form.paxCount} pax = {form.currency} {(form.unitPrice * (Number(form.paxCount) || 1)).toLocaleString()}
+                  </div>
+                )}
+              </div>
 
-            <Select
-              label="Currency"
-              name="currency"
-              value={form.currency}
-              options={CURRENCIES}
-              onChange={(e) => setForm({ ...form, currency: e.target.value })}
-            />
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+                <Input
+                  label="Total Price ($/₵) *"
+                  name="totalPrice"
+                  type="number"
+                  value={form.totalPrice}
+                  placeholder="3160"
+                  onChange={(e) => setForm({ ...form, totalPrice: e.target.value })}
+                />
+
+                <Select
+                  label="Currency"
+                  name="currency"
+                  value={form.currency}
+                  options={CURRENCIES}
+                  onChange={(e) => setForm({ ...form, currency: e.target.value })}
+                />
+              </div>
+
+              <div style={{ marginTop: 8, fontSize: 11, color: '#166534', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span>ℹ️</span>
+                <span>Financials are automatically determined from the selected product. You can freely edit or adjust the total price where necessary (e.g. negotiated discounts, custom group quotes).</span>
+              </div>
+            </div>
           </div>
 
           <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
@@ -698,7 +798,30 @@ export default function CrmBookingsPage() {
                 key: 'actions',
                 label: 'Actions',
                 render: (b) => (
-                  <div style={{ display: 'flex', gap: 6, minWidth: '120px' }}>
+                  <div style={{ display: 'flex', gap: 6, minWidth: '140px', alignItems: 'center' }}>
+                    {b.status === 'PENDING' && (
+                      <button
+                        type="button"
+                        onClick={() => openConfirmModal(b)}
+                        style={{
+                          background: '#16a34a',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '6px',
+                          padding: '4px 8px',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          whiteSpace: 'nowrap',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 3,
+                        }}
+                        title="Confirm Booking & Save Financials"
+                      >
+                        <span>✓</span> Confirm
+                      </button>
+                    )}
                     <Button variant="secondary" onClick={() => loadIntoForm(b)} style={{ padding: '4px 8px', fontSize: '12px' }}>
                       Edit
                     </Button>
@@ -838,6 +961,158 @@ export default function CrmBookingsPage() {
               <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
                 <Button type="submit">Issue Official Receipt</Button>
                 <Button variant="secondary" onClick={() => setRecordingPaymentFor(null)}>
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Booking & Review Financials Modal */}
+      {confirmModalBooking && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.55)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000,
+            padding: '20px',
+          }}
+        >
+          <div
+            style={{
+              background: '#ffffff',
+              padding: '24px',
+              borderRadius: '12px',
+              maxWidth: '560px',
+              width: '100%',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>
+                  Confirm Booking &amp; Review Financials
+                </h3>
+                <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+                  Ref: <strong style={{ fontFamily: 'monospace' }}>{confirmModalBooking.bookingNumber}</strong> • Customer:{' '}
+                  <strong>{confirmModalBooking.customer ? `${confirmModalBooking.customer.firstName ?? ''} ${confirmModalBooking.customer.lastName ?? ''}`.trim() : 'Customer'}</strong>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setConfirmModalBooking(null)}
+                style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#64748b' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={submitConfirmModal} style={{ display: 'grid', gap: '14px' }}>
+              <ProductSearchPicker
+                label="Product / Package (Select from Catalog or Change)"
+                selectedProductName={confirmForm.tourName}
+                onSelect={(prod) => {
+                  if (prod) {
+                    const uPrice = prod.price != null ? Number(prod.price) : 0;
+                    const pax = Number(confirmForm.paxCount) || 1;
+                    const calc = uPrice > 0 ? (uPrice * pax).toFixed(0) : confirmForm.totalPrice;
+                    setConfirmForm((f) => ({
+                      ...f,
+                      tourName: prod.name,
+                      unitPrice: uPrice,
+                      totalPrice: calc,
+                      currency: prod.currency || f.currency,
+                    }));
+                  }
+                }}
+              />
+
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12 }}>
+                <Input
+                  label="Tour / Package Name"
+                  name="tourName"
+                  value={confirmForm.tourName}
+                  onChange={(e) => setConfirmForm({ ...confirmForm, tourName: e.target.value })}
+                />
+                <Input
+                  label="Pax (Guests)"
+                  name="paxCount"
+                  type="number"
+                  min="1"
+                  value={confirmForm.paxCount}
+                  onChange={(e) => {
+                    const pax = Number(e.target.value) || 1;
+                    setConfirmForm((f) => ({
+                      ...f,
+                      paxCount: pax,
+                      totalPrice: f.unitPrice > 0 ? (f.unitPrice * pax).toFixed(0) : f.totalPrice,
+                    }));
+                  }}
+                />
+              </div>
+
+              {/* FINANCIALS SECTION IN MODAL */}
+              <div
+                style={{
+                  padding: '12px 14px',
+                  background: '#f0fdf4',
+                  border: '1.5px solid #86efac',
+                  borderRadius: '8px',
+                }}
+              >
+                <div style={{ fontWeight: 800, color: '#166534', fontSize: 12, marginBottom: 8, textTransform: 'uppercase' }}>
+                  💵 Financials / Total Amount
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10 }}>
+                  <Input
+                    label="Total Price *"
+                    name="totalPrice"
+                    type="number"
+                    value={confirmForm.totalPrice}
+                    onChange={(e) => setConfirmForm({ ...confirmForm, totalPrice: e.target.value })}
+                    required
+                  />
+                  <Select
+                    label="Currency"
+                    name="currency"
+                    value={confirmForm.currency}
+                    options={CURRENCIES}
+                    onChange={(e) => setConfirmForm({ ...confirmForm, currency: e.target.value })}
+                  />
+                </div>
+                <div style={{ fontSize: 11, color: '#15803d', marginTop: 6 }}>
+                  You can edit this financial price where necessary before confirming.
+                </div>
+              </div>
+
+              <Select
+                label="Booking Status"
+                name="status"
+                value={confirmForm.status}
+                options={STATUSES.map((st) => ({ value: st, label: st }))}
+                onChange={(e) => setConfirmForm({ ...confirmForm, status: e.target.value })}
+              />
+
+              <Input
+                label="Booking Notes / Financial Terms"
+                name="notes"
+                placeholder="e.g. 50% deposit received, balance on arrival"
+                value={confirmForm.notes}
+                onChange={(e) => setConfirmForm({ ...confirmForm, notes: e.target.value })}
+              />
+
+              <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+                <Button type="submit" disabled={confirmSubmitting} style={{ flex: 1 }}>
+                  {confirmSubmitting ? 'Saving…' : '✓ Confirm Reservation & Save Financials'}
+                </Button>
+                <Button variant="secondary" onClick={() => setConfirmModalBooking(null)}>
                   Cancel
                 </Button>
               </div>

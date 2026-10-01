@@ -23,10 +23,18 @@ interface Lead {
   interestedTour?: string;
   campaign?: string;
   estimatedValue?: number;
+  currency?: string;
 }
 
 const SOURCES = ['WEBSITE', 'REFERRAL', 'SOCIAL_MEDIA', 'WALK_IN', 'PHONE', 'EMAIL', 'OTHER'];
 const STAGES = ['NEW', 'CONTACTED', 'QUALIFIED', 'PROPOSAL', 'WON', 'LOST'];
+
+const CURRENCIES = [
+  { value: 'USD', label: 'USD ($)' },
+  { value: 'GHS', label: 'GHS (₵)' },
+  { value: 'EUR', label: 'EUR (€)' },
+  { value: 'GBP', label: 'GBP (£)' },
+];
 
 function getTagBadgeStyle(tag: string): { bg: string; color: string; border: string } {
   const t = tag.toLowerCase();
@@ -96,9 +104,59 @@ export default function LeadsPage() {
     source: SOURCES[0],
     tagsInput: '',
     destination: '',
+    estimatedValue: '',
+    currency: 'USD',
   });
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  // Edit Lead & Financials Modal State
+  const [editModalLead, setEditModalLead] = useState<Lead | null>(null);
+  const [editLeadForm, setEditLeadForm] = useState({
+    destination: '',
+    estimatedValue: '',
+    currency: 'USD',
+    stage: 'NEW',
+    phone: '',
+    email: '',
+  });
+  const [editSubmitting, setEditSubmitting] = useState(false);
+
+  function openEditModal(l: Lead) {
+    setEditModalLead(l);
+    setEditLeadForm({
+      destination: l.destination || l.interestedTour || '',
+      estimatedValue: l.estimatedValue != null ? String(l.estimatedValue) : '',
+      currency: l.currency || 'USD',
+      stage: l.stage || 'NEW',
+      phone: l.phone || '',
+      email: l.email || '',
+    });
+  }
+
+  async function submitEditModal(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editModalLead) return;
+    setEditSubmitting(true);
+    try {
+      await api.patch(`/leads/${editModalLead.id}`, {
+        destination: editLeadForm.destination || undefined,
+        interestedTour: editLeadForm.destination || undefined,
+        estimatedValue: editLeadForm.estimatedValue ? Number(editLeadForm.estimatedValue) : undefined,
+        currency: editLeadForm.currency,
+        stage: editLeadForm.stage,
+        phone: editLeadForm.phone || undefined,
+        email: editLeadForm.email || undefined,
+      });
+      alert('Lead details and financials updated successfully!');
+      setEditModalLead(null);
+      reload();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to update lead');
+    } finally {
+      setEditSubmitting(false);
+    }
+  }
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
@@ -118,9 +176,23 @@ export default function LeadsPage() {
         phone: form.phone || undefined,
         source: form.source,
         destination: form.destination || undefined,
+        interestedTour: form.destination || undefined,
+        estimatedValue: form.estimatedValue ? Number(form.estimatedValue) : undefined,
+        currency: form.currency || 'USD',
         tags: parsedTags.length ? parsedTags : undefined,
       });
-      setForm({ customerId: '', firstName: '', lastName: '', email: '', phone: '', source: SOURCES[0], tagsInput: '', destination: '' });
+      setForm({
+        customerId: '',
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+        source: SOURCES[0],
+        tagsInput: '',
+        destination: '',
+        estimatedValue: '',
+        currency: 'USD',
+      });
       setSelectedCustomerObj(null);
       reload();
     } catch (err) {
@@ -132,7 +204,7 @@ export default function LeadsPage() {
 
   return (
     <div>
-      <PageHeader title="Leads" subtitle="Incoming enquiries, fair prospects, and WordPress web submissions" />
+      <PageHeader title="Leads" subtitle="Incoming enquiries, fair prospects, and WordPress web submissions with product & financial matching" />
 
       {/* Filter and Search Bar */}
       <Card style={{ marginBottom: 16 }}>
@@ -211,6 +283,7 @@ export default function LeadsPage() {
 
       <Card title="New Lead">
         <form onSubmit={create}>
+          {/* Customer Link */}
           <div style={{ marginBottom: 16 }}>
             <CustomerSearchPicker
               label="Link Existing Customer (Auto-fills details, or leave empty for new prospect)"
@@ -231,10 +304,12 @@ export default function LeadsPage() {
             />
           </div>
 
+          {/* Product Selection with Category Tabs */}
           <div style={{ marginBottom: 16 }}>
             <ProductSearchPicker
-              label="Select Product / Service of Interest (Optional - Tours, Fleet, Hotel, Flight)"
-              placeholder="🔍 Search and attach a product (e.g. Cape Coast Tour, VIP Bus, Labadi Hotel)..."
+              label="Select Available Product / Service of Interest (Tours, Fleet, Hotels, Flights)"
+              placeholder="🔍 Search available products or click a category tab above..."
+              selectedProductName={form.destination}
               onSelect={(prod) => {
                 if (prod) {
                   setForm((f) => {
@@ -246,6 +321,8 @@ export default function LeadsPage() {
                     return {
                       ...f,
                       destination: prod.name,
+                      estimatedValue: prod.price != null ? String(prod.price) : f.estimatedValue,
+                      currency: prod.currency || f.currency,
                       tagsInput: existingTags.join(', '),
                     };
                   });
@@ -254,6 +331,7 @@ export default function LeadsPage() {
             />
           </div>
 
+          {/* Form Fields */}
           <div className="form-grid">
             <Input label="First name" name="firstName" value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} />
             <Input label="Last name" name="lastName" value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} />
@@ -269,6 +347,56 @@ export default function LeadsPage() {
             />
             <Select label="Source" name="source" value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value })} options={SOURCES.map((s) => ({ value: s, label: s }))} />
           </div>
+
+          {/* FINANCIALS & EXPECTED AMOUNT SECTION */}
+          <div
+            style={{
+              marginTop: 16,
+              padding: '14px 16px',
+              background: '#f0fdf4',
+              border: '1.5px solid #86efac',
+              borderRadius: '10px',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 18 }}>💰</span>
+                <span style={{ fontWeight: 800, color: '#166534', fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Financials &amp; Expected Deal Value
+                </span>
+              </div>
+              {form.estimatedValue && (
+                <div style={{ fontSize: 12, color: '#15803d', fontWeight: 600 }}>
+                  Expected: {form.currency} {Number(form.estimatedValue).toLocaleString()}
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+              <Input
+                label="Expected Financial Amount ($/₵)"
+                name="estimatedValue"
+                type="number"
+                placeholder="e.g. 1500"
+                value={form.estimatedValue}
+                onChange={(e) => setForm({ ...form, estimatedValue: e.target.value })}
+              />
+
+              <Select
+                label="Currency"
+                name="currency"
+                value={form.currency}
+                options={CURRENCIES}
+                onChange={(e) => setForm({ ...form, currency: e.target.value })}
+              />
+            </div>
+
+            <div style={{ marginTop: 8, fontSize: 11, color: '#166534', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span>ℹ️</span>
+              <span>Determined from selected product catalog. You can edit this financial value where necessary (negotiated quotes, custom rate).</span>
+            </div>
+          </div>
+
           {formError ? <div className="error-state" style={{ marginTop: 12 }}>{formError}</div> : null}
           <div className="form-actions" style={{ marginTop: 16 }}>
             <Button type="submit" disabled={submitting}>
@@ -297,194 +425,351 @@ export default function LeadsPage() {
         ) : (
           <>
             <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', width: '100%', borderRadius: 8 }}>
-              <div style={{ minWidth: 1050 }}>
+              <div style={{ minWidth: 1100 }}>
                 <Table
                   columns={[
                     {
                       key: 'name',
                       label: 'Prospect & Customer Profile',
-                  render: (r: Lead) => {
-                    const leadName = `${r.firstName ?? ''} ${r.lastName ?? ''}`.trim() || '—';
-                    const custId = r.customerId ?? r.customer?.id;
-                    const initials = `${r.firstName?.[0] || ''}${r.lastName?.[0] || ''}`.toUpperCase() || '👤';
+                      render: (r: Lead) => {
+                        const leadName = `${r.firstName ?? ''} ${r.lastName ?? ''}`.trim() || '—';
+                        const custId = r.customerId ?? r.customer?.id;
+                        const initials = `${r.firstName?.[0] || ''}${r.lastName?.[0] || ''}`.toUpperCase() || '👤';
 
-                    return (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div
-                          style={{
-                            width: 36,
-                            height: 36,
-                            borderRadius: '50%',
-                            background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
-                            color: '#ffffff',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: 12,
-                            fontWeight: 700,
-                            flexShrink: 0,
-                          }}
-                        >
-                          {initials}
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'flex-start' }}>
-                          <span style={{ fontWeight: 700, color: '#0f172a', fontSize: 13, lineHeight: 1.3 }}>{leadName}</span>
-                          {custId && (
-                            <button
-                              type="button"
-                              onClick={() => setViewCustomerId(custId)}
+                        return (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div
                               style={{
-                                display: 'inline-flex',
+                                width: 36,
+                                height: 36,
+                                borderRadius: '50%',
+                                background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                                color: '#ffffff',
+                                display: 'flex',
                                 alignItems: 'center',
-                                gap: 4,
-                                background: '#eff6ff',
-                                border: '1px solid #bfdbfe',
-                                color: '#1d4ed8',
-                                fontSize: 10,
+                                justifyContent: 'center',
+                                fontSize: 12,
                                 fontWeight: 700,
-                                borderRadius: 4,
-                                padding: '2px 8px',
-                                cursor: 'pointer',
-                                whiteSpace: 'nowrap',
-                                width: 'fit-content',
-                              }}
-                              title="View full customer profile"
-                            >
-                              👁️ View Details
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  },
-                },
-                {
-                  key: 'contact',
-                  label: 'Contact Details',
-                  render: (r: Lead) => (
-                    <div style={{ whiteSpace: 'nowrap' }}>
-                      {r.email && <div>✉️ {r.email}</div>}
-                      {r.phone && (
-                        <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
-                          <a href={`tel:${r.phone}`} style={{ color: '#0284c7', textDecoration: 'none' }}>
-                            📞 {r.phone}
-                          </a>
-                        </div>
-                      )}
-                    </div>
-                  ),
-                },
-                {
-                  key: 'interest',
-                  label: 'Interested Tour / Destination',
-                  render: (r: Lead) => {
-                    const text = r.destination || r.interestedTour || r.campaign;
-                    if (!text) return <span style={{ color: '#94a3b8' }}>—</span>;
-                    let icon = '🎯';
-                    const lower = text.toLowerCase();
-                    if (lower.includes('tour') || lower.includes('ghana') || lower.includes('cape coast') || lower.includes('castle')) icon = '🌍';
-                    else if (lower.includes('fleet') || lower.includes('bus') || lower.includes('car') || lower.includes('van') || lower.includes('rental')) icon = '🚐';
-                    else if (lower.includes('hotel') || lower.includes('resort') || lower.includes('suite') || lower.includes('lodge')) icon = '🏨';
-                    else if (lower.includes('flight') || lower.includes('airline') || lower.includes('air') || lower.includes('ticket')) icon = '✈️';
-                    return (
-                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                        <span>{icon}</span>
-                        <span style={{ fontWeight: 600, color: '#1e293b' }}>{text}</span>
-                      </div>
-                    );
-                  },
-                },
-                {
-                  key: 'tags',
-                  label: 'Data Tags',
-                  render: (r: Lead) => {
-                    const tags = r.tags || [];
-                    if (tags.length === 0) return <span style={{ color: '#94a3b8' }}>—</span>;
-                    const displayTags = tags.slice(0, 3);
-                    const remaining = tags.length - 3;
-                    return (
-                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', maxWidth: 260 }}>
-                        {displayTags.map((t) => {
-                          const style = getTagBadgeStyle(t);
-                          return (
-                            <span
-                              key={t}
-                              onClick={() => setSelectedTag(t)}
-                              title={`Filter by ${t}`}
-                              style={{
-                                display: 'inline-block',
-                                fontSize: 11,
-                                padding: '2px 8px',
-                                borderRadius: 12,
-                                background: style.bg,
-                                color: style.color,
-                                border: `1px solid ${style.border}`,
-                                fontWeight: 500,
-                                cursor: 'pointer',
-                                whiteSpace: 'nowrap',
+                                flexShrink: 0,
                               }}
                             >
-                              {t}
-                            </span>
-                          );
-                        })}
-                        {remaining > 0 && (
+                              {initials}
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 3, alignItems: 'flex-start' }}>
+                              <span style={{ fontWeight: 700, color: '#0f172a', fontSize: 13, lineHeight: 1.3 }}>{leadName}</span>
+                              {custId && (
+                                <button
+                                  type="button"
+                                  onClick={() => setViewCustomerId(custId)}
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 4,
+                                    background: '#eff6ff',
+                                    border: '1px solid #bfdbfe',
+                                    color: '#1d4ed8',
+                                    fontSize: 10,
+                                    fontWeight: 700,
+                                    borderRadius: 4,
+                                    padding: '2px 8px',
+                                    cursor: 'pointer',
+                                    whiteSpace: 'nowrap',
+                                  }}
+                                  title="View full customer history and linked bookings"
+                                >
+                                  👁️ Customer Profile
+                                </button>
+                              )}
+                              {r.phone && <span style={{ fontSize: 11, color: '#64748b' }}>📞 {r.phone}</span>}
+                              {r.email && <span style={{ fontSize: 11, color: '#64748b' }}>✉️ {r.email}</span>}
+                            </div>
+                          </div>
+                        );
+                      },
+                    },
+                    {
+                      key: 'destination',
+                      label: 'Product / Tour / Package',
+                      render: (r: Lead) => {
+                        const text = r.destination || r.interestedTour || r.campaign;
+                        if (!text) return <span style={{ color: '#94a3b8' }}>—</span>;
+                        let icon = '🎯';
+                        const lower = text.toLowerCase();
+                        if (lower.includes('tour') || lower.includes('ghana') || lower.includes('cape coast') || lower.includes('castle')) icon = '🌍';
+                        else if (lower.includes('fleet') || lower.includes('bus') || lower.includes('car') || lower.includes('van') || lower.includes('rental')) icon = '🚐';
+                        else if (lower.includes('hotel') || lower.includes('resort') || lower.includes('suite') || lower.includes('lodge')) icon = '🏨';
+                        else if (lower.includes('flight') || lower.includes('airline') || lower.includes('air') || lower.includes('ticket')) icon = '✈️';
+                        return (
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                            <span>{icon}</span>
+                            <span style={{ fontWeight: 600, color: '#1e293b' }}>{text}</span>
+                          </div>
+                        );
+                      },
+                    },
+                    {
+                      key: 'financials',
+                      label: 'Expected Financials',
+                      render: (r: Lead) => (
+                        <div>
+                          <div style={{ fontWeight: 800, color: '#15803d', fontSize: 13 }}>
+                            {r.estimatedValue != null ? `${r.currency ?? '$'} ${Number(r.estimatedValue).toLocaleString()}` : '—'}
+                          </div>
+                          <div style={{ fontSize: 10, color: '#64748b' }}>Expected Value</div>
+                        </div>
+                      ),
+                    },
+                    {
+                      key: 'tags',
+                      label: 'Data Tags',
+                      render: (r: Lead) => {
+                        const tags = r.tags || [];
+                        if (tags.length === 0) return <span style={{ color: '#94a3b8' }}>—</span>;
+                        const displayTags = tags.slice(0, 3);
+                        const remaining = tags.length - 3;
+                        return (
+                          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', maxWidth: 240 }}>
+                            {displayTags.map((t) => {
+                              const style = getTagBadgeStyle(t);
+                              return (
+                                <span
+                                  key={t}
+                                  onClick={() => setSelectedTag(t)}
+                                  title={`Filter by ${t}`}
+                                  style={{
+                                    display: 'inline-block',
+                                    fontSize: 11,
+                                    padding: '2px 8px',
+                                    borderRadius: 12,
+                                    background: style.bg,
+                                    color: style.color,
+                                    border: `1px solid ${style.border}`,
+                                    fontWeight: 500,
+                                    cursor: 'pointer',
+                                    whiteSpace: 'nowrap',
+                                  }}
+                                >
+                                  {t}
+                                </span>
+                              );
+                            })}
+                            {remaining > 0 && (
+                              <span
+                                title={tags.slice(3).join(', ')}
+                                style={{
+                                  fontSize: 11,
+                                  padding: '2px 6px',
+                                  borderRadius: 12,
+                                  background: '#f1f5f9',
+                                  color: '#64748b',
+                                  border: '1px solid #cbd5e1',
+                                  fontWeight: 500,
+                                }}
+                              >
+                                +{remaining} more
+                              </span>
+                            )}
+                          </div>
+                        );
+                      },
+                    },
+                    { key: 'source', label: 'Source', render: (r: Lead) => <Badge>{r.source}</Badge> },
+                    {
+                      key: 'stage',
+                      label: 'Sales Stage',
+                      render: (r: Lead) => {
+                        const st = stages.find((s) => s.key === r.stage);
+                        return (
                           <span
-                            title={tags.slice(3).join(', ')}
                             style={{
-                              fontSize: 11,
-                              padding: '2px 6px',
-                              borderRadius: 12,
-                              background: '#f1f5f9',
-                              color: '#64748b',
-                              border: '1px solid #cbd5e1',
-                              fontWeight: 500,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 6,
+                              padding: '3px 10px',
+                              borderRadius: '12px',
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              background: st?.color ? `${st.color}15` : '#f1f5f9',
+                              color: st?.color || '#334155',
+                              border: `1px solid ${st?.color ? `${st.color}40` : '#cbd5e1'}`,
+                              whiteSpace: 'nowrap',
                             }}
                           >
-                            +{remaining} more
+                            <span style={{ width: 6, height: 6, borderRadius: '50%', background: st?.color || '#64748b' }} />
+                            {st?.name || r.stage || '—'}
                           </span>
-                        )}
-                      </div>
-                    );
-                  },
-                },
-                { key: 'source', label: 'Source', render: (r: Lead) => <Badge>{r.source}</Badge> },
-                {
-                  key: 'stage',
-                  label: 'Sales Stage',
-                  render: (r: Lead) => {
-                    const st = stages.find((s) => s.key === r.stage);
-                    return (
-                      <span
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 6,
-                          padding: '3px 10px',
-                          borderRadius: '12px',
-                          fontSize: '11px',
-                          fontWeight: 700,
-                          background: st?.color ? `${st.color}15` : '#f1f5f9',
-                          color: st?.color || '#334155',
-                          border: `1px solid ${st?.color ? `${st.color}40` : '#cbd5e1'}`,
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: st?.color || '#64748b' }} />
-                        {st?.name || r.stage || '—'}
-                      </span>
-                    );
-                  },
-                },
-              ]}
-              rows={data?.items ?? []}
-            />
-          </div>
-        </div>
-        <Pagination page={page} totalPages={data?.totalPages ?? 1} onChange={setPage} />
+                        );
+                      },
+                    },
+                    {
+                      key: 'actions',
+                      label: 'Actions & Financials',
+                      render: (r: Lead) => (
+                        <button
+                          type="button"
+                          onClick={() => openEditModal(r)}
+                          style={{
+                            background: '#eff6ff',
+                            border: '1px solid #bfdbfe',
+                            color: '#1d4ed8',
+                            fontSize: 11,
+                            fontWeight: 700,
+                            borderRadius: 6,
+                            padding: '4px 8px',
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          Edit Financials
+                        </button>
+                      ),
+                    },
+                  ]}
+                  rows={data?.items ?? []}
+                />
+              </div>
+            </div>
+            <Pagination page={page} totalPages={data?.totalPages ?? 1} onChange={setPage} />
           </>
         )}
       </Card>
+
+      {/* EDIT LEAD & FINANCIALS MODAL */}
+      {editModalLead && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.55)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000,
+            padding: '20px',
+          }}
+        >
+          <div
+            style={{
+              background: '#ffffff',
+              padding: '24px',
+              borderRadius: '12px',
+              maxWidth: '520px',
+              width: '100%',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>
+                  Edit Lead Financials &amp; Product
+                </h3>
+                <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+                  Lead: <strong>{`${editModalLead.firstName ?? ''} ${editModalLead.lastName ?? ''}`.trim() || 'Prospect'}</strong>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditModalLead(null)}
+                style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#64748b' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={submitEditModal} style={{ display: 'grid', gap: '14px' }}>
+              <ProductSearchPicker
+                label="Product / Package of Interest"
+                selectedProductName={editLeadForm.destination}
+                onSelect={(prod) => {
+                  if (prod) {
+                    setEditLeadForm((f) => ({
+                      ...f,
+                      destination: prod.name,
+                      estimatedValue: prod.price != null ? String(prod.price) : f.estimatedValue,
+                      currency: prod.currency || f.currency,
+                    }));
+                  }
+                }}
+              />
+
+              <Input
+                label="Destination / Tour Name"
+                name="destination"
+                value={editLeadForm.destination}
+                onChange={(e) => setEditLeadForm({ ...editLeadForm, destination: e.target.value })}
+              />
+
+              {/* FINANCIALS SECTION IN MODAL */}
+              <div
+                style={{
+                  padding: '12px 14px',
+                  background: '#f0fdf4',
+                  border: '1.5px solid #86efac',
+                  borderRadius: '8px',
+                }}
+              >
+                <div style={{ fontWeight: 800, color: '#166534', fontSize: 12, marginBottom: 8, textTransform: 'uppercase' }}>
+                  💵 Financials / Expected Deal Value
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10 }}>
+                  <Input
+                    label="Expected Value *"
+                    name="estimatedValue"
+                    type="number"
+                    value={editLeadForm.estimatedValue}
+                    onChange={(e) => setEditLeadForm({ ...editLeadForm, estimatedValue: e.target.value })}
+                  />
+                  <Select
+                    label="Currency"
+                    name="currency"
+                    value={editLeadForm.currency}
+                    options={CURRENCIES}
+                    onChange={(e) => setEditLeadForm({ ...editLeadForm, currency: e.target.value })}
+                  />
+                </div>
+                <div style={{ fontSize: 11, color: '#15803d', marginTop: 6 }}>
+                  You can adjust or negotiate this financial amount where necessary.
+                </div>
+              </div>
+
+              <Select
+                label="Sales Stage"
+                name="stage"
+                value={editLeadForm.stage}
+                options={stages.map((st) => ({ value: st.key, label: st.name }))}
+                onChange={(e) => setEditLeadForm({ ...editLeadForm, stage: e.target.value })}
+              />
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <Input
+                  label="Phone"
+                  name="phone"
+                  value={editLeadForm.phone}
+                  onChange={(e) => setEditLeadForm({ ...editLeadForm, phone: e.target.value })}
+                />
+                <Input
+                  label="Email"
+                  name="email"
+                  type="email"
+                  value={editLeadForm.email}
+                  onChange={(e) => setEditLeadForm({ ...editLeadForm, email: e.target.value })}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+                <Button type="submit" disabled={editSubmitting} style={{ flex: 1 }}>
+                  {editSubmitting ? 'Saving…' : 'Save Lead & Financials'}
+                </Button>
+                <Button variant="secondary" onClick={() => setEditModalLead(null)}>
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* CUSTOMER DETAILS MODAL */}
       <CustomerDetailsModal

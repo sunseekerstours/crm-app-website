@@ -32,7 +32,16 @@ interface LeadItem {
   tags?: string[];
   destination?: string;
   interestedTour?: string;
+  estimatedValue?: number;
+  currency?: string;
 }
+
+const CURRENCIES = [
+  { value: 'USD', label: 'USD ($)' },
+  { value: 'GHS', label: 'GHS (₵)' },
+  { value: 'EUR', label: 'EUR (€)' },
+  { value: 'GBP', label: 'GBP (£)' },
+];
 
 interface SalesStageItem {
   id: string;
@@ -81,6 +90,8 @@ const initialForm = {
   stage: 'NEW',
   destination: '',
   tagsInput: '',
+  estimatedValue: '',
+  currency: 'USD',
 };
 
 export default function CrmLeadsPage() {
@@ -99,6 +110,54 @@ export default function CrmLeadsPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [viewCustomerId, setViewCustomerId] = useState<string | null>(null);
   const [selectedCustomerObj, setSelectedCustomerObj] = useState<CustomerSummary | null>(null);
+
+  // Edit Lead & Financials Modal State
+  const [editModalLead, setEditModalLead] = useState<LeadItem | null>(null);
+  const [editLeadForm, setEditLeadForm] = useState({
+    destination: '',
+    estimatedValue: '',
+    currency: 'USD',
+    stage: 'NEW',
+    phone: '',
+    email: '',
+  });
+  const [editSubmitting, setEditSubmitting] = useState(false);
+
+  function openEditModal(l: LeadItem) {
+    setEditModalLead(l);
+    setEditLeadForm({
+      destination: l.destination || l.interestedTour || '',
+      estimatedValue: l.estimatedValue != null ? String(l.estimatedValue) : '',
+      currency: l.currency || 'USD',
+      stage: l.stage || 'NEW',
+      phone: l.phone || '',
+      email: l.email || '',
+    });
+  }
+
+  async function submitEditModal(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editModalLead) return;
+    setEditSubmitting(true);
+    try {
+      await api.patch(`/leads/${editModalLead.id}`, {
+        destination: editLeadForm.destination || undefined,
+        interestedTour: editLeadForm.destination || undefined,
+        estimatedValue: editLeadForm.estimatedValue ? Number(editLeadForm.estimatedValue) : undefined,
+        currency: editLeadForm.currency,
+        stage: editLeadForm.stage,
+        phone: editLeadForm.phone || undefined,
+        email: editLeadForm.email || undefined,
+      });
+      alert('Lead details and financials updated successfully!');
+      setEditModalLead(null);
+      await load();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to update lead');
+    } finally {
+      setEditSubmitting(false);
+    }
+  }
 
   useEffect(() => {
     api.get<SalesStageItem[]>('/deals/stages')
@@ -150,6 +209,8 @@ export default function CrmLeadsPage() {
       stage: l.stage ?? 'NEW',
       destination: l.destination ?? l.interestedTour ?? '',
       tagsInput: (l.tags || []).join(', '),
+      estimatedValue: l.estimatedValue != null ? String(l.estimatedValue) : '',
+      currency: l.currency ?? 'USD',
     });
     if (l.customer) {
       setSelectedCustomerObj(l.customer);
@@ -185,6 +246,9 @@ export default function CrmLeadsPage() {
       source: form.source,
       stage: form.stage,
       destination: form.destination || undefined,
+      interestedTour: form.destination || undefined,
+      estimatedValue: form.estimatedValue ? Number(form.estimatedValue) : undefined,
+      currency: form.currency || 'USD',
       tags: parsedTags.length ? parsedTags : undefined,
     };
 
@@ -368,8 +432,9 @@ export default function CrmLeadsPage() {
 
           <div style={{ marginBottom: 16 }}>
             <ProductSearchPicker
-              label="Select Product / Service of Interest (Optional - Tours, Fleet, Hotel, Flight)"
-              placeholder="🔍 Search and attach a product (e.g. Cape Coast Tour, VIP Bus, Labadi Hotel)..."
+              label="Select Available Product / Package of Interest (Tours, Fleet, Hotels, Flights)"
+              placeholder="🔍 Search available products or click a category tab above..."
+              selectedProductName={form.destination}
               onSelect={(prod) => {
                 if (prod) {
                   setForm((f) => {
@@ -381,6 +446,8 @@ export default function CrmLeadsPage() {
                     return {
                       ...f,
                       destination: prod.name,
+                      estimatedValue: prod.price != null ? String(prod.price) : f.estimatedValue,
+                      currency: prod.currency || f.currency,
                       tagsInput: existingTags.join(', '),
                     };
                   });
@@ -405,6 +472,56 @@ export default function CrmLeadsPage() {
             <Select label="Source" name="source" value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value })} options={SOURCES.map((s) => ({ value: s, label: s.replace('_', ' ') }))} />
             <Select label="Sales Stage" name="stage" value={form.stage} onChange={(e) => setForm({ ...form, stage: e.target.value })} options={stages.map((s) => ({ value: s.key, label: s.name }))} />
           </div>
+
+          {/* FINANCIALS & EXPECTED AMOUNT SECTION */}
+          <div
+            style={{
+              marginTop: 16,
+              padding: '14px 16px',
+              background: '#f0fdf4',
+              border: '1.5px solid #86efac',
+              borderRadius: '10px',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 18 }}>💰</span>
+                <span style={{ fontWeight: 800, color: '#166534', fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Financials &amp; Expected Deal Value
+                </span>
+              </div>
+              {form.estimatedValue && (
+                <div style={{ fontSize: 12, color: '#15803d', fontWeight: 600 }}>
+                  Expected: {form.currency} {Number(form.estimatedValue).toLocaleString()}
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+              <Input
+                label="Expected Financial Amount ($/₵)"
+                name="estimatedValue"
+                type="number"
+                placeholder="e.g. 1500"
+                value={form.estimatedValue}
+                onChange={(e) => setForm({ ...form, estimatedValue: e.target.value })}
+              />
+
+              <Select
+                label="Currency"
+                name="currency"
+                value={form.currency}
+                options={CURRENCIES}
+                onChange={(e) => setForm({ ...form, currency: e.target.value })}
+              />
+            </div>
+
+            <div style={{ marginTop: 8, fontSize: 11, color: '#166534', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span>ℹ️</span>
+              <span>Determined from selected product catalog. You can edit this financial value where necessary (negotiated quotes, custom rate).</span>
+            </div>
+          </div>
+
           {formError ? <div className="error-state" style={{ marginTop: 12 }}>{formError}</div> : null}
           <div className="form-actions" style={{ marginTop: 16 }}>
             <Button type="submit" disabled={submitting}>
@@ -572,6 +689,18 @@ export default function CrmLeadsPage() {
                     },
                   },
                   {
+                    key: 'financials',
+                    label: 'Expected Financials',
+                    render: (l) => (
+                      <div>
+                        <div style={{ fontWeight: 800, color: '#15803d', fontSize: 13 }}>
+                          {l.estimatedValue != null ? `${l.currency ?? '$'} ${Number(l.estimatedValue).toLocaleString()}` : '—'}
+                        </div>
+                        <div style={{ fontSize: 10, color: '#64748b' }}>Expected Value</div>
+                      </div>
+                    ),
+                  },
+                  {
                     key: 'stage',
                     label: 'Sales Stage',
                     render: (l) => {
@@ -600,13 +729,30 @@ export default function CrmLeadsPage() {
                   },
                   {
                     key: 'actions',
-                    label: 'Actions',
+                    label: 'Actions & Financials',
                     render: (l) => (
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <Button variant="secondary" onClick={() => loadIntoForm(l)}>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() => openEditModal(l)}
+                          style={{
+                            background: '#eff6ff',
+                            border: '1px solid #bfdbfe',
+                            color: '#1d4ed8',
+                            fontSize: 11,
+                            fontWeight: 700,
+                            borderRadius: 6,
+                            padding: '4px 8px',
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          Edit Financials
+                        </button>
+                        <Button variant="secondary" onClick={() => loadIntoForm(l)} style={{ padding: '4px 8px', fontSize: 11 }}>
                           Edit
                         </Button>
-                        <Button variant="danger" onClick={() => remove(l)}>
+                        <Button variant="danger" onClick={() => remove(l)} style={{ padding: '4px 8px', fontSize: 11 }}>
                           Delete
                         </Button>
                       </div>
@@ -620,6 +766,143 @@ export default function CrmLeadsPage() {
         </>
       ) : (
         <Spinner />
+      )}
+
+      {/* EDIT LEAD & FINANCIALS MODAL */}
+      {editModalLead && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.55)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000,
+            padding: '20px',
+          }}
+        >
+          <div
+            style={{
+              background: '#ffffff',
+              padding: '24px',
+              borderRadius: '12px',
+              maxWidth: '520px',
+              width: '100%',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>
+                  Edit Lead Financials &amp; Product
+                </h3>
+                <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
+                  Lead: <strong>{`${editModalLead.firstName ?? ''} ${editModalLead.lastName ?? ''}`.trim() || 'Prospect'}</strong>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditModalLead(null)}
+                style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#64748b' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={submitEditModal} style={{ display: 'grid', gap: '14px' }}>
+              <ProductSearchPicker
+                label="Product / Package of Interest"
+                selectedProductName={editLeadForm.destination}
+                onSelect={(prod) => {
+                  if (prod) {
+                    setEditLeadForm((f) => ({
+                      ...f,
+                      destination: prod.name,
+                      estimatedValue: prod.price != null ? String(prod.price) : f.estimatedValue,
+                      currency: prod.currency || f.currency,
+                    }));
+                  }
+                }}
+              />
+
+              <Input
+                label="Destination / Tour Name"
+                name="destination"
+                value={editLeadForm.destination}
+                onChange={(e) => setEditLeadForm({ ...editLeadForm, destination: e.target.value })}
+              />
+
+              {/* FINANCIALS SECTION IN MODAL */}
+              <div
+                style={{
+                  padding: '12px 14px',
+                  background: '#f0fdf4',
+                  border: '1.5px solid #86efac',
+                  borderRadius: '8px',
+                }}
+              >
+                <div style={{ fontWeight: 800, color: '#166534', fontSize: 12, marginBottom: 8, textTransform: 'uppercase' }}>
+                  💵 Financials / Expected Deal Value
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10 }}>
+                  <Input
+                    label="Expected Value *"
+                    name="estimatedValue"
+                    type="number"
+                    value={editLeadForm.estimatedValue}
+                    onChange={(e) => setEditLeadForm({ ...editLeadForm, estimatedValue: e.target.value })}
+                  />
+                  <Select
+                    label="Currency"
+                    name="currency"
+                    value={editLeadForm.currency}
+                    options={CURRENCIES}
+                    onChange={(e) => setEditLeadForm({ ...editLeadForm, currency: e.target.value })}
+                  />
+                </div>
+                <div style={{ fontSize: 11, color: '#15803d', marginTop: 6 }}>
+                  You can adjust or negotiate this financial amount where necessary.
+                </div>
+              </div>
+
+              <Select
+                label="Sales Stage"
+                name="stage"
+                value={editLeadForm.stage}
+                options={stages.map((st) => ({ value: st.key, label: st.name }))}
+                onChange={(e) => setEditLeadForm({ ...editLeadForm, stage: e.target.value })}
+              />
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <Input
+                  label="Phone"
+                  name="phone"
+                  value={editLeadForm.phone}
+                  onChange={(e) => setEditLeadForm({ ...editLeadForm, phone: e.target.value })}
+                />
+                <Input
+                  label="Email"
+                  name="email"
+                  type="email"
+                  value={editLeadForm.email}
+                  onChange={(e) => setEditLeadForm({ ...editLeadForm, email: e.target.value })}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+                <Button type="submit" disabled={editSubmitting} style={{ flex: 1 }}>
+                  {editSubmitting ? 'Saving…' : 'Save Lead & Financials'}
+                </Button>
+                <Button variant="secondary" onClick={() => setEditModalLead(null)}>
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
 
       {/* CUSTOMER DETAILS MODAL */}

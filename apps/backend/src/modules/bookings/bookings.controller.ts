@@ -54,8 +54,13 @@ export class BookingsController {
 
   @Post(':id/confirm')
   @RequirePermissions(Permission.BOOKING_UPDATE)
-  confirm(@Param('id') id: string, @Req() req: Request, @CurrentUser('id') userId: string) {
-    return this.bookingsService.confirm(id, toRequestContext(req, userId));
+  confirm(
+    @Param('id') id: string,
+    @Body() dto: UpdateBookingDto,
+    @Req() req: Request,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.bookingsService.confirm(id, dto, toRequestContext(req, userId));
   }
 
   @Post(':id/cancel')
