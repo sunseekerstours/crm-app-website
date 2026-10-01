@@ -4,9 +4,13 @@ import { useEffect, useState } from 'react';
 import { Button, Card, Input, Select, PageHeader, Table, Pagination, Spinner, ErrorState, Badge } from '@/components/ui';
 import { useList } from '@/lib/use-list';
 import { api } from '@/lib/api';
+import { CustomerSearchPicker, CustomerSummary } from '@/components/CustomerSearchPicker';
+import { CustomerDetailsModal } from '@/components/CustomerDetailsModal';
 
 interface Lead {
   id: string;
+  customerId?: string;
+  customer?: { id: string; firstName?: string; lastName?: string; email?: string; phone?: string };
   firstName?: string;
   lastName?: string;
   email?: string;
@@ -46,6 +50,8 @@ export default function LeadsPage() {
   const [selectedTag, setSelectedTag] = useState('');
   const [selectedStage, setSelectedStage] = useState('');
   const [availableTags, setAvailableTags] = useState<string[]>([]);
+  const [viewCustomerId, setViewCustomerId] = useState<string | null>(null);
+  const [selectedCustomerObj, setSelectedCustomerObj] = useState<CustomerSummary | null>(null);
   const [stages, setStages] = useState<any[]>([
     { key: 'NEW', name: 'Initial Inquiry', color: '#0284c7' },
     { key: 'CONTACTED', name: 'Contacted & Discovery', color: '#8b5cf6' },
@@ -81,6 +87,7 @@ export default function LeadsPage() {
   }, []);
 
   const [form, setForm] = useState({
+    customerId: '',
     firstName: '',
     lastName: '',
     email: '',
@@ -103,6 +110,7 @@ export default function LeadsPage() {
         .filter(Boolean);
 
       await api.post('/leads', {
+        customerId: form.customerId || undefined,
         firstName: form.firstName,
         lastName: form.lastName,
         email: form.email,
@@ -111,7 +119,8 @@ export default function LeadsPage() {
         destination: form.destination || undefined,
         tags: parsedTags.length ? parsedTags : undefined,
       });
-      setForm({ firstName: '', lastName: '', email: '', phone: '', source: SOURCES[0], tagsInput: '', destination: '' });
+      setForm({ customerId: '', firstName: '', lastName: '', email: '', phone: '', source: SOURCES[0], tagsInput: '', destination: '' });
+      setSelectedCustomerObj(null);
       reload();
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Failed to create');
@@ -201,6 +210,26 @@ export default function LeadsPage() {
 
       <Card title="New Lead">
         <form onSubmit={create}>
+          <div style={{ marginBottom: 16 }}>
+            <CustomerSearchPicker
+              label="Link Existing Customer (Auto-fills details, or leave empty for new prospect)"
+              value={form.customerId}
+              selectedCustomer={selectedCustomerObj}
+              onChange={(custId, cust) => {
+                setForm((f) => ({
+                  ...f,
+                  customerId: custId,
+                  firstName: cust?.firstName ?? f.firstName,
+                  lastName: cust?.lastName ?? f.lastName,
+                  email: cust?.email ?? f.email,
+                  phone: cust?.phone ?? f.phone,
+                }));
+                setSelectedCustomerObj(cust);
+              }}
+              onViewDetails={(custId) => setViewCustomerId(custId)}
+            />
+          </div>
+
           <div className="form-grid">
             <Input label="First name" name="firstName" value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} />
             <Input label="Last name" name="lastName" value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} />
@@ -245,26 +274,79 @@ export default function LeadsPage() {
           <>
             <Table
               columns={[
-                { key: 'name', label: 'Prospect Name', render: (r) => `${r.firstName ?? ''} ${r.lastName ?? ''}`.trim() || '—' },
+                {
+                  key: 'name',
+                  label: 'Prospect & Customer Profile',
+                  render: (r: Lead) => {
+                    const leadName = `${r.firstName ?? ''} ${r.lastName ?? ''}`.trim() || '—';
+                    const custId = r.customerId ?? r.customer?.id;
+                    const initials = `${r.firstName?.[0] || ''}${r.lastName?.[0] || ''}`.toUpperCase() || '👤';
+
+                    return (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div
+                          style={{
+                            width: 34,
+                            height: 34,
+                            borderRadius: '50%',
+                            background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                            color: '#ffffff',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: 12,
+                            fontWeight: 700,
+                            flexShrink: 0,
+                          }}
+                        >
+                          {initials}
+                        </div>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontWeight: 700, color: '#0f172a', fontSize: 13 }}>{leadName}</span>
+                            {custId && (
+                              <button
+                                type="button"
+                                onClick={() => setViewCustomerId(custId)}
+                                style={{
+                                  background: '#eff6ff',
+                                  border: '1px solid #bfdbfe',
+                                  color: '#1d4ed8',
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  borderRadius: 4,
+                                  padding: '2px 6px',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                👁️ View Details
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  },
+                },
                 {
                   key: 'contact',
                   label: 'Contact Details',
-                  render: (r) => (
+                  render: (r: Lead) => (
                     <div>
-                      <div>{r.email || <span style={{ color: '#94a3b8' }}>No email</span>}</div>
-                      {r.phone && <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>📞 {r.phone}</div>}
+                      {r.email && <div>✉️ {r.email}</div>}
+                      {r.phone && <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}><a href={`tel:${r.phone}`} style={{ color: '#0284c7', textDecoration: 'none' }}>📞 {r.phone}</a></div>}
                     </div>
                   ),
                 },
                 {
                   key: 'interest',
                   label: 'Interested Tour / Destination',
-                  render: (r) => r.destination || r.interestedTour || r.campaign || <span style={{ color: '#94a3b8' }}>—</span>,
+                  render: (r: Lead) => r.destination || r.interestedTour || r.campaign || <span style={{ color: '#94a3b8' }}>—</span>,
                 },
                 {
                   key: 'tags',
                   label: 'Data Tags',
-                  render: (r) => {
+                  render: (r: Lead) => {
                     const tags = r.tags || [];
                     if (tags.length === 0) return <span style={{ color: '#94a3b8' }}>—</span>;
                     const displayTags = tags.slice(0, 3);
@@ -315,11 +397,11 @@ export default function LeadsPage() {
                     );
                   },
                 },
-                { key: 'source', label: 'Source', render: (r) => <Badge>{r.source}</Badge> },
+                { key: 'source', label: 'Source', render: (r: Lead) => <Badge>{r.source}</Badge> },
                 {
                   key: 'stage',
                   label: 'Sales Stage',
-                  render: (r) => {
+                  render: (r: Lead) => {
                     const st = stages.find((s) => s.key === r.stage);
                     return (
                       <span
@@ -349,6 +431,12 @@ export default function LeadsPage() {
           </>
         )}
       </Card>
+
+      {/* CUSTOMER DETAILS MODAL */}
+      <CustomerDetailsModal
+        customerId={viewCustomerId}
+        onClose={() => setViewCustomerId(null)}
+      />
     </div>
   );
 }

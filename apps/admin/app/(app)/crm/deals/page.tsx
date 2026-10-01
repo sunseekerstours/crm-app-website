@@ -16,6 +16,8 @@ import {
   Spinner,
   Table,
 } from '@/components/ui';
+import { CustomerSearchPicker, CustomerSummary } from '@/components/CustomerSearchPicker';
+import { CustomerDetailsModal } from '@/components/CustomerDetailsModal';
 
 interface CustomerOption {
   id: string;
@@ -101,6 +103,9 @@ export default function CrmSalesStagesDealsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [customers, setCustomers] = useState<CustomerOption[]>([]);
+  const [viewCustomerId, setViewCustomerId] = useState<string | null>(null);
+  const [selectedCustomerObj, setSelectedCustomerObj] = useState<CustomerSummary | null>(null);
+  const [showStageModal, setShowStageModal] = useState(false);
   const [viewMode, setViewMode] = useState<'kanban' | 'table'>('kanban');
   const [filterStage, setFilterStage] = useState<string>('ALL');
 
@@ -171,13 +176,27 @@ export default function CrmSalesStagesDealsPage() {
       tour: d.tour ?? '',
       destination: d.destination ?? '',
     });
+    if (d.customer) {
+      setSelectedCustomerObj({
+        id: d.customer.id,
+        firstName: d.customer.firstName,
+        lastName: d.customer.lastName,
+        email: d.customer.email,
+        phone: d.customer.phone,
+      });
+    } else {
+      setSelectedCustomerObj(null);
+    }
+    setShowStageModal(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   function reset() {
     setEditing(null);
     setForm(initialForm);
+    setSelectedCustomerObj(null);
     setFormError(null);
+    setShowStageModal(false);
   }
 
   async function handleQuickAddCustomer(e: React.FormEvent) {
@@ -195,6 +214,7 @@ export default function CrmSalesStagesDealsPage() {
       });
       setCustomers((prev) => [res, ...prev]);
       setForm((f) => ({ ...f, customerId: res.id }));
+      setSelectedCustomerObj(res);
       setShowAddCustomer(false);
       setNewCust({ firstName: '', lastName: '', email: '', phone: '' });
     } catch (err: any) {
@@ -205,14 +225,17 @@ export default function CrmSalesStagesDealsPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setFormError(null);
-    if (!form.name.trim()) {
-      setFormError('Please provide an opportunity / deal name.');
+    const custName = selectedCustomerObj ? `${selectedCustomerObj.firstName ?? ''} ${selectedCustomerObj.lastName ?? ''}`.trim() : '';
+    if (!form.customerId && !custName && !form.name.trim()) {
+      setFormError('Please select or create a customer to add to the sales stage.');
       return;
     }
+    const finalName = custName ? (form.tour ? `${custName} - ${form.tour}` : custName) : form.name.trim() || 'Sales Stage Customer';
+
     setSubmitting(true);
     try {
       const payload: Record<string, unknown> = {
-        name: form.name.trim(),
+        name: finalName,
         customerId: form.customerId || undefined,
         value: form.value !== '' ? Number(form.value) : undefined,
         currency: form.currency,
@@ -296,7 +319,7 @@ export default function CrmSalesStagesDealsPage() {
     <div style={{ maxWidth: '1440px', margin: '0 auto', paddingBottom: '60px' }}>
       <PageHeader
         title="💼 Sales Stages (Deals & Pipeline)"
-        subtitle="Track and progress customer opportunities through your customized sales stages. Move clients, jot quick notes, and monitor pipeline health."
+        subtitle="Advance customers through your tailored sales stages. Move clients across columns, jot in-stage notes, and track pipeline metrics."
         action={
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             <Link href="/settings/stages">
@@ -310,8 +333,8 @@ export default function CrmSalesStagesDealsPage() {
                 if (!filteredItems.length) return;
                 exportToCSV(
                   filteredItems.map((d) => ({
-                    Opportunity: d.name ?? '',
-                    Customer: d.customer ? `${d.customer.firstName ?? ''} ${d.customer.lastName ?? ''}`.trim() : '',
+                    Customer: d.customer ? `${d.customer.firstName ?? ''} ${d.customer.lastName ?? ''}`.trim() : d.name ?? '',
+                    Tour: d.tour ?? '',
                     Email: d.customer?.email ?? '',
                     Phone: d.customer?.phone ?? '',
                     Value: d.value != null ? Number(d.value) : '',
@@ -329,14 +352,61 @@ export default function CrmSalesStagesDealsPage() {
               variant="primary"
               onClick={() => {
                 reset();
-                window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+                setShowStageModal(true);
               }}
             >
-              ➕ New Opportunity
+              ➕ Add Customer to Stage
             </Button>
           </div>
         }
       />
+
+      {/* Customer Quick Search & Add Bar */}
+      <div
+        style={{
+          display: 'flex',
+          gap: '12px',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          marginBottom: '20px',
+          background: '#ffffff',
+          padding: '12px 18px',
+          borderRadius: '12px',
+          border: '1px solid #e2e8f0',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+        }}
+      >
+        <div style={{ position: 'relative', flex: 1, minWidth: '280px' }}>
+          <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', fontSize: '14px' }}>
+            🔍
+          </span>
+          <input
+            type="search"
+            placeholder="Search customer name, phone, email, or tour on pipeline board…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '9px 12px 9px 36px',
+              borderRadius: '8px',
+              border: '1.5px solid #cbd5e1',
+              fontSize: '13px',
+              outline: 'none',
+              background: '#f8fafc',
+            }}
+          />
+        </div>
+        <Button
+          variant="primary"
+          onClick={() => {
+            reset();
+            setShowStageModal(true);
+          }}
+          style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+        >
+          ➕ Add Customer to Stage
+        </Button>
+      </div>
 
       {/* Real-time Sales Stages Metrics Bar */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px', marginBottom: '20px' }}>
@@ -583,7 +653,8 @@ export default function CrmSalesStagesDealsPage() {
                     stgItems.map((item) => {
                       const custName = item.customer
                         ? `${item.customer.firstName ?? ''} ${item.customer.lastName ?? ''}`.trim()
-                        : 'No Customer Assigned';
+                        : item.name || 'Unassigned Customer';
+                      const custId = item.customerId ?? item.customer?.id;
                       const latestNote = item.recordedNotes?.[0];
 
                       return (
@@ -592,31 +663,78 @@ export default function CrmSalesStagesDealsPage() {
                           style={{
                             padding: '14px',
                             background: '#ffffff',
-                            borderRadius: '8px',
-                            boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+                            borderRadius: '10px',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
                             border: '1px solid #e2e8f0',
                           }}
                         >
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
-                            <span style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', lineHeight: 1.3 }}>
-                              {item.name}
-                            </span>
-                            <span style={{ fontSize: '13px', fontWeight: 800, color: '#0284c7' }}>
-                              {item.value != null ? `$${Number(item.value).toLocaleString()}` : '—'}
+                          {/* Card Header: Customer Avatar & Name & View Details */}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
+                              <div
+                                style={{
+                                  width: '32px',
+                                  height: '32px',
+                                  borderRadius: '50%',
+                                  background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                                  color: '#ffffff',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontSize: '12px',
+                                  fontWeight: 700,
+                                  flexShrink: 0,
+                                }}
+                              >
+                                {item.customer ? `${item.customer.firstName?.[0] || ''}${item.customer.lastName?.[0] || ''}`.toUpperCase() : '👤'}
+                              </div>
+                              <div style={{ minWidth: 0, flex: 1 }}>
+                                <span style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                  {custName}
+                                </span>
+                                {custId && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setViewCustomerId(custId)}
+                                    style={{
+                                      background: 'none',
+                                      border: 'none',
+                                      color: '#0284c7',
+                                      fontSize: '11px',
+                                      fontWeight: 700,
+                                      cursor: 'pointer',
+                                      padding: 0,
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '2px',
+                                    }}
+                                  >
+                                    👁️ View Profile
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
+                            <span style={{ fontSize: '13px', fontWeight: 800, color: '#0284c7', flexShrink: 0, marginLeft: '6px' }}>
+                              {item.value != null ? `${Number(item.value).toLocaleString()} ${item.currency || 'USD'}` : '—'}
                             </span>
                           </div>
 
-                          <div style={{ fontSize: '12px', color: '#475569', marginBottom: '8px' }}>
-                            👤 <strong>{custName}</strong>
-                            {item.customer?.phone && (
-                              <span style={{ display: 'block', color: '#64748b', marginTop: '2px' }}>
-                                📞 {item.customer.phone}
-                              </span>
-                            )}
+                          <div style={{ fontSize: '12px', color: '#475569', marginBottom: '8px', display: 'flex', flexDirection: 'column', gap: '3px' }}>
                             {item.tour && (
-                              <span style={{ display: 'block', color: '#0284c7', fontWeight: 600, marginTop: '2px' }}>
+                              <span style={{ color: '#0284c7', fontWeight: 600 }}>
                                 🎒 {item.tour}
                               </span>
+                            )}
+                            {item.customer?.phone && (
+                              <a href={`tel:${item.customer.phone}`} style={{ color: '#64748b', textDecoration: 'none' }}>
+                                📞 {item.customer.phone}
+                              </a>
+                            )}
+                            {item.customer?.email && (
+                              <a href={`mailto:${item.customer.email}`} style={{ color: '#64748b', textDecoration: 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                ✉️ {item.customer.email}
+                              </a>
                             )}
                           </div>
 
@@ -639,7 +757,7 @@ export default function CrmSalesStagesDealsPage() {
                           )}
 
                           {/* Card Actions: Add Note, Move Stage, Edit */}
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px', borderTop: '1px solid #f1f5f9', paddingTop: '8px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px', borderTop: '1px solid #f1f5f9', paddingTop: '8px', gap: '6px' }}>
                             <button
                               type="button"
                               onClick={() => {
@@ -657,7 +775,7 @@ export default function CrmSalesStagesDealsPage() {
                                 cursor: 'pointer',
                               }}
                             >
-                              📝 Add Note
+                              📝 Note
                             </button>
 
                             <select
@@ -671,6 +789,7 @@ export default function CrmSalesStagesDealsPage() {
                                 background: '#ffffff',
                                 color: '#334155',
                                 cursor: 'pointer',
+                                flex: 1,
                                 maxWidth: '120px',
                               }}
                             >
@@ -692,7 +811,7 @@ export default function CrmSalesStagesDealsPage() {
                                 cursor: 'pointer',
                                 padding: '2px',
                               }}
-                              title="Edit Deal"
+                              title="Edit"
                             >
                               ✏️
                             </button>
@@ -712,27 +831,66 @@ export default function CrmSalesStagesDealsPage() {
           <Table<DealItem>
             columns={[
               {
-                key: 'name',
-                label: 'Opportunity & Tour',
-                render: (d: DealItem) => (
-                  <div>
-                    <span style={{ fontWeight: 700, color: '#0f172a', display: 'block' }}>{d.name}</span>
-                    {d.tour && <span style={{ fontSize: '12px', color: '#0284c7' }}>🎒 {d.tour}</span>}
-                  </div>
-                ),
-              },
-              {
                 key: 'customer',
-                label: 'Customer',
+                label: 'Customer Name & Contact',
                 render: (d: DealItem) => {
                   const cust = d.customer;
-                  if (!cust) return <span style={{ color: '#94a3b8' }}>—</span>;
+                  const custName = cust
+                    ? `${cust.firstName ?? ''} ${cust.lastName ?? ''}`.trim()
+                    : d.name || 'Unassigned Customer';
+                  const custId = d.customerId ?? cust?.id;
+                  const initials = cust
+                    ? `${cust.firstName?.[0] || ''}${cust.lastName?.[0] || ''}`.toUpperCase() || '👤'
+                    : '👤';
+
                   return (
-                    <div>
-                      <span style={{ fontWeight: 600, color: '#1e293b' }}>
-                        {cust.firstName} {cust.lastName}
-                      </span>
-                      {cust.phone && <span style={{ display: 'block', fontSize: '12px', color: '#64748b' }}>📞 {cust.phone}</span>}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div
+                        style={{
+                          width: '36px',
+                          height: '36px',
+                          borderRadius: '50%',
+                          background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                          color: '#ffffff',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '13px',
+                          fontWeight: 700,
+                          flexShrink: 0,
+                        }}
+                      >
+                        {initials}
+                      </div>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontWeight: 700, color: '#0f172a', fontSize: '13px' }}>
+                            {custName}
+                          </span>
+                          {custId && (
+                            <button
+                              type="button"
+                              onClick={() => setViewCustomerId(custId)}
+                              style={{
+                                background: '#eff6ff',
+                                border: '1px solid #bfdbfe',
+                                color: '#1d4ed8',
+                                fontSize: '11px',
+                                fontWeight: 700,
+                                borderRadius: '4px',
+                                padding: '2px 6px',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              👁️ View Details
+                            </button>
+                          )}
+                        </div>
+                        <div style={{ display: 'flex', gap: '10px', fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+                          {cust?.phone && <a href={`tel:${cust.phone}`} style={{ color: '#64748b', textDecoration: 'none' }}>📞 {cust.phone}</a>}
+                          {cust?.email && <a href={`mailto:${cust.email}`} style={{ color: '#64748b', textDecoration: 'none' }}>✉️ {cust.email}</a>}
+                        </div>
+                      </div>
                     </div>
                   );
                 },
@@ -749,10 +907,10 @@ export default function CrmSalesStagesDealsPage() {
                         onChange={(e) => handleMoveStage(d.id, e.target.value)}
                         style={{
                           fontSize: '12px',
-                          fontWeight: 600,
-                          padding: '4px 8px',
+                          fontWeight: 700,
+                          padding: '5px 10px',
                           borderRadius: '6px',
-                          border: `1px solid ${currentStg.color}`,
+                          border: `2px solid ${currentStg.color}`,
                           background: '#ffffff',
                           color: '#0f172a',
                           cursor: 'pointer',
@@ -760,7 +918,7 @@ export default function CrmSalesStagesDealsPage() {
                       >
                         {stages.map((st) => (
                           <option key={st.key} value={st.key}>
-                            {st.name}
+                            ➔ {st.name}
                           </option>
                         ))}
                       </select>
@@ -769,10 +927,24 @@ export default function CrmSalesStagesDealsPage() {
                 },
               },
               {
-                key: 'value',
-                label: 'Value',
+                key: 'tour',
+                label: 'Tour / Package',
                 render: (d: DealItem) => (
-                  <span style={{ fontWeight: 700, color: '#0284c7' }}>
+                  <div>
+                    {d.tour ? (
+                      <span style={{ fontSize: '13px', fontWeight: 600, color: '#0284c7' }}>🎒 {d.tour}</span>
+                    ) : (
+                      <span style={{ fontSize: '12px', color: '#94a3b8' }}>General Inquiry</span>
+                    )}
+                    {d.destination && <span style={{ display: 'block', fontSize: '11px', color: '#64748b' }}>📍 {d.destination}</span>}
+                  </div>
+                ),
+              },
+              {
+                key: 'value',
+                label: 'Estimated Value',
+                render: (d: DealItem) => (
+                  <span style={{ fontWeight: 800, color: '#0284c7', fontSize: '13px' }}>
                     {d.value != null ? `${Number(d.value).toLocaleString()} ${d.currency || 'USD'}` : '—'}
                   </span>
                 ),
@@ -785,7 +957,7 @@ export default function CrmSalesStagesDealsPage() {
                   return (
                     <div style={{ maxWidth: '240px' }}>
                       {note ? (
-                        <span style={{ fontSize: '12px', color: '#475569' }}>{note.content}</span>
+                        <span style={{ fontSize: '12px', color: '#475569', display: 'block' }}>{note.content}</span>
                       ) : (
                         <span style={{ fontSize: '12px', color: '#94a3b8' }}>No notes yet</span>
                       )}
@@ -796,18 +968,21 @@ export default function CrmSalesStagesDealsPage() {
                           setNoteContent('');
                         }}
                         style={{
-                          display: 'block',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
                           marginTop: '4px',
-                          background: 'none',
-                          border: 'none',
-                          color: '#059669',
+                          background: '#f0fdf4',
+                          border: '1px solid #bbf7d0',
+                          color: '#15803d',
                           fontSize: '11px',
                           fontWeight: 700,
+                          borderRadius: '4px',
+                          padding: '2px 6px',
                           cursor: 'pointer',
-                          padding: 0,
                         }}
                       >
-                        + Add Note
+                        📝 Add Note
                       </button>
                     </div>
                   );
@@ -815,7 +990,7 @@ export default function CrmSalesStagesDealsPage() {
               },
               {
                 key: 'actions',
-                label: '',
+                label: 'Actions',
                 render: (d: DealItem) => (
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <Button variant="ghost" onClick={() => loadIntoForm(d)} style={{ fontSize: '12px' }}>
@@ -834,130 +1009,192 @@ export default function CrmSalesStagesDealsPage() {
         </Card>
       )}
 
-      {/* ADD / EDIT OPPORTUNITY FORM */}
-      <Card style={{ padding: '24px', marginTop: '32px' }}>
-        <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', marginBottom: '16px' }}>
-          {editing ? `✏️ Edit Opportunity: ${editing.name}` : '➕ Create New Sales Opportunity (Deal)'}
-        </h3>
-        {formError && <p style={{ color: '#dc2626', fontSize: '13px', marginBottom: '14px' }}>{formError}</p>}
+      {/* ADD / EDIT CUSTOMER IN SALES STAGE MODAL */}
+      {showStageModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            padding: '20px',
+          }}
+        >
+          <div
+            style={{
+              background: '#ffffff',
+              borderRadius: '16px',
+              maxWidth: '620px',
+              width: '100%',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+              maxHeight: '90vh',
+            }}
+          >
+            {/* Modal Header */}
+            <div
+              style={{
+                padding: '18px 24px',
+                background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+                color: '#ffffff',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <div>
+                <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 800, color: '#ffffff' }}>
+                  {editing ? '✏️ Edit Customer Sales Stage' : '➕ Add Customer to Sales Stage'}
+                </h3>
+                <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#94a3b8' }}>
+                  Select a customer and place them into your sales pipeline
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={reset}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.15)',
+                  border: 'none',
+                  color: '#ffffff',
+                  fontSize: '18px',
+                  cursor: 'pointer',
+                  borderRadius: '50%',
+                  width: '32px',
+                  height: '32px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                ✕
+              </button>
+            </div>
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
-                Opportunity Name *
-              </label>
-              <Input
-                name="name"
-                placeholder="e.g. Dr. Kwame Mensah - December Tour"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
+            {/* Modal Form Body */}
+            <form onSubmit={handleSubmit} style={{ padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {formError && (
+                <div style={{ padding: '10px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', color: '#b91c1c', fontSize: '13px' }}>
+                  ⚠️ {formError}
+                </div>
+              )}
+
+              {/* 1. Customer Live Search Picker (Mandatory) */}
+              <CustomerSearchPicker
+                label="Customer Name *"
+                value={form.customerId}
+                selectedCustomer={selectedCustomerObj}
+                onChange={(custId, cust) => {
+                  setForm((f) => ({ ...f, customerId: custId }));
+                  setSelectedCustomerObj(cust);
+                }}
+                onViewDetails={(custId) => setViewCustomerId(custId)}
+                onQuickAdd={() => setShowAddCustomer(true)}
                 required
               />
-            </div>
 
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                <label style={{ fontSize: '13px', fontWeight: 600, color: '#334155' }}>Associated Customer</label>
-                <button
-                  type="button"
-                  onClick={() => setShowAddCustomer(true)}
-                  style={{ background: 'none', border: 'none', color: '#0284c7', fontSize: '12px', fontWeight: 600, cursor: 'pointer', padding: 0 }}
-                >
-                  + Quick Add Customer
-                </button>
-              </div>
-              <Select
-                name="customerId"
-                value={form.customerId}
-                onChange={(e) => setForm({ ...form, customerId: e.target.value })}
-                options={[
-                  { value: '', label: 'Select a customer (optional)' },
-                  ...customers.map((c) => ({
-                    value: c.id,
-                    label: `${c.firstName ?? ''} ${c.lastName ?? ''} (${c.email || c.phone || 'No contact'})`.trim(),
-                  })),
-                ]}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
-                Sales Stage *
-              </label>
-              <Select
-                name="stage"
-                value={form.stage}
-                onChange={(e) => setForm({ ...form, stage: e.target.value })}
-                options={stages.map((st) => ({
-                  value: st.key,
-                  label: `${st.name} (${st.key})`,
-                }))}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
-                Tour / Service Package
-              </label>
-              <Input
-                name="tour"
-                placeholder="e.g. December in Ghana 12-Day Tour"
-                value={form.tour}
-                onChange={(e) => setForm({ ...form, tour: e.target.value })}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
-                Estimated Value & Currency
-              </label>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <div style={{ flex: 1 }}>
-                  <Input
-                    name="value"
-                    type="number"
-                    placeholder="e.g. 4500"
-                    value={form.value}
-                    onChange={(e) => setForm({ ...form, value: e.target.value })}
-                  />
-                </div>
-                <div style={{ width: '110px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px' }}>
+                {/* 2. Sales Stage */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                    Sales Stage *
+                  </label>
                   <Select
-                    name="currency"
-                    value={form.currency}
-                    onChange={(e) => setForm({ ...form, currency: e.target.value })}
-                    options={CURRENCIES}
+                    name="stage"
+                    value={form.stage}
+                    onChange={(e) => setForm({ ...form, stage: e.target.value })}
+                    options={stages.map((st) => ({
+                      value: st.key,
+                      label: `${st.name} (${st.key})`,
+                    }))}
+                  />
+                </div>
+
+                {/* 3. Tour / Service Package */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                    Tour / Service Package (Optional)
+                  </label>
+                  <Input
+                    name="tour"
+                    placeholder="e.g. December in Ghana 12-Day Tour"
+                    value={form.tour}
+                    onChange={(e) => setForm({ ...form, tour: e.target.value })}
+                  />
+                </div>
+
+                {/* 4. Estimated Value & Currency */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                    Estimated Value & Currency
+                  </label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <div style={{ flex: 1 }}>
+                      <Input
+                        name="value"
+                        type="number"
+                        placeholder="e.g. 4500"
+                        value={form.value}
+                        onChange={(e) => setForm({ ...form, value: e.target.value })}
+                      />
+                    </div>
+                    <div style={{ width: '110px' }}>
+                      <Select
+                        name="currency"
+                        value={form.currency}
+                        onChange={(e) => setForm({ ...form, currency: e.target.value })}
+                        options={CURRENCIES}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 5. Expected Close Date */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                    Expected Close Date
+                  </label>
+                  <Input
+                    name="expectedCloseDate"
+                    type="date"
+                    value={form.expectedCloseDate}
+                    onChange={(e) => setForm({ ...form, expectedCloseDate: e.target.value })}
+                  />
+                </div>
+
+                {/* 6. Destination */}
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                    Destination / Route Notes (Optional)
+                  </label>
+                  <Input
+                    name="destination"
+                    placeholder="e.g. Accra, Cape Coast, Kumasi, Mole National Park"
+                    value={form.destination}
+                    onChange={(e) => setForm({ ...form, destination: e.target.value })}
                   />
                 </div>
               </div>
-            </div>
 
-            <div>
-              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
-                Expected Close Date
-              </label>
-              <Input
-                name="expectedCloseDate"
-                type="date"
-                value={form.expectedCloseDate}
-                onChange={(e) => setForm({ ...form, expectedCloseDate: e.target.value })}
-              />
-            </div>
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '12px', borderTop: '1px solid #f1f5f9', paddingTop: '16px' }}>
+                <Button type="button" variant="secondary" onClick={reset}>
+                  Cancel
+                </Button>
+                <Button type="submit" variant="primary" disabled={submitting}>
+                  {submitting ? <Spinner size={14} /> : editing ? '💾 Update Stage' : '➕ Save Customer to Stage'}
+                </Button>
+              </div>
+            </form>
           </div>
-
-          <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
-            <Button type="submit" variant="primary" disabled={submitting}>
-              {submitting ? <Spinner size={14} /> : editing ? '💾 Save Opportunity Changes' : '➕ Create Opportunity'}
-            </Button>
-            {editing && (
-              <Button type="button" variant="secondary" onClick={reset}>
-                Cancel
-              </Button>
-            )}
-          </div>
-        </form>
-      </Card>
+        </div>
+      )}
 
       {/* QUICK IN-STAGE NOTE MODAL */}
       {noteDeal && (
@@ -1085,6 +1322,12 @@ export default function CrmSalesStagesDealsPage() {
           </div>
         </div>
       )}
+
+      {/* VIEW CUSTOMER FULL DETAILS MODAL */}
+      <CustomerDetailsModal
+        customerId={viewCustomerId}
+        onClose={() => setViewCustomerId(null)}
+      />
     </div>
   );
 }

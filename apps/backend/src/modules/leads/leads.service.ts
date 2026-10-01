@@ -31,7 +31,7 @@ export class LeadsService {
     }
 
     const assignedUserId = dto.assignedUserId || (dup.isDuplicate ? dup.assignedStaffId : undefined);
-    const customerId = dup.existingCustomerId;
+    const customerId = dto.customerId || dup.existingCustomerId;
     const lead = await this.prisma.lead.create({
       data: {
         firstName: dto.firstName,
@@ -125,6 +125,9 @@ export class LeadsService {
         skip: (params.page - 1) * params.limit,
         take: params.limit,
         orderBy: { createdAt: 'desc' },
+        include: {
+          customer: { select: { id: true, firstName: true, lastName: true, email: true, phone: true } },
+        },
       }),
       this.prisma.lead.count({ where }),
     ]);
@@ -158,6 +161,7 @@ export class LeadsService {
     const updated = await this.prisma.lead.update({
       where: { id },
       data: {
+        customerId: dto.customerId !== undefined ? dto.customerId : undefined,
         firstName: dto.firstName,
         lastName: dto.lastName,
         email: dto.email,

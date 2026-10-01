@@ -46,6 +46,9 @@ export function Input({
   onChange,
   placeholder,
   required,
+  min,
+  max,
+  step,
 }: {
   label?: string;
   name: string;
@@ -54,6 +57,9 @@ export function Input({
   onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   placeholder?: string;
   required?: boolean;
+  min?: string | number;
+  max?: string | number;
+  step?: string | number;
 }) {
   return (
     <label className="field">
@@ -66,6 +72,9 @@ export function Input({
         onChange={onChange}
         placeholder={placeholder}
         required={required}
+        min={min}
+        max={max}
+        step={step}
       />
     </label>
   );

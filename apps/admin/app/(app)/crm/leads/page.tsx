@@ -15,9 +15,13 @@ import {
   Spinner,
   Table,
 } from '@/components/ui';
+import { CustomerSearchPicker, CustomerSummary } from '@/components/CustomerSearchPicker';
+import { CustomerDetailsModal } from '@/components/CustomerDetailsModal';
 
 interface LeadItem {
   id: string;
+  customerId?: string;
+  customer?: { id: string; firstName?: string; lastName?: string; email?: string; phone?: string };
   firstName?: string;
   lastName?: string;
   email?: string;
@@ -67,6 +71,7 @@ function getTagBadgeStyle(tag: string): { bg: string; color: string; border: str
 }
 
 const initialForm = {
+  customerId: '',
   firstName: '',
   lastName: '',
   email: '',
@@ -91,6 +96,8 @@ export default function CrmLeadsPage() {
   const [isExportingAll, setIsExportingAll] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [viewCustomerId, setViewCustomerId] = useState<string | null>(null);
+  const [selectedCustomerObj, setSelectedCustomerObj] = useState<CustomerSummary | null>(null);
 
   useEffect(() => {
     api.get<SalesStageItem[]>('/deals/stages')
@@ -133,6 +140,7 @@ export default function CrmLeadsPage() {
     setEditing(l);
     setFormError(null);
     setForm({
+      customerId: l.customerId ?? l.customer?.id ?? '',
       firstName: l.firstName ?? '',
       lastName: l.lastName ?? '',
       email: l.email ?? '',
@@ -142,12 +150,18 @@ export default function CrmLeadsPage() {
       destination: l.destination ?? l.interestedTour ?? '',
       tagsInput: (l.tags || []).join(', '),
     });
+    if (l.customer) {
+      setSelectedCustomerObj(l.customer);
+    } else {
+      setSelectedCustomerObj(null);
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   function reset() {
     setEditing(null);
     setForm(initialForm);
+    setSelectedCustomerObj(null);
     setFormError(null);
   }
 
@@ -162,6 +176,7 @@ export default function CrmLeadsPage() {
       .filter(Boolean);
 
     const body: Record<string, any> = {
+      customerId: form.customerId || undefined,
       firstName: form.firstName || undefined,
       lastName: form.lastName || undefined,
       email: form.email,
@@ -330,6 +345,26 @@ export default function CrmLeadsPage() {
 
       <Card title={editing ? `Edit: ${editing.firstName ?? ''} ${editing.lastName ?? ''}` : 'New lead'}>
         <form onSubmit={submit}>
+          <div style={{ marginBottom: 16 }}>
+            <CustomerSearchPicker
+              label="Link Existing Customer (Auto-fills details, or leave empty for new prospect)"
+              value={form.customerId}
+              selectedCustomer={selectedCustomerObj}
+              onChange={(custId, cust) => {
+                setForm((f) => ({
+                  ...f,
+                  customerId: custId,
+                  firstName: cust?.firstName ?? f.firstName,
+                  lastName: cust?.lastName ?? f.lastName,
+                  email: cust?.email ?? f.email,
+                  phone: cust?.phone ?? f.phone,
+                }));
+                setSelectedCustomerObj(cust);
+              }}
+              onViewDetails={(custId) => setViewCustomerId(custId)}
+            />
+          </div>
+
           <div className="form-grid">
             <Input label="First name" name="firstName" value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} />
             <Input label="Last name" name="lastName" value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} />
@@ -364,11 +399,60 @@ export default function CrmLeadsPage() {
             columns={[
               {
                 key: 'name',
-                label: 'Name',
-                render: (l) => `${l.firstName ?? ''} ${l.lastName ?? ''}`.trim() || '—',
+                label: 'Lead Name & Customer Profile',
+                render: (l) => {
+                  const leadName = `${l.firstName ?? ''} ${l.lastName ?? ''}`.trim() || '—';
+                  const custId = l.customerId ?? l.customer?.id;
+                  const initials = `${l.firstName?.[0] || ''}${l.lastName?.[0] || ''}`.toUpperCase() || '👤';
+
+                  return (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div
+                        style={{
+                          width: 34,
+                          height: 34,
+                          borderRadius: '50%',
+                          background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                          color: '#ffffff',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: 12,
+                          fontWeight: 700,
+                          flexShrink: 0,
+                        }}
+                      >
+                        {initials}
+                      </div>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontWeight: 700, color: '#0f172a', fontSize: 13 }}>{leadName}</span>
+                          {custId && (
+                            <button
+                              type="button"
+                              onClick={() => setViewCustomerId(custId)}
+                              style={{
+                                background: '#eff6ff',
+                                border: '1px solid #bfdbfe',
+                                color: '#1d4ed8',
+                                fontSize: 11,
+                                fontWeight: 700,
+                                borderRadius: 4,
+                                padding: '2px 6px',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              👁️ View Details
+                            </button>
+                          )}
+                        </div>
+                        {l.email && <span style={{ fontSize: 11, color: '#64748b', display: 'block' }}>✉️ {l.email}</span>}
+                      </div>
+                    </div>
+                  );
+                },
               },
-              { key: 'email', label: 'Email', render: (l) => l.email ?? '—' },
-              { key: 'phone', label: 'Phone', render: (l) => l.phone ?? '—' },
+              { key: 'phone', label: 'Phone', render: (l) => (l.phone ? <a href={`tel:${l.phone}`} style={{ color: '#0284c7', textDecoration: 'none' }}>📞 {l.phone}</a> : '—') },
               {
                 key: 'interest',
                 label: 'Destination / Tour',
@@ -475,6 +559,12 @@ export default function CrmLeadsPage() {
       ) : (
         <Spinner />
       )}
+
+      {/* CUSTOMER DETAILS MODAL */}
+      <CustomerDetailsModal
+        customerId={viewCustomerId}
+        onClose={() => setViewCustomerId(null)}
+      />
     </>
   );
 }

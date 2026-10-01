@@ -14,6 +14,10 @@ import { LeadSource, LeadStage } from '@prisma/client';
 export class CreateLeadDto {
   @IsOptional()
   @IsString()
+  customerId?: string;
+
+  @IsOptional()
+  @IsString()
   firstName?: string;
 
   @IsOptional()
