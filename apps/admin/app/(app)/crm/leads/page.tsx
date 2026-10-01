@@ -29,8 +29,25 @@ interface LeadItem {
   interestedTour?: string;
 }
 
+export interface SalesStageItem {
+  id: string;
+  key: string;
+  name: string;
+  color: string;
+  order: number;
+}
+
+const DEFAULT_STAGES: SalesStageItem[] = [
+  { id: 'stage-1', key: 'NEW', name: 'Initial Inquiry', color: '#0284c7', order: 1 },
+  { id: 'stage-2', key: 'CONTACTED', name: 'Contacted & Discovery', color: '#8b5cf6', order: 2 },
+  { id: 'stage-3', key: 'QUALIFIED', name: 'Qualified & Itinerary', color: '#06b6d4', order: 3 },
+  { id: 'stage-4', key: 'PROPOSAL', name: 'Custom Quote Sent', color: '#f59e0b', order: 4 },
+  { id: 'stage-5', key: 'NEGOTIATION', name: 'Negotiation & Fleet Selection', color: '#ec4899', order: 5 },
+  { id: 'stage-6', key: 'WON', name: 'Confirmed Booking (Won)', color: '#10b981', order: 6 },
+  { id: 'stage-7', key: 'LOST', name: 'Lost / Cancelled', color: '#ef4444', order: 7 },
+];
+
 const SOURCES = ['WEBSITE', 'REFERRAL', 'SOCIAL_MEDIA', 'WALK_IN', 'PHONE', 'EMAIL', 'OTHER'];
-const STAGES = ['NEW', 'CONTACTED', 'QUALIFIED', 'PROPOSAL', 'WON', 'LOST'];
 
 function getTagBadgeStyle(tag: string): { bg: string; color: string; border: string } {
   const t = tag.toLowerCase();
@@ -66,6 +83,7 @@ export default function CrmLeadsPage() {
   const [selectedTag, setSelectedTag] = useState('');
   const [selectedStage, setSelectedStage] = useState('');
   const [availableTags, setAvailableTags] = useState<string[]>([]);
+  const [stages, setStages] = useState<SalesStageItem[]>(DEFAULT_STAGES);
   const [data, setData] = useState<Paginated<LeadItem> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<LeadItem | null>(null);
@@ -73,6 +91,14 @@ export default function CrmLeadsPage() {
   const [isExportingAll, setIsExportingAll] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  useEffect(() => {
+    api.get<SalesStageItem[]>('/deals/stages')
+      .then((res) => {
+        if (Array.isArray(res) && res.length > 0) setStages(res.sort((a, b) => a.order - b.order));
+      })
+      .catch(() => {});
+  }, []);
 
   const load = useCallback(async () => {
     setError(null);
@@ -263,7 +289,7 @@ export default function CrmLeadsPage() {
             </select>
           </div>
 
-          <div style={{ flex: '0 1 180px', minWidth: 140 }}>
+          <div style={{ flex: '0 1 200px', minWidth: 160 }}>
             <select
               className="input"
               value={selectedStage}
@@ -273,10 +299,10 @@ export default function CrmLeadsPage() {
               }}
               style={{ width: '100%', padding: '9px 12px', fontSize: 14 }}
             >
-              <option value="">Status / Stage (All)</option>
-              {STAGES.map((st) => (
-                <option key={st} value={st}>
-                  {st}
+              <option value="">Status / Sales Stage (All)</option>
+              {stages.map((st) => (
+                <option key={st.key} value={st.key}>
+                  {st.name} ({st.key})
                 </option>
               ))}
             </select>
@@ -318,7 +344,7 @@ export default function CrmLeadsPage() {
               onChange={(e) => setForm({ ...form, tagsInput: e.target.value })}
             />
             <Select label="Source" name="source" value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value })} options={SOURCES.map((s) => ({ value: s, label: s.replace('_', ' ') }))} />
-            <Select label="Stage" name="stage" value={form.stage} onChange={(e) => setForm({ ...form, stage: e.target.value })} options={STAGES.map((s) => ({ value: s, label: s }))} />
+            <Select label="Sales Stage" name="stage" value={form.stage} onChange={(e) => setForm({ ...form, stage: e.target.value })} options={stages.map((s) => ({ value: s.key, label: s.name }))} />
           </div>
           {formError ? <div className="error-state" style={{ marginTop: 12 }}>{formError}</div> : null}
           <div className="form-actions" style={{ marginTop: 16 }}>
@@ -402,8 +428,32 @@ export default function CrmLeadsPage() {
                   );
                 },
               },
-              { key: 'source', label: 'Source', render: (l) => <Badge>{l.source?.replace('_', ' ') ?? '—'}</Badge> },
-              { key: 'stage', label: 'Stage', render: (l) => <Badge>{l.stage ?? '—'}</Badge> },
+              {
+                key: 'stage',
+                label: 'Sales Stage',
+                render: (l) => {
+                  const st = stages.find((s) => s.key === l.stage);
+                  return (
+                    <span
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        padding: '3px 10px',
+                        borderRadius: '12px',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        background: st?.color ? `${st.color}15` : '#f1f5f9',
+                        color: st?.color || '#334155',
+                        border: `1px solid ${st?.color ? `${st.color}40` : '#cbd5e1'}`,
+                      }}
+                    >
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: st?.color || '#64748b' }} />
+                      {st?.name || l.stage || '—'}
+                    </span>
+                  );
+                },
+              },
               {
                 key: 'actions',
                 label: 'Actions',

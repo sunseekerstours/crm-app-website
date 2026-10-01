@@ -40,26 +40,30 @@ export function Button({
 
 export function Input({
   label,
-  name,
+  name = '',
   type = 'text',
   value,
   onChange,
   placeholder,
   required,
+  style,
+  className,
 }: {
   label?: string;
-  name: string;
+  name?: string;
   type?: string;
   value?: string | number;
   onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   placeholder?: string;
   required?: boolean;
+  style?: React.CSSProperties;
+  className?: string;
 }) {
   return (
-    <label className="field">
+    <label className="field" style={style}>
       {label ? <span className="field-label">{label}</span> : null}
       <input
-        className="input"
+        className={`input ${className || ''}`.trim()}
         name={name}
         type={type}
         value={value}
@@ -103,21 +107,25 @@ export function Textarea({
 
 export function Select({
   label,
-  name,
+  name = '',
   value,
   onChange,
   options,
+  style,
+  className,
 }: {
   label?: string;
-  name: string;
+  name?: string;
   value?: string;
   onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void;
   options: { value: string; label: string }[];
+  style?: React.CSSProperties;
+  className?: string;
 }) {
   return (
-    <label className="field">
+    <label className="field" style={style}>
       {label ? <span className="field-label">{label}</span> : null}
-      <select className="input" name={name} value={value} onChange={onChange}>
+      <select className={`input ${className || ''}`.trim()} name={name} value={value} onChange={onChange}>
         {options.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}
@@ -154,20 +162,44 @@ export function Card({
   );
 }
 
-export function PageHeader({ title, subtitle, action }: { title: string; subtitle?: string; action?: ReactNode }) {
+export function PageHeader({
+  title,
+  subtitle,
+  description,
+  action,
+  actions,
+}: {
+  title: string;
+  subtitle?: string;
+  description?: string;
+  action?: ReactNode;
+  actions?: ReactNode;
+}) {
   return (
     <div className="page-header">
       <div>
         <h1 className="page-title">{title}</h1>
-        {subtitle ? <p className="page-subtitle">{subtitle}</p> : null}
+        {subtitle || description ? <p className="page-subtitle">{subtitle || description}</p> : null}
       </div>
-      {action}
+      {action || actions}
     </div>
   );
 }
 
-export function Badge({ children }: { children: ReactNode }) {
-  return <span className="badge">{children}</span>;
+export function Badge({
+  children,
+  variant,
+  style,
+}: {
+  children: ReactNode;
+  variant?: string;
+  style?: React.CSSProperties;
+}) {
+  return (
+    <span className={`badge ${variant ? `badge-${variant}` : ''}`} style={style}>
+      {children}
+    </span>
+  );
 }
 
 export function Spinner({ size }: { size?: number } = {}) {
@@ -185,26 +217,31 @@ export function ErrorState({ message }: { message: string }) {
 export function Table<T extends { id: string }>({
   columns,
   rows,
+  data,
   keyOf,
+  keyExtractor,
 }: {
-  columns: { key: string; label: string; render?: (row: T) => ReactNode }[];
-  rows: T[];
+  columns: { key: string; label?: string; header?: string; render?: (row: T) => ReactNode }[];
+  rows?: T[];
+  data?: T[];
   keyOf?: (row: T) => string;
+  keyExtractor?: (row: T) => string;
 }) {
-  if (rows.length === 0) return <EmptyState message="No records found." />;
+  const list = data || rows || [];
+  if (list.length === 0) return <EmptyState message="No records found." />;
   return (
     <div className="table-wrap">
       <table className="table">
         <thead>
           <tr>
             {columns.map((c) => (
-              <th key={c.key}>{c.label}</th>
+              <th key={c.key}>{c.label || c.header || c.key}</th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
-            <tr key={keyOf ? keyOf(row) : row.id}>
+          {list.map((row) => (
+            <tr key={keyExtractor ? keyExtractor(row) : keyOf ? keyOf(row) : row.id}>
               {columns.map((c) => (
                 <td key={c.key}>{c.render ? c.render(row) : String((row as Record<string, unknown>)[c.key] ?? '')}</td>
               ))}

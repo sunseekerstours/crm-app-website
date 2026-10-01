@@ -313,4 +313,25 @@ export class LeadsService {
 
     return { success: true };
   }
+
+  async getStages() {
+    const setting = await this.prisma.siteSetting.findUnique({
+      where: { key: 'crm_sales_stages' },
+    });
+    if (setting?.value) {
+      try {
+        const parsed = JSON.parse(setting.value);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch {}
+    }
+    return [
+      { id: 'stage-1', key: 'NEW', name: 'Initial Inquiry', color: '#0284c7', order: 1, description: 'Fresh travel inquiry or tour request' },
+      { id: 'stage-2', key: 'CONTACTED', name: 'Contacted & Discovery', color: '#8b5cf6', order: 2, description: 'Spoke with traveler, gathering preferences & dates' },
+      { id: 'stage-3', key: 'QUALIFIED', name: 'Qualified & Itinerary', color: '#06b6d4', order: 3, description: 'Dates, passenger count, and route confirmed' },
+      { id: 'stage-4', key: 'PROPOSAL', name: 'Custom Quote Sent', color: '#f59e0b', order: 4, description: 'Official quote (QTE-...) or proposal delivered' },
+      { id: 'stage-5', key: 'NEGOTIATION', name: 'Negotiation & Fleet Selection', color: '#ec4899', order: 5, description: 'Adjusting itinerary, hotel, or car choices' },
+      { id: 'stage-6', key: 'WON', name: 'Confirmed Booking (Won)', color: '#10b981', order: 6, description: 'Payment confirmed, tour booking locked in' },
+      { id: 'stage-7', key: 'LOST', name: 'Lost / Cancelled', color: '#ef4444', order: 7, description: 'Client cancelled or chose alternate option' },
+    ];
+  }
 }

@@ -40,6 +40,12 @@ export class LeadsController {
     });
   }
 
+  @Get('stages')
+  @RequirePermissions(Permission.LEAD_VIEW)
+  getStages() {
+    return this.leadsService.getStages();
+  }
+
   @Get(':id')
   @RequirePermissions(Permission.LEAD_VIEW)
   findById(@Param('id') id: string) {

@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, Req } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 import { RequirePermissions } from '@app/common/decorators/permissions.decorator';
@@ -37,6 +37,18 @@ export class DealsController {
   @RequirePermissions(Permission.DEAL_VIEW)
   pipeline() {
     return this.dealsService.pipelineSummary();
+  }
+
+  @Get('stages')
+  @RequirePermissions(Permission.DEAL_VIEW)
+  getStages() {
+    return this.dealsService.getStages();
+  }
+
+  @Put('stages')
+  @RequirePermissions(Permission.SETTINGS_UPDATE)
+  updateStages(@Body() body: { stages: any[] }, @Req() req: Request, @CurrentUser('id') userId: string) {
+    return this.dealsService.updateStages(body.stages || [], toRequestContext(req, userId));
   }
 
   @Get(':id')

@@ -46,6 +46,15 @@ export default function LeadsPage() {
   const [selectedTag, setSelectedTag] = useState('');
   const [selectedStage, setSelectedStage] = useState('');
   const [availableTags, setAvailableTags] = useState<string[]>([]);
+  const [stages, setStages] = useState<any[]>([
+    { key: 'NEW', name: 'Initial Inquiry', color: '#0284c7' },
+    { key: 'CONTACTED', name: 'Contacted & Discovery', color: '#8b5cf6' },
+    { key: 'QUALIFIED', name: 'Qualified & Itinerary', color: '#06b6d4' },
+    { key: 'PROPOSAL', name: 'Custom Quote Sent', color: '#f59e0b' },
+    { key: 'NEGOTIATION', name: 'Negotiation & Fleet Selection', color: '#ec4899' },
+    { key: 'WON', name: 'Confirmed Booking (Won)', color: '#10b981' },
+    { key: 'LOST', name: 'Lost / Cancelled', color: '#ef4444' },
+  ]);
 
   // Build query
   const q = new URLSearchParams();
@@ -61,6 +70,12 @@ export default function LeadsPage() {
     api.get<string[]>('/leads/tags')
       .then((tags) => {
         if (Array.isArray(tags)) setAvailableTags(tags);
+      })
+      .catch(() => {});
+
+    api.get<any[]>('/deals/stages')
+      .then((res) => {
+        if (Array.isArray(res) && res.length > 0) setStages(res.sort((a: any, b: any) => a.order - b.order));
       })
       .catch(() => {});
   }, []);
@@ -145,7 +160,7 @@ export default function LeadsPage() {
             </select>
           </div>
 
-          <div style={{ flex: '0 1 180px', minWidth: 140 }}>
+          <div style={{ flex: '0 1 200px', minWidth: 160 }}>
             <select
               className="input"
               value={selectedStage}
@@ -155,10 +170,10 @@ export default function LeadsPage() {
               }}
               style={{ width: '100%', padding: '9px 12px', fontSize: 14 }}
             >
-              <option value="">Status / Stage (All)</option>
-              {STAGES.map((st) => (
-                <option key={st} value={st}>
-                  {st}
+              <option value="">Status / Sales Stage (All)</option>
+              {stages.map((st) => (
+                <option key={st.key} value={st.key}>
+                  {st.name} ({st.key})
                 </option>
               ))}
             </select>
@@ -301,7 +316,32 @@ export default function LeadsPage() {
                   },
                 },
                 { key: 'source', label: 'Source', render: (r) => <Badge>{r.source}</Badge> },
-                { key: 'stage', label: 'Stage', render: (r) => <Badge>{r.stage}</Badge> },
+                {
+                  key: 'stage',
+                  label: 'Sales Stage',
+                  render: (r) => {
+                    const st = stages.find((s) => s.key === r.stage);
+                    return (
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          padding: '3px 10px',
+                          borderRadius: '12px',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          background: st?.color ? `${st.color}15` : '#f1f5f9',
+                          color: st?.color || '#334155',
+                          border: `1px solid ${st?.color ? `${st.color}40` : '#cbd5e1'}`,
+                        }}
+                      >
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: st?.color || '#64748b' }} />
+                        {st?.name || r.stage || '—'}
+                      </span>
+                    );
+                  },
+                },
               ]}
               rows={data?.items ?? []}
             />

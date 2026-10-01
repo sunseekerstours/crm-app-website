@@ -13,6 +13,7 @@ const NAV = [
   { href: '/crm/destinations', label: 'Destinations', permission: 'destinations.view' },
   { href: '/crm/products', label: 'Products & Services', permission: 'products.view' },
   { href: '/content/pages', label: 'Site Pages', permission: 'pages.view' },
+  { href: '/settings/stages', label: 'Sales Stages Setup', permission: 'settings.view' },
   { href: '/settings/automations', label: 'Sales Automations', permission: 'settings.view' },
   { href: '/settings', label: 'Site Settings', permission: 'settings.view' },
   { href: '/users', label: 'Users & Roles', permission: 'users.view' },
@@ -24,7 +25,7 @@ const CRM_NAV = [
   { href: '/crm/customers', label: 'Customers', permission: 'customers.view' },
   { href: '/crm/campaigns', label: 'Bulk Email & SMS', permission: '' },
   { href: '/crm/leads', label: 'Leads', permission: 'leads.view' },
-  { href: '/crm/deals', label: 'Deals', permission: 'deals.view' },
+  { href: '/crm/deals', label: 'Sales Stages (Deals)', permission: 'deals.view' },
   { href: '/crm/bookings', label: 'Bookings', permission: 'bookings.view' },
   { href: '/crm/fleet', label: 'Fleet Management', permission: '' },
   { href: '/crm/invoices', label: 'Invoices & Quotes', permission: 'invoices.view' },
@@ -136,7 +137,14 @@ function getIcon(label: string) {
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM4 19.235v-.11a6.375 6.375 0 0112.75 0v.109A12.318 12.318 0 0110.374 21c-2.231 0-4.334-.6-6.124-1.656z" />
         </svg>
       );
+    case 'Sales Stages Setup':
+      return (
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 3m8.5-3l1 3m0 0l.5 1.5m-.5-1.5h-9.5m0 0l-.5 1.5M9 11.25v1.5M12 9v3.75m3-6v6" />
+        </svg>
+      );
     case 'Deals':
+    case 'Sales Stages (Deals)':
       return (
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-1.958-.59a2.502 2.502 0 010-3.953c1.047-.78 2.868-.78 3.916 0L15 8.25M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
