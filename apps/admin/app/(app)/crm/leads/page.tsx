@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { api, Paginated } from '@/lib/api';
-import { exportToCSV } from '@/lib/export';
+import { exportToCSV, exportAllFromApi } from '@/lib/export';
 import {
   Badge,
   Button,
@@ -70,6 +70,7 @@ export default function CrmLeadsPage() {
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<LeadItem | null>(null);
   const [form, setForm] = useState(initialForm);
+  const [isExportingAll, setIsExportingAll] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -180,25 +181,33 @@ export default function CrmLeadsPage() {
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <Button
               variant="secondary"
-              onClick={() => {
-                if (!data?.items || data.items.length === 0) {
-                  alert('No leads to export.');
-                  return;
-                }
-                exportToCSV(data.items, 'sunseekers_leads', [
-                  { key: 'firstName', label: 'First Name' },
-                  { key: 'lastName', label: 'Last Name' },
-                  { key: 'email', label: 'Email' },
-                  { key: 'phone', label: 'Phone' },
-                  { key: 'stage', label: 'Stage' },
-                  { key: 'source', label: 'Source' },
-                  { key: 'destination', label: 'Destination' },
-                  { key: 'interestedTour', label: 'Interested Tour' },
-                  { key: 'tags', label: 'Tags', format: (l) => (l.tags || []).join('; ') },
-                ]);
+              disabled={isExportingAll}
+              onClick={async () => {
+                setIsExportingAll(true);
+                const extra: Record<string, string> = {};
+                if (search.trim()) extra.search = search.trim();
+                if (selectedTag) extra.tag = selectedTag;
+                if (selectedStage) extra.stage = selectedStage;
+                await exportAllFromApi(
+                  '/leads',
+                  'sunseekers_all_leads',
+                  [
+                    { key: 'firstName', label: 'First Name' },
+                    { key: 'lastName', label: 'Last Name' },
+                    { key: 'email', label: 'Email' },
+                    { key: 'phone', label: 'Phone' },
+                    { key: 'stage', label: 'Stage' },
+                    { key: 'source', label: 'Source' },
+                    { key: 'destination', label: 'Destination' },
+                    { key: 'interestedTour', label: 'Interested Tour' },
+                    { key: 'tags', label: 'Tags', format: (l) => (l.tags || []).join('; ') },
+                  ],
+                  extra
+                );
+                setIsExportingAll(false);
               }}
             >
-              📥 Export CSV
+              {isExportingAll ? '⏳ Exporting All Leads…' : '📥 Export All CSV'}
             </Button>
             {editing ? (
               <Button variant="secondary" onClick={reset}>

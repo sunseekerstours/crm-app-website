@@ -1,12 +1,75 @@
-/**
- * Universal Data Export Utility for Sunseekers CRM Super Admin
- * Exports arrays of objects to CSV or JSON with Excel UTF-8 BOM support.
- */
+import { api } from './api';
 
 export interface ExportColumn<T = any> {
   key: string;
   label: string;
   format?: (row: T) => any;
+}
+
+/**
+ * Automatically fetch ALL pages of data from a given API endpoint
+ * so exports contain 100% of the database records, not just a paginated slice.
+ */
+export async function fetchAllFromApi<T = any>(
+  endpoint: string,
+  extraParams: Record<string, string> = {}
+): Promise<T[]> {
+  const allItems: T[] = [];
+  let currentPage = 1;
+  const pageSize = 500;
+  let totalPages = 1;
+
+  while (currentPage <= totalPages) {
+    const sep = endpoint.includes('?') ? '&' : '?';
+    const params = new URLSearchParams({
+      limit: String(pageSize),
+      page: String(currentPage),
+      ...extraParams,
+    });
+    const url = `${endpoint}${sep}${params.toString()}`;
+    const res = await api.get<any>(url);
+
+    if (Array.isArray(res)) {
+      allItems.push(...res);
+      break;
+    } else if (res && Array.isArray(res.items)) {
+      allItems.push(...res.items);
+      totalPages = typeof res.totalPages === 'number' ? res.totalPages : 1;
+      if (res.items.length === 0 || currentPage >= totalPages) break;
+    } else {
+      break;
+    }
+    currentPage++;
+    if (currentPage > 50) break; // safety guard for max 25,000 records
+  }
+
+  return allItems;
+}
+
+/**
+ * Fetch all data from an API endpoint and trigger a CSV download containing 100% of records
+ */
+export async function exportAllFromApi<T extends Record<string, any>>(
+  endpoint: string,
+  filename: string,
+  columns?: ExportColumn<T>[],
+  extraParams: Record<string, string> = {}
+): Promise<void> {
+  try {
+    const allData = await fetchAllFromApi<T>(endpoint, extraParams);
+    if (!allData || allData.length === 0) {
+      if (typeof window !== 'undefined') {
+        window.alert('No records available to export.');
+      }
+      return;
+    }
+    exportToCSV(allData, filename, columns);
+  } catch (err) {
+    console.error('Export all failed:', err);
+    if (typeof window !== 'undefined') {
+      window.alert('Export failed: ' + (err instanceof Error ? err.message : String(err)));
+    }
+  }
 }
 
 function escapeCSV(val: any): string {

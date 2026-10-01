@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { api, type Paginated } from '@/lib/api';
-import { exportToCSV } from '@/lib/export';
+import { exportToCSV, exportAllFromApi } from '@/lib/export';
 import { PageHeader, Spinner, ErrorState, Button } from '@/components/ui';
 
 interface Vehicle {
@@ -193,6 +193,7 @@ export default function FleetPage() {
 
   // ── Vehicle Modal state ────────────────────────────────────
   const [showVehicleModal, setShowVehicleModal] = useState(false);
+  const [editingVehicleId, setEditingVehicleId] = useState<string | null>(null);
   const [submittingVehicle, setSubmittingVehicle] = useState(false);
   const [vehicleFormError, setVehicleFormError] = useState<string | null>(null);
   const blankVehicle = {
@@ -205,8 +206,30 @@ export default function FleetPage() {
   };
   const [vehicleForm, setVehicleForm] = useState(blankVehicle);
 
+  function openNewVehicle() {
+    setEditingVehicleId(null);
+    setVehicleForm(blankVehicle);
+    setVehicleFormError(null);
+    setShowVehicleModal(true);
+  }
+
+  function openEditVehicle(v: Vehicle) {
+    setEditingVehicleId(v.id);
+    setVehicleForm({
+      name: v.name || '',
+      registrationNo: v.registrationNo || '',
+      type: v.type || 'BUS',
+      capacity: v.capacity != null ? String(v.capacity) : '30',
+      driverId: v.driverId || '',
+      notes: v.notes || '',
+    });
+    setVehicleFormError(null);
+    setShowVehicleModal(true);
+  }
+
   // ── Driver Modal state ─────────────────────────────────────
   const [showDriverModal, setShowDriverModal] = useState(false);
+  const [editingDriverId, setEditingDriverId] = useState<string | null>(null);
   const [submittingDriver, setSubmittingDriver] = useState(false);
   const [driverFormError, setDriverFormError] = useState<string | null>(null);
   const blankDriver = {
@@ -217,6 +240,29 @@ export default function FleetPage() {
     licenseNumber: '',
   };
   const [driverForm, setDriverForm] = useState(blankDriver);
+
+  function openNewDriver() {
+    setEditingDriverId(null);
+    setDriverForm(blankDriver);
+    setDriverFormError(null);
+    setShowDriverModal(true);
+  }
+
+  function openEditDriver(d: Driver) {
+    setEditingDriverId(d.id);
+    setDriverForm({
+      firstName: d.firstName || '',
+      lastName: d.lastName || '',
+      phone: d.phone || '',
+      email: d.email || '',
+      licenseNumber: d.licenseNumber || '',
+    });
+    setDriverFormError(null);
+    setShowDriverModal(true);
+  }
+
+  // ── Export all loading state ────────────────────────────────
+  const [isExportingAll, setIsExportingAll] = useState(false);
 
   // ── Load data ──────────────────────────────────────────────
   const loadVehicles = useCallback(() => {
@@ -582,7 +628,7 @@ export default function FleetPage() {
 
     setSubmittingVehicle(true);
     try {
-      await api.post('/vehicles', {
+      const payload = {
         name: vehicleForm.name.trim(),
         registrationNo: vehicleForm.registrationNo.trim() || undefined,
         type: vehicleForm.type,
@@ -590,13 +636,20 @@ export default function FleetPage() {
         driverId: vehicleForm.driverId || undefined,
         notes: vehicleForm.notes.trim() || undefined,
         isActive: true,
-      });
+      };
+
+      if (editingVehicleId) {
+        await api.patch(`/vehicles/${editingVehicleId}`, payload);
+      } else {
+        await api.post('/vehicles', payload);
+      }
       setShowVehicleModal(false);
       setVehicleForm(blankVehicle);
+      setEditingVehicleId(null);
       loadVehicles();
       loadSummary();
     } catch (err: unknown) {
-      setVehicleFormError(err instanceof Error ? err.message : 'Failed to create vehicle');
+      setVehicleFormError(err instanceof Error ? err.message : 'Failed to save vehicle');
     } finally {
       setSubmittingVehicle(false);
     }
@@ -625,20 +678,27 @@ export default function FleetPage() {
 
     setSubmittingDriver(true);
     try {
-      await api.post('/drivers', {
+      const payload = {
         firstName: driverForm.firstName.trim(),
         lastName: driverForm.lastName.trim(),
         phone: driverForm.phone.trim() || undefined,
         email: driverForm.email.trim() || undefined,
         licenseNumber: driverForm.licenseNumber.trim() || undefined,
         isActive: true,
-      });
+      };
+
+      if (editingDriverId) {
+        await api.patch(`/drivers/${editingDriverId}`, payload);
+      } else {
+        await api.post('/drivers', payload);
+      }
       setShowDriverModal(false);
       setDriverForm(blankDriver);
+      setEditingDriverId(null);
       loadDrivers();
       loadSummary();
     } catch (err: unknown) {
-      setDriverFormError(err instanceof Error ? err.message : 'Failed to create driver');
+      setDriverFormError(err instanceof Error ? err.message : 'Failed to save driver');
     } finally {
       setSubmittingDriver(false);
     }
@@ -677,9 +737,11 @@ export default function FleetPage() {
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <Button
             variant="secondary"
-            onClick={() => {
+            disabled={isExportingAll}
+            onClick={async () => {
+              setIsExportingAll(true);
               if (activeTab === 'vehicles') {
-                exportToCSV(vehicles, 'sunseekers_fleet_vehicles', [
+                await exportAllFromApi('/vehicles', 'sunseekers_all_fleet_vehicles', [
                   { key: 'name', label: 'Vehicle Name' },
                   { key: 'registrationNo', label: 'Registration No' },
                   { key: 'type', label: 'Type' },
@@ -689,7 +751,7 @@ export default function FleetPage() {
                   { key: 'isActive', label: 'Active Status' },
                 ]);
               } else if (activeTab === 'drivers') {
-                exportToCSV(drivers, 'sunseekers_fleet_drivers', [
+                await exportAllFromApi('/drivers', 'sunseekers_all_fleet_drivers', [
                   { key: 'firstName', label: 'First Name' },
                   { key: 'lastName', label: 'Last Name' },
                   { key: 'phone', label: 'Phone Number' },
@@ -698,7 +760,7 @@ export default function FleetPage() {
                   { key: 'isActive', label: 'Active Status' },
                 ]);
               } else {
-                exportToCSV(bookings, 'sunseekers_fleet_bookings', [
+                await exportAllFromApi('/fleet', 'sunseekers_all_fleet_bookings', [
                   { key: 'company', label: 'Client / Company' },
                   { key: 'destination', label: 'Trip Destination' },
                   { key: 'startDate', label: 'Start Date' },
@@ -714,20 +776,21 @@ export default function FleetPage() {
                   { key: 'quoteNumber', label: 'Quote No' },
                 ]);
               }
+              setIsExportingAll(false);
             }}
           >
-            📥 Export CSV
+            {isExportingAll ? '⏳ Exporting All…' : '📥 Export All CSV'}
           </Button>
           {activeTab === 'scheduler' && (
             <Button onClick={() => openNewBooking()}>+ New Bus Booking</Button>
           )}
           {activeTab === 'vehicles' && (
-            <Button onClick={() => { setVehicleForm(blankVehicle); setVehicleFormError(null); setShowVehicleModal(true); }}>
+            <Button onClick={openNewVehicle}>
               + Add Vehicle
             </Button>
           )}
           {activeTab === 'drivers' && (
-            <Button onClick={() => { setDriverForm(blankDriver); setDriverFormError(null); setShowDriverModal(true); }}>
+            <Button onClick={openNewDriver}>
               + Add Driver
             </Button>
           )}
@@ -923,28 +986,50 @@ export default function FleetPage() {
 
             {/* Quick search input */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <input
-                type="text"
-                placeholder="Filter bus, company, destination..."
-                value={searchFilter}
-                onChange={e => setSearchFilter(e.target.value)}
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <span style={{ position: 'absolute', left: 10, fontSize: 13, color: '#94a3b8' }}>🔍</span>
+                <input
+                  type="text"
+                  placeholder="Filter bus, company, destination..."
+                  value={searchFilter}
+                  onChange={e => setSearchFilter(e.target.value)}
+                  style={{
+                    background: '#0f172a',
+                    border: '1px solid rgba(255,255,255,0.18)',
+                    borderRadius: 6,
+                    padding: '7px 12px 7px 32px',
+                    color: '#fff',
+                    fontSize: 13,
+                    outline: 'none',
+                    width: 260
+                  }}
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => {}}
                 style={{
-                  background: '#0f172a',
-                  border: '1px solid rgba(255,255,255,0.12)',
-                  borderRadius: 6,
-                  padding: '6px 12px',
+                  background: '#2563eb',
+                  border: 'none',
                   color: '#fff',
+                  padding: '7px 14px',
+                  borderRadius: 6,
+                  cursor: 'pointer',
                   fontSize: 13,
-                  outline: 'none',
-                  width: 260
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6
                 }}
-              />
+              >
+                <span>🔍</span> Search
+              </button>
               {searchFilter && (
                 <button
                   onClick={() => setSearchFilter('')}
-                  style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 12 }}
+                  style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)', color: '#cbd5e1', padding: '6px 12px', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
                 >
-                  Clear
+                  ✕ Clear
                 </button>
               )}
             </div>
@@ -1266,21 +1351,38 @@ export default function FleetPage() {
                         </span>
                       </td>
                       <td style={{ ...tdStyle, textAlign: 'right' }}>
-                        <button
-                          onClick={() => handleDeleteVehicle(v.id, v.name)}
-                          style={{
-                            background: 'rgba(239, 68, 68, 0.12)',
-                            color: '#f87171',
-                            border: '1px solid rgba(239, 68, 68, 0.25)',
-                            padding: '5px 10px',
-                            borderRadius: 6,
-                            cursor: 'pointer',
-                            fontSize: 12,
-                            fontWeight: 600
-                          }}
-                        >
-                          Remove
-                        </button>
+                        <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                          <button
+                            onClick={() => openEditVehicle(v)}
+                            style={{
+                              background: 'rgba(59, 130, 246, 0.15)',
+                              color: '#60a5fa',
+                              border: '1px solid rgba(59, 130, 246, 0.3)',
+                              padding: '5px 10px',
+                              borderRadius: 6,
+                              cursor: 'pointer',
+                              fontSize: 12,
+                              fontWeight: 600
+                            }}
+                          >
+                            ✏️ Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteVehicle(v.id, v.name)}
+                            style={{
+                              background: 'rgba(239, 68, 68, 0.12)',
+                              color: '#f87171',
+                              border: '1px solid rgba(239, 68, 68, 0.25)',
+                              padding: '5px 10px',
+                              borderRadius: 6,
+                              cursor: 'pointer',
+                              fontSize: 12,
+                              fontWeight: 600
+                            }}
+                          >
+                            Remove
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -1359,21 +1461,38 @@ export default function FleetPage() {
                         </span>
                       </td>
                       <td style={{ ...tdStyle, textAlign: 'right' }}>
-                        <button
-                          onClick={() => handleDeleteDriver(d.id, `${d.firstName} ${d.lastName}`)}
-                          style={{
-                            background: 'rgba(239, 68, 68, 0.12)',
-                            color: '#f87171',
-                            border: '1px solid rgba(239, 68, 68, 0.25)',
-                            padding: '5px 10px',
-                            borderRadius: 6,
-                            cursor: 'pointer',
-                            fontSize: 12,
-                            fontWeight: 600
-                          }}
-                        >
-                          Remove
-                        </button>
+                        <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                          <button
+                            onClick={() => openEditDriver(d)}
+                            style={{
+                              background: 'rgba(59, 130, 246, 0.15)',
+                              color: '#60a5fa',
+                              border: '1px solid rgba(59, 130, 246, 0.3)',
+                              padding: '5px 10px',
+                              borderRadius: 6,
+                              cursor: 'pointer',
+                              fontSize: 12,
+                              fontWeight: 600
+                            }}
+                          >
+                            ✏️ Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteDriver(d.id, `${d.firstName} ${d.lastName}`)}
+                            style={{
+                              background: 'rgba(239, 68, 68, 0.12)',
+                              color: '#f87171',
+                              border: '1px solid rgba(239, 68, 68, 0.25)',
+                              padding: '5px 10px',
+                              borderRadius: 6,
+                              cursor: 'pointer',
+                              fontSize: 12,
+                              fontWeight: 600
+                            }}
+                          >
+                            Remove
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -1924,7 +2043,7 @@ export default function FleetPage() {
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
               <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#f8fafc' }}>
-                Add New Vehicle / Bus
+                {editingVehicleId ? 'Edit Vehicle / Bus' : 'Add New Vehicle / Bus'}
               </h2>
               <button
                 onClick={() => setShowVehicleModal(false)}
@@ -2044,7 +2163,7 @@ export default function FleetPage() {
                   Cancel
                 </button>
                 <Button type="submit" disabled={submittingVehicle}>
-                  {submittingVehicle ? 'Adding…' : 'Add Vehicle'}
+                  {submittingVehicle ? 'Saving…' : editingVehicleId ? 'Update Vehicle' : 'Add Vehicle'}
                 </Button>
               </div>
             </form>
@@ -2078,7 +2197,7 @@ export default function FleetPage() {
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
               <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#f8fafc' }}>
-                Add New Driver
+                {editingDriverId ? 'Edit Driver' : 'Add New Driver'}
               </h2>
               <button
                 onClick={() => setShowDriverModal(false)}
@@ -2174,7 +2293,7 @@ export default function FleetPage() {
                   Cancel
                 </button>
                 <Button type="submit" disabled={submittingDriver}>
-                  {submittingDriver ? 'Adding…' : 'Add Driver'}
+                  {submittingDriver ? 'Saving…' : editingDriverId ? 'Update Driver' : 'Add Driver'}
                 </Button>
               </div>
             </form>

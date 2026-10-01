@@ -56,7 +56,7 @@ a:hover {
   position: relative;
 }
 
-/* Sidebar */
+/* Sidebar - Fixed and Stagnant */
 .sidebar {
   width: var(--sidebar-width);
   background: linear-gradient(180deg, #0b251e 0%, #051310 100%);
@@ -65,13 +65,14 @@ a:hover {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  transition: var(--transition);
+  transition: width var(--transition), transform var(--transition);
   flex-shrink: 0;
   z-index: 100;
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  bottom: 0;
   height: 100vh;
-  align-self: flex-start;
   box-shadow: 4px 0 25px rgba(0, 0, 0, 0.15);
   overflow: hidden;
 }
@@ -349,6 +350,13 @@ a:hover {
   flex-direction: column;
   min-width: 0;
   min-height: 100vh;
+  margin-left: var(--sidebar-width);
+  transition: margin-left var(--transition);
+}
+
+.shell:has(.sidebar.collapsed) .content-wrapper,
+.sidebar.collapsed ~ .content-wrapper {
+  margin-left: var(--sidebar-collapsed-width);
 }
 
 /* Header Navbar */
@@ -1334,6 +1342,7 @@ select.input {
   
   .content-wrapper {
     width: 100%;
+    margin-left: 0 !important;
     overflow-x: hidden;
   }
 

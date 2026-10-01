@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api, Paginated } from '@/lib/api';
-import { exportToCSV } from '@/lib/export';
+import { exportToCSV, exportAllFromApi } from '@/lib/export';
 import {
   Badge,
   Button,
@@ -61,6 +61,8 @@ const initialForm = {
 export default function CrmBookingsPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [isExportingAll, setIsExportingAll] = useState(false);
   const [data, setData] = useState<Paginated<BookingItem> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<BookingItem | null>(null);
@@ -87,13 +89,14 @@ export default function CrmBookingsPage() {
     setError(null);
     try {
       const q = new URLSearchParams({ limit: '50', page: String(page) });
-      if (search) q.set('search', search);
+      if (search.trim()) q.set('search', search.trim());
+      if (statusFilter) q.set('status', statusFilter);
       const res = await api.get<Paginated<BookingItem>>(`/bookings?${q.toString()}`);
       setData(res);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load bookings');
     }
-  }, [page, search]);
+  }, [page, search, statusFilter]);
 
   const loadLookups = useCallback(async () => {
     try {
@@ -286,24 +289,31 @@ export default function CrmBookingsPage() {
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <Button
               variant="secondary"
-              onClick={() => {
-                if (!data?.items || data.items.length === 0) {
-                  alert('No bookings to export.');
-                  return;
-                }
-                exportToCSV(data.items, 'sunseekers_tour_bookings', [
-                  { key: 'bookingNumber', label: 'Booking No' },
-                  { key: 'customer', label: 'Customer', format: (b) => b.customer ? `${b.customer.firstName ?? ''} ${b.customer.lastName ?? ''}`.trim() : '' },
-                  { key: 'tourName', label: 'Tour / Trip Name' },
-                  { key: 'paxCount', label: 'Pax Count' },
-                  { key: 'totalPrice', label: 'Total Price' },
-                  { key: 'currency', label: 'Currency' },
-                  { key: 'status', label: 'Status' },
-                  { key: 'bookedAt', label: 'Booking Date' },
-                ]);
+              disabled={isExportingAll}
+              onClick={async () => {
+                setIsExportingAll(true);
+                const extra: Record<string, string> = {};
+                if (search.trim()) extra.search = search.trim();
+                if (statusFilter) extra.status = statusFilter;
+                await exportAllFromApi(
+                  '/bookings',
+                  'sunseekers_all_tour_bookings',
+                  [
+                    { key: 'bookingNumber', label: 'Booking No' },
+                    { key: 'customer', label: 'Customer', format: (b) => b.customer ? `${b.customer.firstName ?? ''} ${b.customer.lastName ?? ''}`.trim() : '' },
+                    { key: 'tourName', label: 'Tour / Trip Name' },
+                    { key: 'paxCount', label: 'Pax Count' },
+                    { key: 'totalPrice', label: 'Total Price' },
+                    { key: 'currency', label: 'Currency' },
+                    { key: 'status', label: 'Status' },
+                    { key: 'bookedAt', label: 'Booking Date' },
+                  ],
+                  extra
+                );
+                setIsExportingAll(false);
               }}
             >
-              📥 Export CSV
+              {isExportingAll ? '⏳ Exporting All Bookings…' : '📥 Export All CSV'}
             </Button>
             {editing ? (
               <Button variant="secondary" onClick={reset}>
@@ -416,22 +426,75 @@ export default function CrmBookingsPage() {
         <Card
           title="All Customer Bookings"
           action={
-            <input
-              type="search"
-              placeholder="Search bookings..."
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-              style={{
-                padding: '6px 12px',
-                borderRadius: '6px',
-                border: '1px solid #cbd5e1',
-                fontSize: '13px',
-                outline: 'none',
-              }}
-            />
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <span style={{ position: 'absolute', left: 10, fontSize: 13, color: '#64748b' }}>🔍</span>
+                <input
+                  type="search"
+                  placeholder="Search customer, booking #, tour..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      setPage(1);
+                      void load();
+                    }
+                  }}
+                  style={{
+                    padding: '8px 12px 8px 30px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '13px',
+                    outline: 'none',
+                    minWidth: '240px',
+                  }}
+                />
+              </div>
+              <select
+                value={statusFilter}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value);
+                  setPage(1);
+                }}
+                style={{
+                  padding: '8px 12px',
+                  borderRadius: '8px',
+                  border: '1px solid #cbd5e1',
+                  fontSize: '13px',
+                  background: '#fff',
+                  color: '#334155',
+                  fontWeight: 600,
+                  outline: 'none',
+                }}
+              >
+                <option value="">All Statuses</option>
+                {STATUSES.map((st) => (
+                  <option key={st} value={st}>{st}</option>
+                ))}
+              </select>
+              <Button
+                variant="primary"
+                onClick={() => {
+                  setPage(1);
+                  void load();
+                }}
+                style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+              >
+                <span>🔍</span> Search
+              </Button>
+              {(search || statusFilter) && (
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setSearch('');
+                    setStatusFilter('');
+                    setPage(1);
+                  }}
+                >
+                  ✕ Clear
+                </Button>
+              )}
+            </div>
           }
         >
           <Table<BookingItem>

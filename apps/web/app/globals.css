@@ -43,11 +43,13 @@ a {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  bottom: 0;
   height: 100vh;
   overflow-y: auto;
-  align-self: flex-start;
+  z-index: 100;
 }
 
 .sidebar .brand {
@@ -86,6 +88,7 @@ a {
   flex: 1;
   padding: 28px 32px;
   min-width: 0;
+  margin-left: 230px;
 }
 
 /* Page header */
@@ -418,5 +421,20 @@ a {
 
 .table tbody tr:last-child td {
   border-bottom: none;
+}
+
+@media (max-width: 768px) {
+  .shell {
+    flex-direction: column;
+  }
+  .sidebar {
+    position: relative;
+    width: 100%;
+    height: auto;
+  }
+  .main {
+    margin-left: 0;
+    padding: 16px;
+  }
 }
 

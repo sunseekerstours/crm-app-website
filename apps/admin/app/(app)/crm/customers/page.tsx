@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api, Paginated } from '@/lib/api';
-import { exportToCSV } from '@/lib/export';
+import { exportToCSV, exportAllFromApi } from '@/lib/export';
 import {
   Badge,
   Button,
@@ -97,6 +97,7 @@ export default function CrmCustomersPage() {
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<CustomerItem | null>(null);
   const [form, setForm] = useState(initialForm);
+  const [exportingAll, setExportingAll] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
@@ -305,24 +306,31 @@ export default function CrmCustomersPage() {
             </Link>
             <Button
               variant="secondary"
-              onClick={() => {
-                if (!data?.items || data.items.length === 0) {
-                  alert('No customers to export');
-                  return;
-                }
-                exportToCSV(data.items, `sunseekers_customers${selectedTag ? `_${selectedTag}` : ''}`, [
-                  { key: 'firstName', label: 'First Name / Company' },
-                  { key: 'lastName', label: 'Last Name' },
-                  { key: 'email', label: 'Email Address', format: (c) => c.email || '' },
-                  { key: 'phone', label: 'Phone Number', format: (c) => c.phone || '0200000000' },
-                  { key: 'tags', label: 'Tags', format: (c) => (c.tags || []).join('; ') },
-                  { key: 'status', label: 'Status' },
-                  { key: 'country', label: 'Country' },
-                  { key: 'company', label: 'Company Organization', format: (c) => c.company?.name || '' },
-                ]);
+              disabled={exportingAll}
+              onClick={async () => {
+                setExportingAll(true);
+                const extra: Record<string, string> = {};
+                if (selectedTag) extra.tag = selectedTag;
+                if (search.trim()) extra.search = search.trim();
+                await exportAllFromApi(
+                  '/customers',
+                  `sunseekers_all_customers${selectedTag ? `_${selectedTag}` : ''}`,
+                  [
+                    { key: 'firstName', label: 'First Name / Company' },
+                    { key: 'lastName', label: 'Last Name' },
+                    { key: 'email', label: 'Email Address', format: (c) => c.email || '' },
+                    { key: 'phone', label: 'Phone Number', format: (c) => c.phone || '0200000000' },
+                    { key: 'tags', label: 'Tags', format: (c) => (c.tags || []).join('; ') },
+                    { key: 'status', label: 'Status' },
+                    { key: 'country', label: 'Country' },
+                    { key: 'company', label: 'Company Organization', format: (c) => c.company?.name || '' },
+                  ],
+                  extra
+                );
+                setExportingAll(false);
               }}
             >
-              📥 Export CSV
+              {exportingAll ? '⏳ Exporting All Customers…' : '📥 Export All CSV'}
             </Button>
           </div>
         }

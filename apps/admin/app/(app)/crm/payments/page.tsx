@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api, Paginated } from '@/lib/api';
-import { exportToCSV } from '@/lib/export';
+import { exportToCSV, exportAllFromApi } from '@/lib/export';
 import {
   Badge,
   Button,
@@ -83,6 +83,7 @@ export default function CrmPaymentsPage() {
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<PaymentItem | null>(null);
   const [form, setForm] = useState(initialForm);
+  const [isExportingAll, setIsExportingAll] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [customers, setCustomers] = useState<CustomerOption[]>([]);
@@ -207,25 +208,31 @@ export default function CrmPaymentsPage() {
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <Button
               variant="secondary"
-              onClick={() => {
-                if (!data?.items || data.items.length === 0) {
-                  alert('No payment records to export.');
-                  return;
-                }
-                exportToCSV(data.items, 'sunseekers_payments', [
-                  { key: 'paymentNumber', label: 'Payment No' },
-                  { key: 'receiptNumber', label: 'Receipt No' },
-                  { key: 'customer', label: 'Customer', format: (p) => p.customer ? `${p.customer.firstName ?? ''} ${p.customer.lastName ?? ''}`.trim() : '' },
-                  { key: 'amount', label: 'Amount' },
-                  { key: 'currency', label: 'Currency' },
-                  { key: 'method', label: 'Payment Method' },
-                  { key: 'status', label: 'Status' },
-                  { key: 'reference', label: 'Transaction Reference' },
-                  { key: 'paidAt', label: 'Date Paid' },
-                ]);
+              disabled={isExportingAll}
+              onClick={async () => {
+                setIsExportingAll(true);
+                const extra: Record<string, string> = {};
+                if (search.trim()) extra.search = search.trim();
+                await exportAllFromApi(
+                  '/payments',
+                  'sunseekers_all_payments',
+                  [
+                    { key: 'paymentNumber', label: 'Payment No' },
+                    { key: 'receiptNumber', label: 'Receipt No' },
+                    { key: 'customer', label: 'Customer', format: (p) => p.customer ? `${p.customer.firstName ?? ''} ${p.customer.lastName ?? ''}`.trim() : '' },
+                    { key: 'amount', label: 'Amount' },
+                    { key: 'currency', label: 'Currency' },
+                    { key: 'method', label: 'Payment Method' },
+                    { key: 'status', label: 'Status' },
+                    { key: 'reference', label: 'Transaction Reference' },
+                    { key: 'paidAt', label: 'Date Paid' },
+                  ],
+                  extra
+                );
+                setIsExportingAll(false);
               }}
             >
-              📥 Export CSV
+              {isExportingAll ? '⏳ Exporting All Payments…' : '📥 Export All CSV'}
             </Button>
             {editing ? (
               <Button variant="secondary" onClick={reset}>

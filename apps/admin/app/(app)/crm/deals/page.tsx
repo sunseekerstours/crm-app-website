@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api, Paginated } from '@/lib/api';
-import { exportToCSV } from '@/lib/export';
+import { exportToCSV, exportAllFromApi } from '@/lib/export';
 import {
   Badge,
   Button,
@@ -62,6 +62,7 @@ export default function CrmDealsPage() {
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<DealItem | null>(null);
   const [form, setForm] = useState(initialForm);
+  const [isExportingAll, setIsExportingAll] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [customers, setCustomers] = useState<CustomerOption[]>([]);
@@ -235,22 +236,28 @@ export default function CrmDealsPage() {
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <Button
               variant="secondary"
-              onClick={() => {
-                if (!data?.items || data.items.length === 0) {
-                  alert('No deals to export.');
-                  return;
-                }
-                exportToCSV(data.items, 'sunseekers_sales_deals', [
-                  { key: 'name', label: 'Deal Name' },
-                  { key: 'customer', label: 'Customer', format: (d) => d.customer ? `${d.customer.firstName ?? ''} ${d.customer.lastName ?? ''}`.trim() : '' },
-                  { key: 'stage', label: 'Stage' },
-                  { key: 'amount', label: 'Deal Amount' },
-                  { key: 'currency', label: 'Currency' },
-                  { key: 'expectedCloseDate', label: 'Expected Close Date' },
-                ]);
+              disabled={isExportingAll}
+              onClick={async () => {
+                setIsExportingAll(true);
+                const extra: Record<string, string> = {};
+                if (search.trim()) extra.search = search.trim();
+                await exportAllFromApi(
+                  '/deals',
+                  'sunseekers_all_sales_deals',
+                  [
+                    { key: 'name', label: 'Deal Name' },
+                    { key: 'customer', label: 'Customer', format: (d) => d.customer ? `${d.customer.firstName ?? ''} ${d.customer.lastName ?? ''}`.trim() : '' },
+                    { key: 'stage', label: 'Stage' },
+                    { key: 'amount', label: 'Deal Amount' },
+                    { key: 'currency', label: 'Currency' },
+                    { key: 'expectedCloseDate', label: 'Expected Close Date' },
+                  ],
+                  extra
+                );
+                setIsExportingAll(false);
               }}
             >
-              📥 Export CSV
+              {isExportingAll ? '⏳ Exporting All Deals…' : '📥 Export All CSV'}
             </Button>
             {editing ? (
               <Button variant="secondary" onClick={reset}>
