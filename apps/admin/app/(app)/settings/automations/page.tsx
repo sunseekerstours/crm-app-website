@@ -302,6 +302,8 @@ export default function AutomationsPage() {
 
   // Telegram test state
   const [testingTelegram, setTestingTelegram] = useState(false);
+  const [savingTelegram, setSavingTelegram] = useState(false);
+  const [showBotToken, setShowBotToken] = useState(false);
   const [telegramResult, setTelegramResult] = useState<{ success: boolean; text: string } | null>(null);
 
   // Manual sweep test state
@@ -390,23 +392,55 @@ export default function AutomationsPage() {
     }
   };
 
-  const handleTestTelegram = async () => {
-    setTestingTelegram(true);
-    setTelegramResult(null);
+  const handleSaveTelegram = async () => {
+    setSavingTelegram(true);
+    setNotice(null);
     try {
-      const botToken = values['telegram_bot_token'] || '';
-      const chatId = values['telegram_chat_id'] || '';
+      const botToken = (values['telegram_bot_token'] || '').trim();
+      const chatId = (values['telegram_chat_id'] || '').trim();
+      const enabled = values['telegram_enabled'] !== 'false';
 
-      const res = await api.post<{ success: boolean; botName?: string; error?: string }>('/telegram/test', {
+      await api.patch('/site-settings/telegram_bot_token', { value: botToken });
+      await api.patch('/site-settings/telegram_chat_id', { value: chatId });
+      await api.patch('/site-settings/telegram_enabled', { value: enabled ? 'true' : 'false' });
+
+      setNotice({ type: 'success', message: 'Telegram credentials saved successfully!' });
+    } catch (err: any) {
+      setNotice({ type: 'error', message: err?.message || 'Failed to save Telegram settings' });
+    } finally {
+      setSavingTelegram(false);
+    }
+  };
+
+  const handleTestTelegram = async () => {
+    setTelegramResult(null);
+    const botToken = (values['telegram_bot_token'] || '').trim();
+    const chatId = (values['telegram_chat_id'] || '').trim();
+
+    if (!botToken) {
+      setTelegramResult({
+        success: false,
+        text: 'Telegram Bot Token is empty. Click "👁️ Show Token" and paste your actual Bot Token from @BotFather.',
+      });
+      return;
+    }
+
+    setTestingTelegram(true);
+    try {
+      const res = await api.post<{ success: boolean; botName?: string; workingChatId?: string; error?: string }>('/telegram/test', {
         botToken,
         chatId,
       });
 
       if (res.success) {
+        if (res.workingChatId && res.workingChatId !== chatId) {
+          setValues((prev) => ({ ...prev, telegram_chat_id: res.workingChatId! }));
+        }
         setTelegramResult({
           success: true,
-          text: `Verified! Bot: ${res.botName || 'Connected'}. A test notification has been sent to Chat ID ${chatId || '(no chat specified)'}.`,
+          text: `Verified! Bot: ${res.botName || 'Connected'}. A live verification message has been sent to Chat ID ${res.workingChatId || chatId}. Credentials automatically saved!`,
         });
+        setNotice({ type: 'success', message: 'Telegram bot verified & saved successfully!' });
       } else {
         setTelegramResult({
           success: false,
@@ -766,11 +800,31 @@ export default function AutomationsPage() {
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '16px' }}>
           <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
-              Telegram Bot Token
-            </label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+              <label style={{ fontSize: '13px', fontWeight: 600, color: '#334155' }}>
+                Telegram Bot Token
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowBotToken(!showBotToken)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#0284c7',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  padding: 0,
+                }}
+              >
+                {showBotToken ? '🔒 Hide Token' : '👁️ Show Token'}
+              </button>
+            </div>
             <input
-              type="password"
+              id="telegram_bot_token"
+              name="telegram_bot_token"
+              autoComplete="new-password"
+              type={showBotToken ? 'text' : 'password'}
               placeholder="e.g. 7123456789:ABCdefGhIJKlmNoPQRstuvWXyz..."
               value={values['telegram_bot_token'] || ''}
               onChange={(e) => setValues({ ...values, telegram_bot_token: e.target.value })}
@@ -791,8 +845,11 @@ export default function AutomationsPage() {
               Telegram Group / Channel Chat ID
             </label>
             <input
+              id="telegram_chat_id"
+              name="telegram_chat_id"
+              autoComplete="off"
               type="text"
-              placeholder="e.g. -1001234567890 or @SunseekersSales"
+              placeholder="e.g. -1004372404185 or 1004372404185"
               value={values['telegram_chat_id'] || ''}
               onChange={(e) => setValues({ ...values, telegram_chat_id: e.target.value })}
               style={{
@@ -808,9 +865,28 @@ export default function AutomationsPage() {
           </div>
         </div>
 
-        <div style={{ marginTop: '18px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+        {/* Telegram Chat ID Guide */}
+        <div
+          style={{
+            marginTop: '12px',
+            background: '#f0f9ff',
+            border: '1px solid #bae6fd',
+            borderRadius: '8px',
+            padding: '10px 14px',
+            fontSize: '12px',
+            color: '#0369a1',
+            lineHeight: 1.5,
+          }}
+        >
+          💡 <strong>Setup Tip:</strong> Add your bot as an <strong>Administrator</strong> to your Telegram group or channel first! For supergroups and channels, the Chat ID usually begins with <code>-100</code> (e.g. <code>-1004372404185</code>). If you enter <code>1004372404185</code>, our system will automatically resolve and apply the negative prefix for you.
+        </div>
+
+        <div style={{ marginTop: '18px', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
           <Button variant="secondary" onClick={handleTestTelegram} disabled={testingTelegram}>
             {testingTelegram ? <Spinner size={14} /> : '📡 Test Telegram Bot Ping'}
+          </Button>
+          <Button variant="primary" onClick={handleSaveTelegram} disabled={savingTelegram}>
+            {savingTelegram ? <Spinner size={14} /> : '💾 Save Telegram Settings'}
           </Button>
           {telegramResult && (
             <span

@@ -54,6 +54,26 @@ export class TelegramService {
   }
 
   /**
+   * Generates candidate chat IDs (e.g. handling missing negative signs for groups/channels).
+   */
+  private getChatIdCandidates(rawChatId: string): string[] {
+    const trimmed = (rawChatId || '').trim();
+    if (!trimmed) return [];
+    const candidates: string[] = [trimmed];
+
+    // If it doesn't start with '-' or '@', try group/supergroup prefixes
+    if (!trimmed.startsWith('-') && !trimmed.startsWith('@')) {
+      if (trimmed.startsWith('100')) {
+        candidates.push(`-${trimmed}`);
+      } else {
+        candidates.push(`-${trimmed}`);
+        candidates.push(`-100${trimmed}`);
+      }
+    }
+    return Array.from(new Set(candidates));
+  }
+
+  /**
    * Sends an HTML-formatted message to the designated Telegram chat.
    */
   async sendAlert(htmlText: string, customChatId?: string): Promise<TelegramSendResult> {
@@ -65,39 +85,45 @@ export class TelegramService {
       return { success: false, error: 'Telegram not configured or disabled' };
     }
 
-    try {
-      const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chat_id: targetChatId,
-          text: htmlText,
-          parse_mode: 'HTML',
-          disable_web_page_preview: true,
-        }),
-      });
+    const candidates = this.getChatIdCandidates(targetChatId);
+    let lastError = '';
 
-      const data = await res.json();
-      if (!data.ok) {
-        this.logger.warn(`Telegram API error: ${data.description}`);
-        return { success: false, error: data.description };
+    for (const candidate of candidates) {
+      try {
+        const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: candidate,
+            text: htmlText,
+            parse_mode: 'HTML',
+            disable_web_page_preview: true,
+          }),
+        });
+
+        const data = await res.json();
+        if (data.ok) {
+          return { success: true, messageId: data.result?.message_id };
+        }
+        lastError = data.description || 'Unknown Telegram error';
+      } catch (err: any) {
+        lastError = err?.message;
       }
-
-      return { success: true, messageId: data.result?.message_id };
-    } catch (err: any) {
-      this.logger.error(`Failed to send Telegram alert: ${err?.message}`);
-      return { success: false, error: err?.message };
     }
+
+    this.logger.warn(`Telegram API error for chat ${targetChatId}: ${lastError}`);
+    return { success: false, error: lastError };
   }
 
   /**
-   * Tests Telegram bot connection by fetching bot information and optionally sending a test ping.
+   * Tests Telegram bot connection by fetching bot information and sending a test ping.
+   * Automatically persists valid credentials to SiteSetting upon successful ping.
    */
-  async testConnection(testToken?: string, testChatId?: string): Promise<{ success: boolean; botName?: string; error?: string }> {
+  async testConnection(testToken?: string, testChatId?: string): Promise<{ success: boolean; botName?: string; workingChatId?: string; error?: string }> {
     const config = await this.getConfig();
-    const token = testToken || config.botToken;
-    const chat = testChatId || config.chatId;
+    const token = (testToken || config.botToken || '').trim();
+    const chat = (testChatId || config.chatId || '').trim();
 
     if (!token) {
       return { success: false, error: 'Bot token is missing. Please provide a valid Telegram bot token.' };
@@ -112,26 +138,66 @@ export class TelegramService {
       }
 
       const botName = `@${meData.result?.username} (${meData.result?.first_name})`;
+      let workingChatId = chat;
 
       // 2. If chat ID is provided, send a verification ping
       if (chat) {
-        const pingMsg = `<b>☀️ Sunseekers Travel Platform</b>\n\n✅ <b>Telegram Bot Connected Successfully!</b>\n🤖 Bot: <code>${botName}</code>\n⏰ Time: ${new Date().toLocaleString()}\n\n<i>Automated sales alerts, new lead pings, and escalation notifications are now active.</i>`;
-        const sendRes = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            chat_id: chat,
-            text: pingMsg,
-            parse_mode: 'HTML',
-          }),
-        });
-        const sendData = await sendRes.json();
-        if (!sendData.ok) {
-          return { success: false, botName, error: `Bot verified, but could not send to Chat ID: ${sendData.description}` };
+        const candidates = this.getChatIdCandidates(chat);
+        let sent = false;
+        let lastError = '';
+
+        for (const candidate of candidates) {
+          const pingMsg = `<b>☀️ Sunseekers Travel Platform</b>\n\n✅ <b>Telegram Bot Connected Successfully!</b>\n🤖 Bot: <code>${botName}</code>\n💬 Chat ID: <code>${candidate}</code>\n⏰ Time: ${new Date().toLocaleString()}\n\n<i>Automated sales alerts, new lead pings, and escalation notifications are now active.</i>`;
+          const sendRes = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: candidate,
+              text: pingMsg,
+              parse_mode: 'HTML',
+            }),
+          });
+          const sendData = await sendRes.json();
+          if (sendData.ok) {
+            sent = true;
+            workingChatId = candidate;
+            break;
+          } else {
+            lastError = sendData.description || 'Unknown Telegram error';
+          }
+        }
+
+        if (!sent) {
+          return {
+            success: false,
+            botName,
+            error: `Bot verified (${botName}), but could not send to Chat ID "${chat}": ${lastError}. Make sure the bot has been added as an Administrator to your group/channel.`,
+          };
         }
       }
 
-      return { success: true, botName };
+      // Automatically persist valid credentials if provided
+      if (token) {
+        await this.prisma.siteSetting.upsert({
+          where: { key: 'telegram_bot_token' },
+          create: { key: 'telegram_bot_token', group: 'telegram', value: token, isPublic: false },
+          update: { value: token },
+        });
+        if (workingChatId) {
+          await this.prisma.siteSetting.upsert({
+            where: { key: 'telegram_chat_id' },
+            create: { key: 'telegram_chat_id', group: 'telegram', value: workingChatId, isPublic: false },
+            update: { value: workingChatId },
+          });
+        }
+        await this.prisma.siteSetting.upsert({
+          where: { key: 'telegram_enabled' },
+          create: { key: 'telegram_enabled', group: 'telegram', value: 'true', isPublic: false },
+          update: { value: 'true' },
+        });
+      }
+
+      return { success: true, botName, workingChatId };
     } catch (err: any) {
       return { success: false, error: err?.message };
     }

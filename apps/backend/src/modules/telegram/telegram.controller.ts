@@ -4,8 +4,15 @@ import { TelegramService } from './telegram.service';
 import { RequirePermissions } from '@app/common/decorators/permissions.decorator';
 import { Permission } from '@app/common/permissions';
 
+import { IsOptional, IsString } from 'class-validator';
+
 class TestTelegramDto {
+  @IsOptional()
+  @IsString()
   botToken?: string;
+
+  @IsOptional()
+  @IsString()
   chatId?: string;
 }
 

@@ -6,12 +6,16 @@ export function Button({
   type = 'button',
   disabled,
   onClick,
+  style,
+  className,
 }: {
   children: ReactNode;
   variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
   type?: 'button' | 'submit';
   disabled?: boolean;
   onClick?: () => void;
+  style?: React.CSSProperties;
+  className?: string;
 }) {
   const cls =
     variant === 'danger'
@@ -22,7 +26,13 @@ export function Button({
           ? 'btn-ghost'
           : 'btn-primary';
   return (
-    <button className={`btn ${cls}`} type={type} disabled={disabled} onClick={onClick}>
+    <button
+      className={`btn ${cls} ${className || ''}`.trim()}
+      type={type}
+      disabled={disabled}
+      onClick={onClick}
+      style={style}
+    >
       {children}
     </button>
   );

@@ -125,6 +125,8 @@ export class VehiclesService {
     const existing = await this.prisma.vehicle.findUnique({ where: { id } });
     if (!existing)
       throw new ApiNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, 'Vehicle not found');
+    // Cleanly delete any fleet bookings tied to this vehicle
+    await this.prisma.fleetBooking.deleteMany({ where: { vehicleId: id } });
     await this.prisma.vehicle.delete({ where: { id } });
     await this.audit.record({
       userId: ctx.userId,

@@ -123,6 +123,16 @@ export class DriversService {
   async remove(id: string, ctx: RequestContext) {
     const existing = await this.prisma.driver.findUnique({ where: { id } });
     if (!existing) throw new ApiNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, 'Driver not found');
+    // Unassign driver from any vehicles
+    await this.prisma.vehicle.updateMany({
+      where: { driverId: id },
+      data: { driverId: null },
+    });
+    // Unassign driver from any fleet bookings
+    await this.prisma.fleetBooking.updateMany({
+      where: { driverId: id },
+      data: { driverId: null },
+    });
     await this.prisma.driver.delete({ where: { id } });
     await this.audit.record({
       userId: ctx.userId,
