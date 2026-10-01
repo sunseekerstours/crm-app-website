@@ -29,7 +29,7 @@ export interface ProductItem {
   _count?: { customers?: number };
 }
 
-export const PRODUCT_CATEGORIES = [
+const PRODUCT_CATEGORIES = [
   { value: 'TOUR_INBOUND', label: 'Tours (Inbound)', icon: '🌍', color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' },
   { value: 'TOUR_OUTBOUND', label: 'Tours (Outbound)', icon: '✈️', color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe' },
   { value: 'FLEET', label: 'Fleet & Bus Rental', icon: '🚐', color: '#d97706', bg: '#fffbeb', border: '#fde68a' },
@@ -38,7 +38,7 @@ export const PRODUCT_CATEGORIES = [
   { value: 'OTHER', label: 'Other Packages & Services', icon: '📦', color: '#475569', bg: '#f8fafc', border: '#e2e8f0' },
 ];
 
-export function getCategoryMeta(cat?: string) {
+function getCategoryMeta(cat?: string) {
   if (!cat) return PRODUCT_CATEGORIES[5];
   // Handle aliases & legacy categories
   if (cat === 'GHANA_TOUR' || cat === 'TOUR_INBOUND' || cat === 'INBOUND') return PRODUCT_CATEGORIES[0];
