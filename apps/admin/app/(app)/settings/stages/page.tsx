@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { api } from '@/lib/api';
 import { Badge, Button, Card, PageHeader, Spinner } from '@/components/ui';
 
-export interface SalesStageItem {
+interface SalesStageItem {
   id: string;
   key: string;
   name: string;
@@ -14,7 +14,7 @@ export interface SalesStageItem {
   description?: string;
 }
 
-export const DEFAULT_STAGES: SalesStageItem[] = [
+const DEFAULT_STAGES: SalesStageItem[] = [
   { id: 'stage-1', key: 'NEW', name: 'Initial Inquiry', color: '#0284c7', order: 1, description: 'Fresh travel inquiry or tour request' },
   { id: 'stage-2', key: 'CONTACTED', name: 'Contacted & Discovery', color: '#8b5cf6', order: 2, description: 'Spoke with traveler, gathering preferences & dates' },
   { id: 'stage-3', key: 'QUALIFIED', name: 'Qualified & Itinerary', color: '#06b6d4', order: 3, description: 'Dates, passenger count, and route confirmed' },

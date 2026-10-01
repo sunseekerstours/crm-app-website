@@ -50,7 +50,7 @@ interface DealItem {
   recordedNotes?: RecordedNote[];
 }
 
-export interface SalesStageItem {
+interface SalesStageItem {
   id: string;
   key: string;
   name: string;
