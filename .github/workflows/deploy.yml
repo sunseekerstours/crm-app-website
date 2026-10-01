@@ -1,0 +1,19 @@
+name: Dokploy Auto Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Trigger Dokploy Deployment
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Webhook to Dokploy
+        run: |
+          curl -f -s -S -X POST \
+            -H "Content-Type: application/json" \
+            -H "x-github-event: push" \
+            -d '{"ref":"refs/heads/main"}' \
+            http://69.62.106.189:3000/api/deploy/compose/sst_deploy_9f2a74c18e3d489b9101d2
