@@ -352,6 +352,7 @@ a:hover {
   min-height: 100vh;
   margin-left: var(--sidebar-width);
   transition: margin-left var(--transition);
+  overflow-x: hidden;
 }
 
 .shell:has(.sidebar.collapsed) .content-wrapper,
@@ -473,10 +474,12 @@ a:hover {
 /* Main */
 .main {
   flex: 1;
-  padding: 32px;
+  padding: 28px 32px;
   max-width: 1400px;
   width: 100%;
   margin: 0 auto;
+  min-width: 0;
+  overflow-x: hidden;
 }
 
 /* Page Header */
@@ -710,7 +713,7 @@ select.input {
 /* Dashboard Statistics */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
   gap: 16px;
   margin-bottom: 28px;
 }
@@ -749,10 +752,11 @@ select.input {
 }
 
 .stat-value {
-  font-size: 32px;
+  font-size: 28px;
   font-weight: 800;
   color: var(--primary);
-  letter-spacing: -1px;
+  letter-spacing: -0.8px;
+  line-height: 1.1;
 }
 
 .stat-label {
@@ -1270,7 +1274,11 @@ select.input {
     padding: 0 20px;
   }
   .main {
-    padding: 24px 20px;
+    padding: 22px 20px;
+  }
+  .stats-grid {
+    grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
+    gap: 12px;
   }
 }
 
@@ -1388,15 +1396,13 @@ select.input {
   }
 }
 
+/* Small mobile ≤480px */
 @media (max-width: 480px) {
-  .stats-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .top-navbar {
-    padding: 0 12px;
-  }
+  .stats-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat-value  { font-size: 22px; }
+  .top-navbar  { padding: 0 12px; }
 }
+
 
 /* =========================================================================
    SUPER ADMIN TABLE STYLES & DATA READABILITY

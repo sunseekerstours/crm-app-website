@@ -178,8 +178,8 @@ export default function DashboardPage() {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-              gap: 16,
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gap: 14,
             }}
           >
             {/* KPI 1: Total Customer Base */}
@@ -303,7 +303,7 @@ export default function DashboardPage() {
           {/* ═══════════════════════════════════════════════════════ */}
           {/* SECTION 2: EXECUTIVE INSIGHT PANELS                     */}
           {/* ═══════════════════════════════════════════════════════ */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: 20 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 20 }}>
             {/* Panel A: Financial & Billing Performance */}
             <Card title="Financial Performance & Cash Collection">
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -409,7 +409,7 @@ export default function DashboardPage() {
           {/* ═══════════════════════════════════════════════════════ */}
           {/* SECTION 3: SALES PIPELINE & COMMERCIAL INTELLIGENCE     */}
           {/* ═══════════════════════════════════════════════════════ */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 20 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 20 }}>
             {/* Commercial Pipeline Funnel */}
             <Card title="Sales Pipeline &amp; Deal Conversion">
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>

@@ -304,29 +304,11 @@ export default function LeadsPage() {
             />
           </div>
 
-          {/* Product Selection with Category Tabs */}
-          <div
-            style={{
-              marginBottom: 18,
-              padding: '12px 14px',
-              background: '#f8fafc',
-              border: '1.5px solid #cbd5e1',
-              borderRadius: '10px',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexWrap: 'wrap', gap: 6 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: 16 }}>📦</span>
-                <span style={{ fontWeight: 700, fontSize: 13, color: '#0f172a' }}>
-                  Select Available Product / Package of Interest (Tours, Fleet, Hotels, Flights, Custom)
-                </span>
-              </div>
-              <span style={{ fontSize: 11, color: '#64748b' }}>
-                Selecting a product auto-sets destination, tags &amp; expected financials
-              </span>
-            </div>
+          {/* Product / Package of Interest */}
+          <div style={{ marginBottom: 18 }}>
             <ProductSearchPicker
-              placeholder="🔍 Search available products or click a category tab above..."
+              label="📦 Product / Package of Interest (Tours, Fleet, Hotels, Flights)"
+              placeholder="Select a product from the catalog..."
               selectedProductName={form.destination}
               onSelect={(prod) => {
                 if (prod) {
@@ -344,6 +326,8 @@ export default function LeadsPage() {
                       tagsInput: existingTags.join(', '),
                     };
                   });
+                } else {
+                  setForm((f) => ({ ...f, destination: '' }));
                 }
               }}
             />
@@ -443,7 +427,6 @@ export default function LeadsPage() {
         ) : (
           <>
             <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', width: '100%', borderRadius: 8 }}>
-              <div style={{ minWidth: 1100 }}>
                 <Table
                   columns={[
                     {
@@ -455,7 +438,7 @@ export default function LeadsPage() {
                         const initials = `${r.firstName?.[0] || ''}${r.lastName?.[0] || ''}`.toUpperCase() || '👤';
 
                         return (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, maxWidth: 200 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                             <div
                               style={{
                                 width: 34,
@@ -706,7 +689,6 @@ export default function LeadsPage() {
                   ]}
                   rows={data?.items ?? []}
                 />
-              </div>
             </div>
             <Pagination page={page} totalPages={data?.totalPages ?? 1} onChange={setPage} />
           </>
@@ -732,7 +714,7 @@ export default function LeadsPage() {
               background: '#ffffff',
               padding: '24px',
               borderRadius: '12px',
-              maxWidth: '520px',
+              maxWidth: '680px',
               width: '100%',
               maxHeight: '90vh',
               overflowY: 'auto',

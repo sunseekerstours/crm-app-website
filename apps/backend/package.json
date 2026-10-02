@@ -9,6 +9,7 @@
     "start": "prisma migrate deploy && ts-node --transpile-only -r tsconfig-paths/register scripts/seed.ts && ts-node --transpile-only -r tsconfig-paths/register scripts/seed-sample.ts && ts-node --transpile-only -r tsconfig-paths/register scripts/import-wordpress.ts && ts-node --transpile-only -r tsconfig-paths/register scripts/import-jetpack-contacts.ts && ts-node --transpile-only -r tsconfig-paths/register scripts/import-financials.ts && nest start",
     "import:jetpack": "ts-node --transpile-only -r tsconfig-paths/register scripts/import-jetpack-contacts.ts",
     "import:financials": "ts-node --transpile-only -r tsconfig-paths/register scripts/import-financials.ts",
+    "reclassify:jetpack": "ts-node --transpile-only -r tsconfig-paths/register scripts/reclassify-jetpack-leads.ts",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main.js",

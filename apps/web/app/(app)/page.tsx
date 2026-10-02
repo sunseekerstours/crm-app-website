@@ -171,9 +171,9 @@ export default function DashboardPage() {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-          gap: '16px',
-          marginBottom: '28px',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+          gap: '14px',
+          marginBottom: '24px',
         }}
       >
         {/* KPI 1: Customers */}
@@ -192,7 +192,7 @@ export default function DashboardPage() {
           <div style={{ fontSize: '12px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             Total Customers
           </div>
-          <div style={{ fontSize: '32px', fontWeight: 800, color: '#0f172a', marginTop: '6px' }}>
+          <div style={{ fontSize: '26px', fontWeight: 800, color: '#0f172a', marginTop: '6px', lineHeight: 1.1 }}>
             {customerTotal.toLocaleString()}
           </div>
           <div style={{ display: 'flex', gap: '8px', marginTop: '10px', fontSize: '12px' }}>
@@ -226,7 +226,7 @@ export default function DashboardPage() {
           <div style={{ fontSize: '12px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             Total Bookings
           </div>
-          <div style={{ fontSize: '32px', fontWeight: 800, color: '#0f172a', marginTop: '6px' }}>
+          <div style={{ fontSize: '26px', fontWeight: 800, color: '#0f172a', marginTop: '6px', lineHeight: 1.1 }}>
             {totalBookingsCombined.toLocaleString()}
           </div>
           <div style={{ display: 'flex', gap: '8px', marginTop: '10px', fontSize: '12px' }}>
@@ -260,7 +260,7 @@ export default function DashboardPage() {
           <div style={{ fontSize: '12px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             Fleet Utilization
           </div>
-          <div style={{ fontSize: '32px', fontWeight: 800, color: '#0f172a', marginTop: '6px' }}>
+          <div style={{ fontSize: '26px', fontWeight: 800, color: '#0f172a', marginTop: '6px', lineHeight: 1.1 }}>
             {fleetSummary?.utilizationRate ?? 88}%
           </div>
           <div style={{ display: 'flex', gap: '8px', marginTop: '10px', fontSize: '12px' }}>
@@ -294,7 +294,7 @@ export default function DashboardPage() {
           <div style={{ fontSize: '12px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
             Collection Completion
           </div>
-          <div style={{ fontSize: '32px', fontWeight: 800, color: '#0f172a', marginTop: '6px' }}>
+          <div style={{ fontSize: '26px', fontWeight: 800, color: '#0f172a', marginTop: '6px', lineHeight: 1.1 }}>
             {collectionRate}%
           </div>
           <div style={{ display: 'flex', gap: '8px', marginTop: '10px', fontSize: '12px' }}>
@@ -311,7 +311,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ── DETAILED OPERATIONS & ANALYTICS PANELS ──────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '20px', marginBottom: '28px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '18px', marginBottom: '22px' }}>
         {/* Panel 1: Fleet Mobility Operations */}
         <div
           style={{

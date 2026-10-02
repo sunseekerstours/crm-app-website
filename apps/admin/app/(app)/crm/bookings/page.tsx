@@ -428,29 +428,11 @@ export default function CrmBookingsPage() {
             </div>
 
             {/* Product / Service Selection */}
-            <div
-              style={{
-                gridColumn: '1 / -1',
-                padding: '12px 14px',
-                background: '#f8fafc',
-                border: '1.5px solid #cbd5e1',
-                borderRadius: '10px',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexWrap: 'wrap', gap: 6 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontSize: 16 }}>📦</span>
-                  <span style={{ fontWeight: 700, fontSize: 13, color: '#0f172a' }}>
-                    Select Available Product / Service (Tours, Fleet Rental, Hotel, Flight Bookings)
-                  </span>
-                </div>
-                <span style={{ fontSize: 11, color: '#64748b' }}>
-                  Auto-calculates total price (unit price × pax) into editable financials
-                </span>
-              </div>
+            <div style={{ gridColumn: '1 / -1', marginBottom: 6 }}>
               <ProductSearchPicker
+                label="📦 Product / Service (Tours, Fleet Rental, Hotel, Flight Bookings)"
                 selectedProductName={form.tourName}
-                placeholder="🔍 Select from product catalog or click a category tab above..."
+                placeholder="Select a product from the catalog..."
                 onSelect={(prod) => {
                   if (prod) {
                     const uPrice = prod.price != null ? Number(prod.price) : 0;
@@ -463,6 +445,8 @@ export default function CrmBookingsPage() {
                       totalPrice: calc,
                       currency: prod.currency || f.currency,
                     }));
+                  } else {
+                    setForm((f) => ({ ...f, tourName: '', unitPrice: 0 }));
                   }
                 }}
               />
@@ -1006,7 +990,7 @@ export default function CrmBookingsPage() {
               background: '#ffffff',
               padding: '24px',
               borderRadius: '12px',
-              maxWidth: '560px',
+              maxWidth: '680px',
               width: '100%',
               maxHeight: '90vh',
               overflowY: 'auto',
