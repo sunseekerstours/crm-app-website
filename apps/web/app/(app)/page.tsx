@@ -171,9 +171,10 @@ export default function DashboardPage() {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-          gap: '14px',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+          gap: '16px',
           marginBottom: '24px',
+          width: '100%',
         }}
       >
         {/* KPI 1: Customers */}
@@ -464,7 +465,7 @@ export default function DashboardPage() {
       </div>
 
       {/* ── CORPORATE CLIENT INTELLIGENCE & QUICK ACTIONS ───────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '20px', width: '100%' }}>
         {/* Corporate Accounts Breakdown */}
         <div
           style={{

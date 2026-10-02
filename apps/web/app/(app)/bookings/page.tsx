@@ -6,7 +6,8 @@ import { useList } from '@/lib/use-list';
 import { api } from '@/lib/api';
 import { CustomerSearchPicker, CustomerSummary } from '@/components/CustomerSearchPicker';
 import { CustomerDetailsModal } from '@/components/CustomerDetailsModal';
-import ProductSearchPicker, { ProductItem } from '@/components/ProductSearchPicker';
+import ProductPackageSelect, { ProductItem } from '@/components/ProductPackageSelect';
+import { useAuth } from '@/lib/auth';
 
 interface Booking {
   id: string;
@@ -32,6 +33,9 @@ const CURRENCIES = [
 const STATUSES = ['PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED'];
 
 export default function BookingsPage() {
+  const { user } = useAuth();
+  const isAdmin = Boolean(user?.roles?.some((r: string) => ['ADMIN', 'SUPER_ADMIN', 'MANAGER'].includes(r.toUpperCase())));
+
   const [page, setPage] = useState(1);
   const { data, loading, error, reload } = useList<Booking>(`/bookings?page=${page}&limit=10`, [page]);
 
@@ -47,9 +51,9 @@ export default function BookingsPage() {
     notes: '',
   });
 
-  const [selectedProductObj, setSelectedProductObj] = useState<ProductItem | null>(null);
   const [selectedCustomerObj, setSelectedCustomerObj] = useState<CustomerSummary | null>(null);
   const [viewCustomerId, setViewCustomerId] = useState<string | null>(null);
+  const [viewBooking, setViewBooking] = useState<Booking | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -65,34 +69,6 @@ export default function BookingsPage() {
     notes: '',
   });
   const [confirmSubmitting, setConfirmSubmitting] = useState(false);
-
-  // When a product is selected in New Booking
-  function handleProductSelect(prod: ProductItem | null) {
-    setSelectedProductObj(prod);
-    if (prod) {
-      const uPrice = prod.price != null ? Number(prod.price) : 0;
-      const pax = Number(form.paxCount) || 1;
-      const calcTotal = uPrice > 0 ? (uPrice * pax).toFixed(0) : form.totalPrice;
-
-      setForm((f) => ({
-        ...f,
-        tourName: prod.name,
-        unitPrice: uPrice,
-        totalPrice: calcTotal,
-        currency: prod.currency || f.currency,
-      }));
-    }
-  }
-
-  // Handle Pax Count Change in New Booking
-  function handlePaxChange(val: string) {
-    const pax = Number(val) || 1;
-    setForm((f) => ({
-      ...f,
-      paxCount: val,
-      totalPrice: f.unitPrice > 0 ? (f.unitPrice * pax).toFixed(0) : f.totalPrice,
-    }));
-  }
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
@@ -124,7 +100,6 @@ export default function BookingsPage() {
         status: 'PENDING',
         notes: '',
       });
-      setSelectedProductObj(null);
       setSelectedCustomerObj(null);
       reload();
     } catch (err) {
@@ -143,7 +118,7 @@ export default function BookingsPage() {
       unitPrice: b.totalPrice && b.paxCount ? Number(b.totalPrice) / b.paxCount : 0,
       totalPrice: b.totalPrice != null ? String(b.totalPrice) : '',
       currency: b.currency || 'USD',
-      status: 'CONFIRMED',
+      status: b.status || 'CONFIRMED',
       notes: b.notes || '',
     });
   }
@@ -163,7 +138,7 @@ export default function BookingsPage() {
         notes: confirmForm.notes || undefined,
       });
 
-      alert(`Booking ${confirmModalBooking.bookingNumber} updated successfully! Status set to ${confirmForm.status}.`);
+      alert(`Booking ${confirmModalBooking.bookingNumber} updated successfully!`);
       setConfirmModalBooking(null);
       reload();
     } catch (err) {
@@ -174,8 +149,8 @@ export default function BookingsPage() {
   }
 
   return (
-    <div style={{ display: 'grid', gap: '20px' }}>
-      <PageHeader title="Bookings" subtitle="Confirmed and pending reservations with product selection & financial pricing" />
+    <div style={{ display: 'grid', gap: '20px', width: '100%' }}>
+      <PageHeader title="Bookings" subtitle="Confirmed and pending reservations with products, packages, & financial controls" />
 
       {/* NEW BOOKING CARD */}
       <Card title="New booking">
@@ -195,34 +170,53 @@ export default function BookingsPage() {
             />
           </div>
 
-          {/* Product / Package Selection */}
-          <div style={{ marginBottom: 18 }}>
-            <ProductSearchPicker
-              label="📦 Product / Package (Tours, Fleet Rental, Hotels, Flights)"
+          {/* Unified Product / Package with Dropdown, Editable Price & Post-Save Lock */}
+          <div style={{ marginBottom: 16 }}>
+            <ProductPackageSelect
+              isBooking={true}
               selectedProductName={form.tourName}
-              onSelect={handleProductSelect}
+              priceValue={form.unitPrice}
+              totalPrice={form.totalPrice}
+              currencyValue={form.currency}
+              paxCount={form.paxCount}
+              isSavedRecord={false}
+              isAdmin={isAdmin}
+              onSelectProduct={(prod, newPrice, newCurr) => {
+                setForm((f) => ({
+                  ...f,
+                  tourName: prod ? prod.name : '',
+                  unitPrice: newPrice != null ? Number(newPrice) : 0,
+                  currency: newCurr || f.currency,
+                }));
+              }}
+              onPriceChange={(newPrice) => {
+                setForm((f) => ({
+                  ...f,
+                  unitPrice: Number(newPrice) || 0,
+                }));
+              }}
+              onCurrencyChange={(newCurr) => {
+                setForm((f) => ({
+                  ...f,
+                  currency: newCurr,
+                }));
+              }}
+              onPaxChange={(newPax) => {
+                setForm((f) => ({
+                  ...f,
+                  paxCount: newPax,
+                }));
+              }}
+              onTotalPriceChange={(newTotal) => {
+                setForm((f) => ({
+                  ...f,
+                  totalPrice: newTotal,
+                }));
+              }}
             />
           </div>
 
-          {/* Core Booking Fields */}
-          <div className="form-grid">
-            <Input
-              label="Tour / Product Package Name"
-              name="tourName"
-              placeholder="e.g. Cape Coast & Elmina Castle Tour"
-              value={form.tourName}
-              onChange={(e) => setForm({ ...form, tourName: e.target.value })}
-            />
-
-            <Input
-              label="Pax Count (Guests)"
-              name="paxCount"
-              type="number"
-              min="1"
-              value={form.paxCount}
-              onChange={(e) => handlePaxChange(e.target.value)}
-            />
-
+          <div className="form-grid" style={{ marginBottom: 16 }}>
             <Select
               label="Booking Status"
               name="status"
@@ -230,60 +224,18 @@ export default function BookingsPage() {
               onChange={(e) => setForm({ ...form, status: e.target.value })}
               options={STATUSES.map((s) => ({ value: s, label: s }))}
             />
+            <Input
+              label="Booking Notes / Terms"
+              name="notes"
+              placeholder="e.g. Flight arrival schedule or dietary requirements"
+              value={form.notes}
+              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+            />
           </div>
 
-          {/* FINANCIALS & EXPECTED AMOUNT SECTION */}
-          <div
-            style={{
-              marginTop: 16,
-              padding: '14px 16px',
-              background: '#f0fdf4',
-              border: '1.5px solid #86efac',
-              borderRadius: '10px',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 6 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 18 }}>💰</span>
-                <span style={{ fontWeight: 800, color: '#166534', fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Financials &amp; Expected Amount
-                </span>
-              </div>
-              {form.unitPrice > 0 && (
-                <div style={{ fontSize: 12, color: '#15803d', fontWeight: 600 }}>
-                  Catalog: {form.currency} {form.unitPrice.toLocaleString()} × {form.paxCount} pax = {form.currency} {(form.unitPrice * (Number(form.paxCount) || 1)).toLocaleString()}
-                </div>
-              )}
-            </div>
+          {formError ? <div className="error-state" style={{ marginBottom: 12 }}>{formError}</div> : null}
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, alignItems: 'center' }}>
-              <Input
-                label="Total Expected Price *"
-                name="totalPrice"
-                type="number"
-                placeholder="e.g. 1200"
-                value={form.totalPrice}
-                onChange={(e) => setForm({ ...form, totalPrice: e.target.value })}
-              />
-
-              <Select
-                label="Currency"
-                name="currency"
-                value={form.currency}
-                options={CURRENCIES}
-                onChange={(e) => setForm({ ...form, currency: e.target.value })}
-              />
-            </div>
-
-            <div style={{ marginTop: 8, fontSize: 11, color: '#166534', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span>ℹ️</span>
-              <span>Financials are automatically determined from the selected product. You can freely edit or adjust the total amount where necessary (e.g. discounts, custom group quotes).</span>
-            </div>
-          </div>
-
-          {formError ? <div className="error-state" style={{ marginTop: 12 }}>{formError}</div> : null}
-
-          <div className="form-actions" style={{ marginTop: 16 }}>
+          <div className="form-actions">
             <Button type="submit" disabled={submitting}>
               {submitting ? 'Creating Booking…' : 'Create Booking'}
             </Button>
@@ -299,188 +251,291 @@ export default function BookingsPage() {
           <ErrorState message={error} />
         ) : (
           <>
-            <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', width: '100%', borderRadius: 8 }}>
-              <div style={{ minWidth: 960 }}>
-                <Table
-                  columns={[
-                    {
-                      key: 'bookingNumber',
-                      label: 'Booking Number',
-                      render: (r: Booking) => (
-                        <div>
-                          <span style={{ fontWeight: 800, fontFamily: 'monospace', color: '#0f172a' }}>{r.bookingNumber}</span>
-                          <div style={{ fontSize: 11, color: '#64748b' }}>
-                            {r.bookedAt ? new Date(r.bookedAt).toLocaleDateString() : ''}
-                          </div>
+            <div style={{ width: '100%', overflowX: 'auto' }}>
+              <Table
+                columns={[
+                  {
+                    key: 'bookingNumber',
+                    label: 'Booking #',
+                    render: (r: Booking) => (
+                      <div style={{ minWidth: 100 }}>
+                        <span style={{ fontWeight: 800, fontFamily: 'monospace', color: '#0f172a', fontSize: 13 }}>{r.bookingNumber}</span>
+                        <div style={{ fontSize: 11, color: '#64748b' }}>
+                          {r.bookedAt ? new Date(r.bookedAt).toLocaleDateString() : ''}
                         </div>
-                      ),
-                    },
-                    {
-                      key: 'customer',
-                      label: 'Customer',
-                      render: (r: Booking) => {
-                        const cust = r.customer;
-                        const custName = cust ? `${cust.firstName ?? ''} ${cust.lastName ?? ''}`.trim() : '—';
-                        const custId = r.customerId ?? cust?.id;
-                        const initials = cust ? `${cust.firstName?.[0] || ''}${cust.lastName?.[0] || ''}`.toUpperCase() || '👤' : '👤';
+                      </div>
+                    ),
+                  },
+                  {
+                    key: 'customer',
+                    label: 'Customer',
+                    render: (r: Booking) => {
+                      const cust = r.customer;
+                      const custName = cust ? `${cust.firstName ?? ''} ${cust.lastName ?? ''}`.trim() : '—';
+                      const custId = r.customerId ?? cust?.id;
+                      const initials = cust ? `${cust.firstName?.[0] || ''}${cust.lastName?.[0] || ''}`.toUpperCase() || '👤' : '👤';
 
-                        return (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <div
-                              style={{
-                                width: 34,
-                                height: 34,
-                                borderRadius: '50%',
-                                background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
-                                color: '#ffffff',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                fontSize: 12,
-                                fontWeight: 700,
-                                flexShrink: 0,
-                              }}
-                            >
-                              {initials}
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'flex-start' }}>
-                              <span style={{ fontWeight: 700, color: '#0f172a', fontSize: 13 }}>{custName}</span>
-                              {custId && (
-                                <button
-                                  type="button"
-                                  onClick={() => setViewCustomerId(custId)}
-                                  style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: 3,
-                                    background: '#eff6ff',
-                                    border: '1px solid #bfdbfe',
-                                    color: '#1d4ed8',
-                                    fontSize: 10,
-                                    fontWeight: 700,
-                                    borderRadius: 4,
-                                    padding: '1px 6px',
-                                    cursor: 'pointer',
-                                    whiteSpace: 'nowrap',
-                                  }}
-                                  title="View full customer profile"
-                                >
-                                  👁️ View
-                                </button>
-                              )}
-                              {cust?.phone && <span style={{ fontSize: 11, color: '#64748b' }}>📞 {cust.phone}</span>}
-                            </div>
-                          </div>
-                        );
-                      },
-                    },
-                    {
-                      key: 'tourName',
-                      label: 'Product / Tour',
-                      render: (r: Booking) => {
-                        const name = r.tourName || '—';
-                        let icon = '🎯';
-                        const lower = name.toLowerCase();
-                        if (lower.includes('tour') || lower.includes('ghana') || lower.includes('castle')) icon = '🌍';
-                        else if (lower.includes('fleet') || lower.includes('bus') || lower.includes('car') || lower.includes('rental')) icon = '🚐';
-                        else if (lower.includes('hotel') || lower.includes('lodge') || lower.includes('resort')) icon = '🏨';
-                        else if (lower.includes('flight') || lower.includes('air')) icon = '✈️';
-
-                        return (
-                          <div>
-                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                              <span>{icon}</span>
-                              <span style={{ fontWeight: 700, color: '#1e293b', fontSize: 13 }}>{name}</span>
-                            </div>
-                            <div style={{ fontSize: 11, color: '#64748b' }}>{r.paxCount ?? 1} Guest(s)</div>
-                          </div>
-                        );
-                      },
-                    },
-                    {
-                      key: 'total',
-                      label: 'Financials / Total',
-                      render: (r: Booking) => (
-                        <div>
-                          <div style={{ fontWeight: 800, color: '#15803d', fontSize: 14 }}>
-                            {r.totalPrice != null ? `${r.currency ?? '$'} ${Number(r.totalPrice).toLocaleString()}` : '—'}
-                          </div>
-                          {r.totalPrice && r.paxCount && r.paxCount > 1 ? (
-                            <div style={{ fontSize: 10, color: '#64748b' }}>
-                              ({r.currency ?? '$'}{(Number(r.totalPrice) / r.paxCount).toFixed(0)} / pax)
-                            </div>
-                          ) : null}
-                        </div>
-                      ),
-                    },
-                    {
-                      key: 'status',
-                      label: 'Status',
-                      render: (r: Booking) => {
-                        const color = r.status === 'CONFIRMED' ? '#16a34a' : r.status === 'COMPLETED' ? '#0284c7' : r.status === 'CANCELLED' ? '#dc2626' : '#ea580c';
-                        return (
-                          <Badge>
-                            <span style={{ color, fontWeight: 700 }}>● {r.status}</span>
-                          </Badge>
-                        );
-                      },
-                    },
-                    {
-                      key: 'actions',
-                      label: 'Actions & Financials',
-                      render: (r: Booking) => (
-                        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                          {r.status === 'PENDING' && (
-                            <button
-                              type="button"
-                              onClick={() => openConfirmModal(r)}
-                              style={{
-                                background: '#16a34a',
-                                color: '#ffffff',
-                                border: 'none',
-                                borderRadius: 6,
-                                padding: '4px 10px',
-                                fontSize: 11,
-                                fontWeight: 700,
-                                cursor: 'pointer',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 4,
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
-                              <span>✓</span> Confirm Booking
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => openConfirmModal(r)}
+                      return (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 150 }}>
+                          <div
                             style={{
-                              background: '#eff6ff',
-                              color: '#1d4ed8',
-                              border: '1px solid #bfdbfe',
-                              borderRadius: 6,
-                              padding: '4px 8px',
+                              width: 30,
+                              height: 30,
+                              borderRadius: '50%',
+                              background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                              color: '#ffffff',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
                               fontSize: 11,
                               fontWeight: 700,
-                              cursor: 'pointer',
-                              whiteSpace: 'nowrap',
+                              flexShrink: 0,
                             }}
                           >
-                            Edit Financials
-                          </button>
+                            {initials}
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span style={{ fontWeight: 700, color: '#0f172a', fontSize: 13 }}>{custName}</span>
+                            {cust?.phone && <span style={{ fontSize: 11, color: '#64748b' }}>📞 {cust.phone}</span>}
+                          </div>
                         </div>
-                      ),
+                      );
                     },
-                  ]}
-                  rows={data?.items ?? []}
-                />
-              </div>
+                  },
+                  {
+                    key: 'tourName',
+                    label: 'Product / Tour',
+                    render: (r: Booking) => {
+                      const name = r.tourName || '—';
+                      let icon = '🎯';
+                      const lower = name.toLowerCase();
+                      if (lower.includes('tour') || lower.includes('ghana') || lower.includes('castle')) icon = '🌍';
+                      else if (lower.includes('fleet') || lower.includes('bus') || lower.includes('car') || lower.includes('rental')) icon = '🚐';
+                      else if (lower.includes('hotel') || lower.includes('lodge') || lower.includes('resort')) icon = '🏨';
+                      else if (lower.includes('flight') || lower.includes('air')) icon = '✈️';
+
+                      return (
+                        <div style={{ minWidth: 140 }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                            <span>{icon}</span>
+                            <span style={{ fontWeight: 700, color: '#1e293b', fontSize: 12 }}>{name}</span>
+                          </div>
+                          <div style={{ fontSize: 11, color: '#64748b' }}>{r.paxCount ?? 1} Guest(s)</div>
+                        </div>
+                      );
+                    },
+                  },
+                  {
+                    key: 'total',
+                    label: 'Financials',
+                    render: (r: Booking) => (
+                      <div style={{ minWidth: 110 }}>
+                        <div style={{ fontWeight: 800, color: '#15803d', fontSize: 13 }}>
+                          {r.totalPrice != null ? `${r.currency ?? '$'} ${Number(r.totalPrice).toLocaleString()}` : '—'}
+                        </div>
+                        {r.totalPrice && r.paxCount && r.paxCount > 1 ? (
+                          <div style={{ fontSize: 10, color: '#64748b' }}>
+                            ({r.currency ?? '$'}{(Number(r.totalPrice) / r.paxCount).toFixed(0)}/pax)
+                          </div>
+                        ) : null}
+                      </div>
+                    ),
+                  },
+                  {
+                    key: 'status',
+                    label: 'Status',
+                    render: (r: Booking) => {
+                      const color = r.status === 'CONFIRMED' ? '#16a34a' : r.status === 'COMPLETED' ? '#0284c7' : r.status === 'CANCELLED' ? '#dc2626' : '#ea580c';
+                      return (
+                        <Badge>
+                          <span style={{ color, fontWeight: 700, fontSize: 11 }}>● {r.status}</span>
+                        </Badge>
+                      );
+                    },
+                  },
+                  {
+                    key: 'actions',
+                    label: 'Actions',
+                    render: (r: Booking) => (
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() => setViewBooking(r)}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            background: '#0284c7',
+                            color: '#ffffff',
+                            border: 'none',
+                            padding: '4px 9px',
+                            borderRadius: 6,
+                            fontSize: 11,
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                          }}
+                          title="View complete booking details"
+                        >
+                          👁️ View
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => openConfirmModal(r)}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            background: '#eff6ff',
+                            color: '#1d4ed8',
+                            border: '1px solid #bfdbfe',
+                            borderRadius: 6,
+                            padding: '4px 8px',
+                            fontSize: 11,
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          ✏️ Edit
+                        </button>
+                      </div>
+                    ),
+                  },
+                ]}
+                rows={data?.items ?? []}
+              />
             </div>
             <Pagination page={page} totalPages={data?.totalPages ?? 1} onChange={setPage} />
           </>
         )}
       </Card>
+
+      {/* VIEW BOOKING DETAILS MODAL */}
+      {viewBooking && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000,
+            padding: '20px',
+          }}
+        >
+          <div
+            style={{
+              background: '#ffffff',
+              borderRadius: '16px',
+              maxWidth: '650px',
+              width: '100%',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              padding: '24px',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid #e2e8f0', paddingBottom: 16, marginBottom: 16 }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                  <span style={{ fontSize: 20 }}>📋</span>
+                  <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#0f172a' }}>
+                    Booking Details: {viewBooking.bookingNumber}
+                  </h3>
+                </div>
+                <div style={{ fontSize: 12, color: '#64748b' }}>
+                  Booked on {viewBooking.bookedAt ? new Date(viewBooking.bookedAt).toLocaleString() : 'Recently'}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setViewBooking(null)}
+                style={{ background: '#f1f5f9', border: 'none', borderRadius: 8, width: 32, height: 32, cursor: 'pointer', fontSize: 16, color: '#64748b' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gap: 16 }}>
+              {/* Customer Info Card */}
+              <div style={{ padding: 14, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: '#475569', textTransform: 'uppercase' }}>Customer</div>
+                  {viewBooking.customerId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setViewCustomerId(viewBooking.customerId);
+                      }}
+                      style={{
+                        background: '#eff6ff',
+                        border: '1px solid #bfdbfe',
+                        color: '#1d4ed8',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        padding: '2px 8px',
+                        borderRadius: 6,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      👤 Full Customer Profile
+                    </button>
+                  )}
+                </div>
+                <div style={{ fontWeight: 700, fontSize: 15, color: '#0f172a' }}>
+                  {viewBooking.customer ? `${viewBooking.customer.firstName ?? ''} ${viewBooking.customer.lastName ?? ''}`.trim() : 'Customer'}
+                </div>
+                <div style={{ display: 'flex', gap: 16, marginTop: 6, fontSize: 12, color: '#64748b', flexWrap: 'wrap' }}>
+                  {viewBooking.customer?.email && <div>✉️ {viewBooking.customer.email}</div>}
+                  {viewBooking.customer?.phone && <div>📞 {viewBooking.customer.phone}</div>}
+                </div>
+              </div>
+
+              {/* Product & Financials Details */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
+                <div style={{ padding: 14, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10 }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: '#475569', textTransform: 'uppercase', marginBottom: 6 }}>Product / Tour</div>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: '#0f172a' }}>{viewBooking.tourName || '—'}</div>
+                  <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>Pax: <strong>{viewBooking.paxCount ?? 1} Guests</strong></div>
+                </div>
+
+                <div style={{ padding: 14, background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 10 }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: '#166534', textTransform: 'uppercase', marginBottom: 6 }}>Financials</div>
+                  <div style={{ fontWeight: 800, fontSize: 18, color: '#15803d' }}>
+                    {viewBooking.totalPrice != null ? `${viewBooking.currency ?? '$'} ${Number(viewBooking.totalPrice).toLocaleString()}` : '—'}
+                  </div>
+                  <div style={{ fontSize: 11, color: '#166534', marginTop: 4 }}>
+                    Status: <strong>{viewBooking.status}</strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Notes */}
+              {viewBooking.notes && (
+                <div style={{ padding: 14, background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10 }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: '#92400e', textTransform: 'uppercase', marginBottom: 4 }}>Notes &amp; Instructions</div>
+                  <div style={{ fontSize: 13, color: '#78350f' }}>{viewBooking.notes}</div>
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  const b = viewBooking;
+                  setViewBooking(null);
+                  openConfirmModal(b);
+                }}
+              >
+                ✏️ Edit Financials / Status
+              </Button>
+              <Button onClick={() => setViewBooking(null)}>Close</Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* CONFIRM BOOKING & EDIT FINANCIALS MODAL */}
       {confirmModalBooking && (
@@ -511,7 +566,7 @@ export default function BookingsPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>
-                  Confirm Booking &amp; Review Financials
+                  Edit Booking &amp; Review Financials
                 </h3>
                 <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
                   Ref: <strong style={{ fontFamily: 'monospace' }}>{confirmModalBooking.bookingNumber}</strong> • Customer:{' '}
@@ -528,83 +583,49 @@ export default function BookingsPage() {
             </div>
 
             <form onSubmit={submitConfirmModal} style={{ display: 'grid', gap: '14px' }}>
-              {/* Product selector to change product if needed */}
-              <ProductSearchPicker
-                label="Assigned Product / Package (Change or Select from Catalog)"
+              {/* Post-Save Product / Package with pricing permissions */}
+              <ProductPackageSelect
+                isBooking={true}
                 selectedProductName={confirmForm.tourName}
-                onSelect={(prod) => {
-                  if (prod) {
-                    const uPrice = prod.price != null ? Number(prod.price) : 0;
-                    const pax = Number(confirmForm.paxCount) || 1;
-                    const calc = uPrice > 0 ? (uPrice * pax).toFixed(0) : confirmForm.totalPrice;
-                    setConfirmForm((f) => ({
-                      ...f,
-                      tourName: prod.name,
-                      unitPrice: uPrice,
-                      totalPrice: calc,
-                      currency: prod.currency || f.currency,
-                    }));
-                  }
+                priceValue={confirmForm.unitPrice}
+                totalPrice={confirmForm.totalPrice}
+                currencyValue={confirmForm.currency}
+                paxCount={confirmForm.paxCount}
+                isSavedRecord={true}
+                isAdmin={isAdmin}
+                onSelectProduct={(prod, newPrice, newCurr) => {
+                  setConfirmForm((f) => ({
+                    ...f,
+                    tourName: prod ? prod.name : '',
+                    unitPrice: newPrice != null ? Number(newPrice) : 0,
+                    currency: newCurr || f.currency,
+                  }));
+                }}
+                onPriceChange={(newPrice) => {
+                  setConfirmForm((f) => ({
+                    ...f,
+                    unitPrice: Number(newPrice) || 0,
+                  }));
+                }}
+                onCurrencyChange={(newCurr) => {
+                  setConfirmForm((f) => ({
+                    ...f,
+                    currency: newCurr,
+                  }));
+                }}
+                onPaxChange={(newPax) => {
+                  setConfirmForm((f) => ({
+                    ...f,
+                    paxCount: Number(newPax) || 1,
+                  }));
+                }}
+                onTotalPriceChange={(newTotal) => {
+                  setConfirmForm((f) => ({
+                    ...f,
+                    totalPrice: newTotal,
+                  }));
                 }}
               />
-
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12 }}>
-                <Input
-                  label="Tour / Package Name"
-                  name="tourName"
-                  value={confirmForm.tourName}
-                  onChange={(e) => setConfirmForm({ ...confirmForm, tourName: e.target.value })}
-                />
-                <Input
-                  label="Pax (Guests)"
-                  name="paxCount"
-                  type="number"
-                  min="1"
-                  value={confirmForm.paxCount}
-                  onChange={(e) => {
-                    const pax = Number(e.target.value) || 1;
-                    setConfirmForm((f) => ({
-                      ...f,
-                      paxCount: pax,
-                      totalPrice: f.unitPrice > 0 ? (f.unitPrice * pax).toFixed(0) : f.totalPrice,
-                    }));
-                  }}
-                />
-              </div>
-
-              {/* FINANCIALS SECTION IN MODAL */}
-              <div
-                style={{
-                  padding: '12px 14px',
-                  background: '#f0fdf4',
-                  border: '1.5px solid #86efac',
-                  borderRadius: '8px',
-                }}
-              >
-                <div style={{ fontWeight: 800, color: '#166534', fontSize: 12, marginBottom: 8, textTransform: 'uppercase' }}>
-                  💵 Financials / Total Amount
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10 }}>
-                  <Input
-                    label="Total Price *"
-                    name="totalPrice"
-                    type="number"
-                    value={confirmForm.totalPrice}
-                    onChange={(e) => setConfirmForm({ ...confirmForm, totalPrice: e.target.value })}
-                    required
-                  />
-                  <Select
-                    label="Currency"
-                    name="currency"
-                    value={confirmForm.currency}
-                    options={CURRENCIES}
-                    onChange={(e) => setConfirmForm({ ...confirmForm, currency: e.target.value })}
-                  />
-                </div>
-                <div style={{ fontSize: 11, color: '#15803d', marginTop: 6 }}>
-                  You can edit this financial price where necessary before confirming.
-                </div>
-              </div>
 
               <Select
                 label="Booking Status"
@@ -624,7 +645,7 @@ export default function BookingsPage() {
 
               <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
                 <Button type="submit" disabled={confirmSubmitting} style={{ flex: 1 }}>
-                  {confirmSubmitting ? 'Saving…' : '✓ Confirm Reservation & Save Financials'}
+                  {confirmSubmitting ? 'Saving…' : '✓ Save Changes'}
                 </Button>
                 <Button variant="secondary" onClick={() => setConfirmModalBooking(null)}>
                   Cancel

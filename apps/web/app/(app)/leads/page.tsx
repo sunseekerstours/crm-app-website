@@ -6,7 +6,8 @@ import { useList } from '@/lib/use-list';
 import { api } from '@/lib/api';
 import { CustomerSearchPicker, CustomerSummary } from '@/components/CustomerSearchPicker';
 import { CustomerDetailsModal } from '@/components/CustomerDetailsModal';
-import ProductSearchPicker, { ProductItem } from '@/components/ProductSearchPicker';
+import ProductPackageSelect, { ProductItem } from '@/components/ProductPackageSelect';
+import { useAuth } from '@/lib/auth';
 
 interface Lead {
   id: string;
@@ -59,6 +60,9 @@ export default function LeadsPage() {
   const [selectedTag, setSelectedTag] = useState('');
   const [selectedStage, setSelectedStage] = useState('');
   const [availableTags, setAvailableTags] = useState<string[]>([]);
+  const { user } = useAuth();
+  const isAdmin = Boolean(user?.roles?.some((r) => ['ADMIN', 'SUPER_ADMIN', 'MANAGER'].includes(r.toUpperCase())));
+  const [viewLead, setViewLead] = useState<Lead | null>(null);
   const [viewCustomerId, setViewCustomerId] = useState<string | null>(null);
   const [selectedCustomerObj, setSelectedCustomerObj] = useState<CustomerSummary | null>(null);
   const [stages, setStages] = useState<any[]>([
@@ -304,34 +308,32 @@ export default function LeadsPage() {
             />
           </div>
 
-          {/* Product / Package of Interest */}
-          <div style={{ marginBottom: 18 }}>
-            <ProductSearchPicker
-              label="📦 Product / Package of Interest (Tours, Fleet, Hotels, Flights)"
-              placeholder="Select a product from the catalog..."
-              selectedProductName={form.destination}
-              onSelect={(prod) => {
-                if (prod) {
-                  setForm((f) => {
-                    const categoryTag = prod.category ? prod.category.replace('_', ' ') : '';
-                    const existingTags = f.tagsInput ? f.tagsInput.split(',').map((t) => t.trim()).filter(Boolean) : [];
-                    if (categoryTag && !existingTags.includes(categoryTag)) {
-                      existingTags.push(categoryTag);
-                    }
-                    return {
-                      ...f,
-                      destination: prod.name,
-                      estimatedValue: prod.price != null ? String(prod.price) : f.estimatedValue,
-                      currency: prod.currency || f.currency,
-                      tagsInput: existingTags.join(', '),
-                    };
-                  });
-                } else {
-                  setForm((f) => ({ ...f, destination: '' }));
+          {/* Products / Package Tab Selection with Admin Dropdown & Editable Price */}
+          <ProductPackageSelect
+            selectedProductName={form.destination}
+            priceValue={form.estimatedValue}
+            currencyValue={form.currency}
+            isSavedRecord={false}
+            isAdmin={isAdmin}
+            onSelectProduct={(prod, newPrice, newCurr) => {
+              setForm((f) => {
+                const categoryTag = prod?.category ? prod.category.replace('_', ' ') : '';
+                const existingTags = f.tagsInput ? f.tagsInput.split(',').map((t) => t.trim()).filter(Boolean) : [];
+                if (categoryTag && !existingTags.includes(categoryTag)) {
+                  existingTags.push(categoryTag);
                 }
-              }}
-            />
-          </div>
+                return {
+                  ...f,
+                  destination: prod?.name || '',
+                  estimatedValue: newPrice !== undefined ? newPrice : f.estimatedValue,
+                  currency: newCurr || f.currency,
+                  tagsInput: existingTags.join(', '),
+                };
+              });
+            }}
+            onPriceChange={(val) => setForm((f) => ({ ...f, estimatedValue: val }))}
+            onCurrencyChange={(curr) => setForm((f) => ({ ...f, currency: curr }))}
+          />
 
           {/* Form Fields */}
           <div className="form-grid">
@@ -348,55 +350,6 @@ export default function LeadsPage() {
               onChange={(e) => setForm({ ...form, tagsInput: e.target.value })}
             />
             <Select label="Source" name="source" value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value })} options={SOURCES.map((s) => ({ value: s, label: s }))} />
-          </div>
-
-          {/* FINANCIALS & EXPECTED AMOUNT SECTION */}
-          <div
-            style={{
-              marginTop: 16,
-              padding: '14px 16px',
-              background: '#f0fdf4',
-              border: '1.5px solid #86efac',
-              borderRadius: '10px',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 6 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 18 }}>💰</span>
-                <span style={{ fontWeight: 800, color: '#166534', fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Financials &amp; Expected Deal Value
-                </span>
-              </div>
-              {form.estimatedValue && (
-                <div style={{ fontSize: 12, color: '#15803d', fontWeight: 600 }}>
-                  Expected: {form.currency} {Number(form.estimatedValue).toLocaleString()}
-                </div>
-              )}
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
-              <Input
-                label="Expected Financial Amount ($/₵)"
-                name="estimatedValue"
-                type="number"
-                placeholder="e.g. 1500"
-                value={form.estimatedValue}
-                onChange={(e) => setForm({ ...form, estimatedValue: e.target.value })}
-              />
-
-              <Select
-                label="Currency"
-                name="currency"
-                value={form.currency}
-                options={CURRENCIES}
-                onChange={(e) => setForm({ ...form, currency: e.target.value })}
-              />
-            </div>
-
-            <div style={{ marginTop: 8, fontSize: 11, color: '#166534', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span>ℹ️</span>
-              <span>Determined from selected product catalog. You can edit this financial value where necessary (negotiated quotes, custom rate).</span>
-            </div>
           </div>
 
           {formError ? <div className="error-state" style={{ marginTop: 12 }}>{formError}</div> : null}
@@ -438,36 +391,26 @@ export default function LeadsPage() {
                         const initials = `${r.firstName?.[0] || ''}${r.lastName?.[0] || ''}`.toUpperCase() || '👤';
 
                         return (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <div
                               style={{
-                                width: 34,
-                                height: 34,
+                                width: 30,
+                                height: 30,
                                 borderRadius: '50%',
                                 background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
                                 color: '#ffffff',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                fontSize: 12,
+                                fontSize: 11,
                                 fontWeight: 700,
                                 flexShrink: 0,
                               }}
                             >
                               {initials}
                             </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, overflow: 'hidden' }}>
-                              <span
-                                style={{
-                                  fontWeight: 700,
-                                  color: '#0f172a',
-                                  fontSize: 13,
-                                  whiteSpace: 'nowrap',
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                }}
-                                title={leadName}
-                              >
+                            <div style={{ minWidth: 0 }}>
+                              <span style={{ fontWeight: 700, color: '#0f172a', fontSize: 13, display: 'block', whiteSpace: 'nowrap' }}>
                                 {leadName}
                               </span>
                               {custId && (
@@ -475,23 +418,16 @@ export default function LeadsPage() {
                                   type="button"
                                   onClick={() => setViewCustomerId(custId)}
                                   style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: 3,
-                                    background: '#eff6ff',
-                                    border: '1px solid #bfdbfe',
-                                    color: '#1d4ed8',
+                                    border: 'none',
+                                    background: 'none',
+                                    color: '#0284c7',
                                     fontSize: 10,
                                     fontWeight: 700,
-                                    borderRadius: 4,
-                                    padding: '1px 6px',
+                                    padding: 0,
                                     cursor: 'pointer',
-                                    whiteSpace: 'nowrap',
-                                    width: 'fit-content',
                                   }}
-                                  title="View customer profile and history"
                                 >
-                                  👁️ Customer Profile
+                                  Linked Customer ↗
                                 </button>
                               )}
                             </div>
@@ -503,142 +439,47 @@ export default function LeadsPage() {
                       key: 'contact',
                       label: 'Contact Info',
                       render: (r: Lead) => (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxWidth: 190, minWidth: 140 }}>
+                        <div style={{ fontSize: 12 }}>
                           {r.phone ? (
-                            <a
-                              href={`tel:${r.phone}`}
-                              style={{
-                                fontSize: 12,
-                                fontWeight: 600,
-                                color: '#0284c7',
-                                textDecoration: 'none',
-                                whiteSpace: 'nowrap',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 4,
-                              }}
-                              title={`Call ${r.phone}`}
-                            >
-                              <span>📞</span>
-                              <span>{r.phone}</span>
+                            <a href={`tel:${r.phone}`} style={{ color: '#0284c7', textDecoration: 'none', fontWeight: 600, display: 'block', whiteSpace: 'nowrap' }}>
+                              📞 {r.phone}
                             </a>
-                          ) : null}
-                          {r.email ? (
-                            <a
-                              href={`mailto:${r.email}`}
-                              style={{
-                                fontSize: 11,
-                                color: '#475569',
-                                textDecoration: 'none',
-                                whiteSpace: 'nowrap',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 4,
-                              }}
-                              title={`Email ${r.email}`}
-                            >
-                              <span>✉️</span>
-                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.email}</span>
+                          ) : r.email ? (
+                            <a href={`mailto:${r.email}`} style={{ color: '#475569', textDecoration: 'none', display: 'block', whiteSpace: 'nowrap' }}>
+                              ✉️ {r.email}
                             </a>
-                          ) : null}
-                          {!r.phone && !r.email && <span style={{ color: '#94a3b8', fontSize: 12 }}>—</span>}
+                          ) : (
+                            <span style={{ color: '#94a3b8' }}>—</span>
+                          )}
                         </div>
                       ),
                     },
                     {
                       key: 'destination',
-                      label: 'Product / Tour / Package',
+                      label: 'Product / Tour',
                       render: (r: Lead) => {
                         const text = r.destination || r.interestedTour || r.campaign;
                         if (!text) return <span style={{ color: '#94a3b8' }}>—</span>;
-                        let icon = '🎯';
-                        const lower = text.toLowerCase();
-                        if (lower.includes('tour') || lower.includes('ghana') || lower.includes('cape coast') || lower.includes('castle')) icon = '🌍';
-                        else if (lower.includes('fleet') || lower.includes('bus') || lower.includes('car') || lower.includes('van') || lower.includes('rental')) icon = '🚐';
-                        else if (lower.includes('hotel') || lower.includes('resort') || lower.includes('suite') || lower.includes('lodge')) icon = '🏨';
-                        else if (lower.includes('flight') || lower.includes('airline') || lower.includes('air') || lower.includes('ticket')) icon = '✈️';
                         return (
-                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                            <span>{icon}</span>
-                            <span style={{ fontWeight: 600, color: '#1e293b' }}>{text}</span>
-                          </div>
+                          <span style={{ fontWeight: 600, color: '#1e293b', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            <span>📦</span>
+                            <span style={{ whiteSpace: 'nowrap' }}>{text}</span>
+                          </span>
                         );
                       },
                     },
                     {
                       key: 'financials',
-                      label: 'Expected Financials',
+                      label: 'Expected Value',
                       render: (r: Lead) => (
-                        <div>
-                          <div style={{ fontWeight: 800, color: '#15803d', fontSize: 13 }}>
-                            {r.estimatedValue != null ? `${r.currency ?? '$'} ${Number(r.estimatedValue).toLocaleString()}` : '—'}
-                          </div>
-                          <div style={{ fontSize: 10, color: '#64748b' }}>Expected Value</div>
-                        </div>
+                        <span style={{ fontWeight: 700, color: '#15803d', fontSize: 13, whiteSpace: 'nowrap' }}>
+                          {r.estimatedValue != null ? `${r.currency ?? '$'} ${Number(r.estimatedValue).toLocaleString()}` : '—'}
+                        </span>
                       ),
                     },
                     {
-                      key: 'tags',
-                      label: 'Data Tags',
-                      render: (r: Lead) => {
-                        const tags = r.tags || [];
-                        if (tags.length === 0) return <span style={{ color: '#94a3b8' }}>—</span>;
-                        const displayTags = tags.slice(0, 3);
-                        const remaining = tags.length - 3;
-                        return (
-                          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', maxWidth: 240 }}>
-                            {displayTags.map((t) => {
-                              const style = getTagBadgeStyle(t);
-                              return (
-                                <span
-                                  key={t}
-                                  onClick={() => setSelectedTag(t)}
-                                  title={`Filter by ${t}`}
-                                  style={{
-                                    display: 'inline-block',
-                                    fontSize: 11,
-                                    padding: '2px 8px',
-                                    borderRadius: 12,
-                                    background: style.bg,
-                                    color: style.color,
-                                    border: `1px solid ${style.border}`,
-                                    fontWeight: 500,
-                                    cursor: 'pointer',
-                                    whiteSpace: 'nowrap',
-                                  }}
-                                >
-                                  {t}
-                                </span>
-                              );
-                            })}
-                            {remaining > 0 && (
-                              <span
-                                title={tags.slice(3).join(', ')}
-                                style={{
-                                  fontSize: 11,
-                                  padding: '2px 6px',
-                                  borderRadius: 12,
-                                  background: '#f1f5f9',
-                                  color: '#64748b',
-                                  border: '1px solid #cbd5e1',
-                                  fontWeight: 500,
-                                }}
-                              >
-                                +{remaining} more
-                              </span>
-                            )}
-                          </div>
-                        );
-                      },
-                    },
-                    { key: 'source', label: 'Source', render: (r: Lead) => <Badge>{r.source}</Badge> },
-                    {
                       key: 'stage',
-                      label: 'Sales Stage',
+                      label: 'Stage',
                       render: (r: Lead) => {
                         const st = stages.find((s) => s.key === r.stage);
                         return (
@@ -646,9 +487,9 @@ export default function LeadsPage() {
                             style={{
                               display: 'inline-flex',
                               alignItems: 'center',
-                              gap: 6,
-                              padding: '3px 10px',
-                              borderRadius: '12px',
+                              gap: 5,
+                              padding: '2px 8px',
+                              borderRadius: '10px',
                               fontSize: '11px',
                               fontWeight: 700,
                               background: st?.color ? `${st.color}15` : '#f1f5f9',
@@ -665,25 +506,48 @@ export default function LeadsPage() {
                     },
                     {
                       key: 'actions',
-                      label: 'Actions & Financials',
+                      label: 'Actions',
                       render: (r: Lead) => (
-                        <button
-                          type="button"
-                          onClick={() => openEditModal(r)}
-                          style={{
-                            background: '#eff6ff',
-                            border: '1px solid #bfdbfe',
-                            color: '#1d4ed8',
-                            fontSize: 11,
-                            fontWeight: 700,
-                            borderRadius: 6,
-                            padding: '4px 8px',
-                            cursor: 'pointer',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          Edit Financials
-                        </button>
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                          <button
+                            type="button"
+                            onClick={() => setViewLead(r)}
+                            style={{
+                              background: '#0284c7',
+                              border: 'none',
+                              color: '#ffffff',
+                              fontSize: 11,
+                              fontWeight: 700,
+                              borderRadius: 6,
+                              padding: '5px 10px',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              whiteSpace: 'nowrap',
+                            }}
+                            title="View all details, contact info, customer record, and tags"
+                          >
+                            👁️ View
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openEditModal(r)}
+                            style={{
+                              background: '#f8fafc',
+                              border: '1px solid #cbd5e1',
+                              color: '#334155',
+                              fontSize: 11,
+                              fontWeight: 600,
+                              borderRadius: 6,
+                              padding: '5px 8px',
+                              cursor: 'pointer',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            Edit
+                          </button>
+                        </div>
                       ),
                     },
                   ]}
@@ -694,6 +558,208 @@ export default function LeadsPage() {
           </>
         )}
       </Card>
+
+      {/* VIEW LEAD DETAILS MODAL */}
+      {viewLead && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.55)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000,
+            padding: '20px',
+          }}
+          onClick={() => setViewLead(null)}
+        >
+          <div
+            style={{
+              background: '#ffffff',
+              padding: '24px',
+              borderRadius: '12px',
+              maxWidth: '640px',
+              width: '100%',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid #e2e8f0', paddingBottom: '14px', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div
+                  style={{
+                    width: '42px',
+                    height: '42px',
+                    borderRadius: '50%',
+                    background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                    color: '#ffffff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '15px',
+                    fontWeight: 800,
+                  }}
+                >
+                  {`${viewLead.firstName?.[0] || ''}${viewLead.lastName?.[0] || ''}`.toUpperCase() || '👤'}
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>
+                    {`${viewLead.firstName ?? ''} ${viewLead.lastName ?? ''}`.trim() || 'Prospect'}
+                  </h3>
+                  <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+                    Lead ID: <span style={{ fontFamily: 'monospace' }}>{viewLead.id.slice(0, 8)}</span> • Source: <strong>{viewLead.source}</strong>
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setViewLead(null)}
+                style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#64748b' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Details Grid */}
+            <div style={{ display: 'grid', gap: '14px' }}>
+              {/* Contact Information */}
+              <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '8px' }}>
+                  📞 Contact Information
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div>
+                    <span style={{ fontSize: '11px', color: '#64748b' }}>Phone:</span>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a', marginTop: '2px' }}>
+                      {viewLead.phone ? (
+                        <a href={`tel:${viewLead.phone}`} style={{ color: '#0284c7', textDecoration: 'none' }}>
+                          {viewLead.phone}
+                        </a>
+                      ) : '—'}
+                    </div>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '11px', color: '#64748b' }}>Email:</span>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a', marginTop: '2px' }}>
+                      {viewLead.email ? (
+                        <a href={`mailto:${viewLead.email}`} style={{ color: '#0284c7', textDecoration: 'none' }}>
+                          {viewLead.email}
+                        </a>
+                      ) : '—'}
+                    </div>
+                  </div>
+                </div>
+                {(viewLead.customerId || viewLead.customer?.id) && (
+                  <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #e2e8f0' }}>
+                    <button
+                      type="button"
+                      onClick={() => setViewCustomerId(viewLead.customerId || viewLead.customer?.id || '')}
+                      style={{
+                        background: '#eff6ff',
+                        border: '1px solid #bfdbfe',
+                        color: '#1d4ed8',
+                        fontSize: '12px',
+                        fontWeight: 700,
+                        padding: '4px 10px',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      👁️ View Full Customer Profile &amp; History
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Product & Financials */}
+              <div style={{ background: '#f0fdf4', padding: '14px', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: '#166534', textTransform: 'uppercase', marginBottom: '8px' }}>
+                  📦 Product &amp; Financials
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '10px' }}>
+                  <div>
+                    <span style={{ fontSize: '11px', color: '#166534' }}>Product / Tour / Destination:</span>
+                    <div style={{ fontSize: '14px', fontWeight: 800, color: '#14532d', marginTop: '2px' }}>
+                      {viewLead.destination || viewLead.interestedTour || 'Custom Package'}
+                    </div>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '11px', color: '#166534' }}>Expected Value:</span>
+                    <div style={{ fontSize: '16px', fontWeight: 800, color: '#15803d', marginTop: '2px' }}>
+                      {viewLead.estimatedValue != null
+                        ? `${viewLead.currency || 'USD'} ${Number(viewLead.estimatedValue).toLocaleString()}`
+                        : '—'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sales Stage */}
+              <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '6px' }}>
+                  🎯 Sales Stage
+                </div>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>
+                  {stages.find((s) => s.key === viewLead.stage)?.name || viewLead.stage || 'Initial Inquiry'}
+                </div>
+              </div>
+
+              {/* All Data Tags */}
+              {viewLead.tags && viewLead.tags.length > 0 && (
+                <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '8px' }}>
+                    🏷️ All Associated Data Tags ({viewLead.tags.length})
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    {viewLead.tags.map((t) => {
+                      const style = getTagBadgeStyle(t);
+                      return (
+                        <span
+                          key={t}
+                          style={{
+                            fontSize: '11px',
+                            padding: '3px 8px',
+                            borderRadius: '12px',
+                            background: style.bg,
+                            color: style.color,
+                            border: `1px solid ${style.border}`,
+                            fontWeight: 600,
+                          }}
+                        >
+                          {t}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Actions */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px', borderTop: '1px solid #e2e8f0', paddingTop: '14px' }}>
+              <Button
+                variant="secondary"
+                onClick={() => setViewLead(null)}
+              >
+                Close
+              </Button>
+              <Button
+                onClick={() => {
+                  const leadToEdit = viewLead;
+                  setViewLead(null);
+                  openEditModal(leadToEdit);
+                }}
+              >
+                ✏️ Edit Lead &amp; Financials
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* EDIT LEAD & FINANCIALS MODAL */}
       {editModalLead && (
@@ -740,19 +806,23 @@ export default function LeadsPage() {
             </div>
 
             <form onSubmit={submitEditModal} style={{ display: 'grid', gap: '14px' }}>
-              <ProductSearchPicker
-                label="Product / Package of Interest"
+              {/* Product / Package with admin lock check */}
+              <ProductPackageSelect
                 selectedProductName={editLeadForm.destination}
-                onSelect={(prod) => {
-                  if (prod) {
-                    setEditLeadForm((f) => ({
-                      ...f,
-                      destination: prod.name,
-                      estimatedValue: prod.price != null ? String(prod.price) : f.estimatedValue,
-                      currency: prod.currency || f.currency,
-                    }));
-                  }
+                priceValue={editLeadForm.estimatedValue}
+                currencyValue={editLeadForm.currency}
+                isSavedRecord={true}
+                isAdmin={isAdmin}
+                onSelectProduct={(prod, newPrice, newCurr) => {
+                  setEditLeadForm((f) => ({
+                    ...f,
+                    destination: prod?.name || '',
+                    estimatedValue: newPrice !== undefined ? newPrice : f.estimatedValue,
+                    currency: newCurr || f.currency,
+                  }));
                 }}
+                onPriceChange={(val) => setEditLeadForm((f) => ({ ...f, estimatedValue: val }))}
+                onCurrencyChange={(curr) => setEditLeadForm((f) => ({ ...f, currency: curr }))}
               />
 
               <Input
@@ -761,39 +831,6 @@ export default function LeadsPage() {
                 value={editLeadForm.destination}
                 onChange={(e) => setEditLeadForm({ ...editLeadForm, destination: e.target.value })}
               />
-
-              {/* FINANCIALS SECTION IN MODAL */}
-              <div
-                style={{
-                  padding: '12px 14px',
-                  background: '#f0fdf4',
-                  border: '1.5px solid #86efac',
-                  borderRadius: '8px',
-                }}
-              >
-                <div style={{ fontWeight: 800, color: '#166534', fontSize: 12, marginBottom: 8, textTransform: 'uppercase' }}>
-                  💵 Financials / Expected Deal Value
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10 }}>
-                  <Input
-                    label="Expected Value *"
-                    name="estimatedValue"
-                    type="number"
-                    value={editLeadForm.estimatedValue}
-                    onChange={(e) => setEditLeadForm({ ...editLeadForm, estimatedValue: e.target.value })}
-                  />
-                  <Select
-                    label="Currency"
-                    name="currency"
-                    value={editLeadForm.currency}
-                    options={CURRENCIES}
-                    onChange={(e) => setEditLeadForm({ ...editLeadForm, currency: e.target.value })}
-                  />
-                </div>
-                <div style={{ fontSize: 11, color: '#15803d', marginTop: 6 }}>
-                  You can adjust or negotiate this financial amount where necessary.
-                </div>
-              </div>
 
               <Select
                 label="Sales Stage"

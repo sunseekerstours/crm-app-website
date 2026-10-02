@@ -17,7 +17,7 @@ import {
 } from '@/components/ui';
 import { CustomerSearchPicker, CustomerSummary } from '@/components/CustomerSearchPicker';
 import { CustomerDetailsModal } from '@/components/CustomerDetailsModal';
-import ProductSearchPicker, { ProductItem } from '@/components/ProductSearchPicker';
+import ProductPackageSelect, { ProductItem } from '@/components/ProductPackageSelect';
 
 interface LeadItem {
   id: string;
@@ -110,6 +110,7 @@ export default function CrmLeadsPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [viewCustomerId, setViewCustomerId] = useState<string | null>(null);
   const [selectedCustomerObj, setSelectedCustomerObj] = useState<CustomerSummary | null>(null);
+  const [viewLead, setViewLead] = useState<LeadItem | null>(null);
 
   // Edit Lead & Financials Modal State
   const [editModalLead, setEditModalLead] = useState<LeadItem | null>(null);
@@ -430,32 +431,32 @@ export default function CrmLeadsPage() {
             />
           </div>
 
-          {/* Product / Package of Interest */}
-          <div style={{ marginBottom: 18 }}>
-            <ProductSearchPicker
-              label="📦 Product / Package of Interest (Tours, Fleet, Hotels, Flights)"
-              placeholder="Select a product from the catalog..."
+          {/* Products / Package Tab Selection with Admin Dropdown & Editable Price */}
+          <div style={{ marginBottom: 16 }}>
+            <ProductPackageSelect
               selectedProductName={form.destination}
-              onSelect={(prod) => {
-                if (prod) {
-                  setForm((f) => {
-                    const categoryTag = prod.category ? prod.category.replace('_', ' ') : '';
-                    const existingTags = f.tagsInput ? f.tagsInput.split(',').map((t) => t.trim()).filter(Boolean) : [];
-                    if (categoryTag && !existingTags.includes(categoryTag)) {
-                      existingTags.push(categoryTag);
-                    }
-                    return {
-                      ...f,
-                      destination: prod.name,
-                      estimatedValue: prod.price != null ? String(prod.price) : f.estimatedValue,
-                      currency: prod.currency || f.currency,
-                      tagsInput: existingTags.join(', '),
-                    };
-                  });
-                } else {
-                  setForm((f) => ({ ...f, destination: '' }));
-                }
+              priceValue={form.estimatedValue}
+              currencyValue={form.currency}
+              isSavedRecord={Boolean(editing)}
+              isAdmin={true}
+              onSelectProduct={(prod, newPrice, newCurr) => {
+                setForm((f) => {
+                  const categoryTag = prod?.category ? prod.category.replace('_', ' ') : '';
+                  const existingTags = f.tagsInput ? f.tagsInput.split(',').map((t) => t.trim()).filter(Boolean) : [];
+                  if (categoryTag && !existingTags.includes(categoryTag)) {
+                    existingTags.push(categoryTag);
+                  }
+                  return {
+                    ...f,
+                    destination: prod ? prod.name : '',
+                    estimatedValue: newPrice ?? f.estimatedValue,
+                    currency: newCurr ?? f.currency,
+                    tagsInput: existingTags.join(', '),
+                  };
+                });
               }}
+              onPriceChange={(newPrice) => setForm((f) => ({ ...f, estimatedValue: newPrice }))}
+              onCurrencyChange={(newCurr) => setForm((f) => ({ ...f, currency: newCurr }))}
             />
           </div>
 
@@ -464,7 +465,6 @@ export default function CrmLeadsPage() {
             <Input label="Last name" name="lastName" value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} />
             <Input label="Email" name="email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
             <Input label="Phone" name="phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-            <Input label="Destination / Package / Tour" name="destination" placeholder="e.g. Ghana Heritage Circuit" value={form.destination} onChange={(e) => setForm({ ...form, destination: e.target.value })} />
             <Input
               label="Data Tags (comma-separated)"
               name="tagsInput"
@@ -474,55 +474,6 @@ export default function CrmLeadsPage() {
             />
             <Select label="Source" name="source" value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value })} options={SOURCES.map((s) => ({ value: s, label: s.replace('_', ' ') }))} />
             <Select label="Sales Stage" name="stage" value={form.stage} onChange={(e) => setForm({ ...form, stage: e.target.value })} options={stages.map((s) => ({ value: s.key, label: s.name }))} />
-          </div>
-
-          {/* FINANCIALS & EXPECTED AMOUNT SECTION */}
-          <div
-            style={{
-              marginTop: 16,
-              padding: '14px 16px',
-              background: '#f0fdf4',
-              border: '1.5px solid #86efac',
-              borderRadius: '10px',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 6 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 18 }}>💰</span>
-                <span style={{ fontWeight: 800, color: '#166534', fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Financials &amp; Expected Deal Value
-                </span>
-              </div>
-              {form.estimatedValue && (
-                <div style={{ fontSize: 12, color: '#15803d', fontWeight: 600 }}>
-                  Expected: {form.currency} {Number(form.estimatedValue).toLocaleString()}
-                </div>
-              )}
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
-              <Input
-                label="Expected Financial Amount ($/₵)"
-                name="estimatedValue"
-                type="number"
-                placeholder="e.g. 1500"
-                value={form.estimatedValue}
-                onChange={(e) => setForm({ ...form, estimatedValue: e.target.value })}
-              />
-
-              <Select
-                label="Currency"
-                name="currency"
-                value={form.currency}
-                options={CURRENCIES}
-                onChange={(e) => setForm({ ...form, currency: e.target.value })}
-              />
-            </div>
-
-            <div style={{ marginTop: 8, fontSize: 11, color: '#166534', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span>ℹ️</span>
-              <span>Determined from selected product catalog. You can edit this financial value where necessary (negotiated quotes, custom rate).</span>
-            </div>
           </div>
 
           {formError ? <div className="error-state" style={{ marginTop: 12 }}>{formError}</div> : null}
@@ -683,64 +634,10 @@ export default function CrmLeadsPage() {
                     },
                   },
                   {
-                    key: 'tags',
-                    label: 'Data Tags',
-                    render: (l) => {
-                      const tags = l.tags || [];
-                      if (tags.length === 0) return <span style={{ color: '#94a3b8' }}>—</span>;
-                      const displayTags = tags.slice(0, 3);
-                      const remaining = tags.length - 3;
-                      return (
-                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', maxWidth: 260 }}>
-                          {displayTags.map((t) => {
-                            const style = getTagBadgeStyle(t);
-                            return (
-                              <span
-                                key={t}
-                                onClick={() => setSelectedTag(t)}
-                                title={`Filter by ${t}`}
-                                style={{
-                                  display: 'inline-block',
-                                  fontSize: 11,
-                                  padding: '2px 8px',
-                                  borderRadius: 12,
-                                  background: style.bg,
-                                  color: style.color,
-                                  border: `1px solid ${style.border}`,
-                                  fontWeight: 500,
-                                  cursor: 'pointer',
-                                  whiteSpace: 'nowrap',
-                                }}
-                              >
-                                {t}
-                              </span>
-                            );
-                          })}
-                          {remaining > 0 && (
-                            <span
-                              title={tags.slice(3).join(', ')}
-                              style={{
-                                fontSize: 11,
-                                padding: '2px 6px',
-                                borderRadius: 12,
-                                background: '#f1f5f9',
-                                color: '#64748b',
-                                border: '1px solid #cbd5e1',
-                                fontWeight: 500,
-                              }}
-                            >
-                              +{remaining} more
-                            </span>
-                          )}
-                        </div>
-                      );
-                    },
-                  },
-                  {
                     key: 'financials',
-                    label: 'Expected Financials',
+                    label: 'Financials',
                     render: (l) => (
-                      <div>
+                      <div style={{ minWidth: 100 }}>
                         <div style={{ fontWeight: 800, color: '#15803d', fontSize: 13 }}>
                           {l.estimatedValue != null ? `${l.currency ?? '$'} ${Number(l.estimatedValue).toLocaleString()}` : '—'}
                         </div>
@@ -777,9 +674,29 @@ export default function CrmLeadsPage() {
                   },
                   {
                     key: 'actions',
-                    label: 'Actions & Financials',
+                    label: 'Actions',
                     render: (l) => (
                       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() => setViewLead(l)}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            background: '#0284c7',
+                            color: '#ffffff',
+                            border: 'none',
+                            padding: '4px 9px',
+                            borderRadius: 6,
+                            fontSize: 11,
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                          }}
+                          title="View complete lead details"
+                        >
+                          👁️ View
+                        </button>
                         <button
                           type="button"
                           onClick={() => openEditModal(l)}
@@ -795,7 +712,7 @@ export default function CrmLeadsPage() {
                             whiteSpace: 'nowrap',
                           }}
                         >
-                          Edit Financials
+                          ✏️ Edit Financials
                         </button>
                         <Button variant="secondary" onClick={() => loadIntoForm(l)} style={{ padding: '4px 8px', fontSize: 11 }}>
                           Edit
@@ -860,60 +777,23 @@ export default function CrmLeadsPage() {
             </div>
 
             <form onSubmit={submitEditModal} style={{ display: 'grid', gap: '14px' }}>
-              <ProductSearchPicker
-                label="Product / Package of Interest"
+              <ProductPackageSelect
                 selectedProductName={editLeadForm.destination}
-                onSelect={(prod) => {
-                  if (prod) {
-                    setEditLeadForm((f) => ({
-                      ...f,
-                      destination: prod.name,
-                      estimatedValue: prod.price != null ? String(prod.price) : f.estimatedValue,
-                      currency: prod.currency || f.currency,
-                    }));
-                  }
+                priceValue={editLeadForm.estimatedValue}
+                currencyValue={editLeadForm.currency}
+                isSavedRecord={true}
+                isAdmin={true}
+                onSelectProduct={(prod, newPrice, newCurr) => {
+                  setEditLeadForm((f) => ({
+                    ...f,
+                    destination: prod ? prod.name : '',
+                    estimatedValue: newPrice ?? f.estimatedValue,
+                    currency: newCurr ?? f.currency,
+                  }));
                 }}
+                onPriceChange={(newPrice) => setEditLeadForm((f) => ({ ...f, estimatedValue: newPrice }))}
+                onCurrencyChange={(newCurr) => setEditLeadForm((f) => ({ ...f, currency: newCurr }))}
               />
-
-              <Input
-                label="Destination / Tour Name"
-                name="destination"
-                value={editLeadForm.destination}
-                onChange={(e) => setEditLeadForm({ ...editLeadForm, destination: e.target.value })}
-              />
-
-              {/* FINANCIALS SECTION IN MODAL */}
-              <div
-                style={{
-                  padding: '12px 14px',
-                  background: '#f0fdf4',
-                  border: '1.5px solid #86efac',
-                  borderRadius: '8px',
-                }}
-              >
-                <div style={{ fontWeight: 800, color: '#166534', fontSize: 12, marginBottom: 8, textTransform: 'uppercase' }}>
-                  💵 Financials / Expected Deal Value
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10 }}>
-                  <Input
-                    label="Expected Value *"
-                    name="estimatedValue"
-                    type="number"
-                    value={editLeadForm.estimatedValue}
-                    onChange={(e) => setEditLeadForm({ ...editLeadForm, estimatedValue: e.target.value })}
-                  />
-                  <Select
-                    label="Currency"
-                    name="currency"
-                    value={editLeadForm.currency}
-                    options={CURRENCIES}
-                    onChange={(e) => setEditLeadForm({ ...editLeadForm, currency: e.target.value })}
-                  />
-                </div>
-                <div style={{ fontSize: 11, color: '#15803d', marginTop: 6 }}>
-                  You can adjust or negotiate this financial amount where necessary.
-                </div>
-              </div>
 
               <Select
                 label="Sales Stage"
@@ -948,6 +828,152 @@ export default function CrmLeadsPage() {
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* VIEW LEAD DETAILS MODAL */}
+      {viewLead && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000,
+            padding: '20px',
+          }}
+        >
+          <div
+            style={{
+              background: '#ffffff',
+              borderRadius: '16px',
+              maxWidth: '650px',
+              width: '100%',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              padding: '24px',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid #e2e8f0', paddingBottom: 16, marginBottom: 16 }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                  <span style={{ fontSize: 22 }}>📋</span>
+                  <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#0f172a' }}>
+                    {`${viewLead.firstName ?? ''} ${viewLead.lastName ?? ''}`.trim() || 'Prospect Information'}
+                  </h3>
+                </div>
+                <div style={{ fontSize: 12, color: '#64748b' }}>
+                  Source: <strong>{viewLead.source ? viewLead.source.replace('_', ' ') : 'Direct Entry'}</strong>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setViewLead(null)}
+                style={{ background: '#f1f5f9', border: 'none', borderRadius: 8, width: 32, height: 32, cursor: 'pointer', fontSize: 16, color: '#64748b' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gap: 16 }}>
+              {/* Contact Information */}
+              <div style={{ padding: 14, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: '#475569', textTransform: 'uppercase' }}>Contact Details</div>
+                  {(viewLead.customerId || viewLead.customer?.id) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const cid = viewLead.customerId || viewLead.customer?.id;
+                        if (cid) setViewCustomerId(cid);
+                      }}
+                      style={{
+                        background: '#eff6ff',
+                        border: '1px solid #bfdbfe',
+                        color: '#1d4ed8',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        padding: '2px 8px',
+                        borderRadius: 6,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      👤 Full Customer Profile
+                    </button>
+                  )}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8, fontSize: 13 }}>
+                  <div>📞 Phone: <strong>{viewLead.phone || '—'}</strong></div>
+                  <div>✉️ Email: <strong>{viewLead.email || '—'}</strong></div>
+                </div>
+              </div>
+
+              {/* Product & Financials Details */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
+                <div style={{ padding: 14, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10 }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: '#475569', textTransform: 'uppercase', marginBottom: 6 }}>Interested Product / Tour</div>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: '#0f172a' }}>{viewLead.destination || viewLead.interestedTour || '—'}</div>
+                </div>
+
+                <div style={{ padding: 14, background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 10 }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: '#166534', textTransform: 'uppercase', marginBottom: 6 }}>Expected Financial Value</div>
+                  <div style={{ fontWeight: 800, fontSize: 18, color: '#15803d' }}>
+                    {viewLead.estimatedValue != null ? `${viewLead.currency ?? '$'} ${Number(viewLead.estimatedValue).toLocaleString()}` : '—'}
+                  </div>
+                  <div style={{ fontSize: 11, color: '#166534', marginTop: 4 }}>
+                    Sales Stage: <strong>{stages.find((s) => s.key === viewLead.stage)?.name || viewLead.stage}</strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Data Tags */}
+              <div style={{ padding: 14, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10 }}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: '#475569', textTransform: 'uppercase', marginBottom: 8 }}>Data &amp; Segmentation Tags</div>
+                {viewLead.tags && viewLead.tags.length > 0 ? (
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {viewLead.tags.map((t) => {
+                      const style = getTagBadgeStyle(t);
+                      return (
+                        <span
+                          key={t}
+                          style={{
+                            fontSize: 12,
+                            padding: '3px 10px',
+                            borderRadius: 14,
+                            background: style.bg,
+                            color: style.color,
+                            border: `1px solid ${style.border}`,
+                            fontWeight: 600,
+                          }}
+                        >
+                          {t}
+                        </span>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 12, color: '#94a3b8' }}>No data tags assigned to this lead.</div>
+                )}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  const l = viewLead;
+                  setViewLead(null);
+                  openEditModal(l);
+                }}
+              >
+                ✏️ Edit Financials / Stage
+              </Button>
+              <Button onClick={() => setViewLead(null)}>Close</Button>
+            </div>
           </div>
         </div>
       )}

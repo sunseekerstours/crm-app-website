@@ -109,6 +109,8 @@ export default function CrmSalesStagesDealsPage() {
   const [viewMode, setViewMode] = useState<'kanban' | 'table'>('kanban');
   const [filterStage, setFilterStage] = useState<string>('ALL');
 
+  const displayedStages = filterStage === 'ALL' ? stages : stages.filter((s) => s.key === filterStage);
+
   // Note Modal State
   const [noteDeal, setNoteDeal] = useState<DealItem | null>(null);
   const [noteContent, setNoteContent] = useState('');
@@ -574,14 +576,18 @@ export default function CrmSalesStagesDealsPage() {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: `repeat(${stages.length}, minmax(280px, 1fr))`,
-            gap: '16px',
+            gridTemplateColumns:
+              displayedStages.length === 1
+                ? 'minmax(320px, 700px)'
+                : `repeat(${displayedStages.length}, minmax(145px, 1fr))`,
+            gap: '10px',
             overflowX: 'auto',
             paddingBottom: '20px',
             alignItems: 'start',
+            width: '100%',
           }}
         >
-          {stages.map((stg) => {
+          {displayedStages.map((stg) => {
             const stgItems = allItems.filter((i) => (i.stage || 'NEW') === stg.key);
             const stgVal = stgItems.reduce((acc, c) => acc + (Number(c.value) || 0), 0);
 
@@ -591,32 +597,33 @@ export default function CrmSalesStagesDealsPage() {
                 style={{
                   background: '#f8fafc',
                   border: '1px solid #e2e8f0',
-                  borderRadius: '12px',
+                  borderRadius: '10px',
                   display: 'flex',
                   flexDirection: 'column',
                   maxHeight: '800px',
-                  minWidth: '280px',
+                  minWidth: displayedStages.length === 1 ? '320px' : '145px',
                 }}
               >
                 {/* Column Header */}
                 <div
                   style={{
-                    padding: '14px 16px',
-                    borderTop: `4px solid ${stg.color}`,
+                    padding: '10px 12px',
+                    borderTop: `3.5px solid ${stg.color}`,
                     borderBottom: '1px solid #e2e8f0',
                     background: '#ffffff',
-                    borderTopLeftRadius: '12px',
-                    borderTopRightRadius: '12px',
+                    borderTopLeftRadius: '10px',
+                    borderTopRightRadius: '10px',
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
+                    gap: '6px',
                   }}
                 >
-                  <div>
-                    <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: '#1e293b' }}>
+                  <div style={{ minWidth: 0, overflow: 'hidden' }}>
+                    <h4 style={{ margin: 0, fontSize: '12px', fontWeight: 700, color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {stg.name}
                     </h4>
-                    <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 500 }}>
+                    <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>
                       ${stgVal.toLocaleString()} USD
                     </span>
                   </div>
@@ -624,10 +631,11 @@ export default function CrmSalesStagesDealsPage() {
                     style={{
                       background: '#f1f5f9',
                       color: '#334155',
-                      fontSize: '12px',
+                      fontSize: '11px',
                       fontWeight: 700,
-                      padding: '2px 8px',
-                      borderRadius: '12px',
+                      padding: '1px 6px',
+                      borderRadius: '10px',
+                      flexShrink: 0,
                     }}
                   >
                     {stgItems.length}
@@ -635,16 +643,16 @@ export default function CrmSalesStagesDealsPage() {
                 </div>
 
                 {/* Column Cards */}
-                <div style={{ padding: '12px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ padding: '8px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {stgItems.length === 0 ? (
                     <div
                       style={{
-                        padding: '28px 12px',
+                        padding: '20px 8px',
                         textAlign: 'center',
                         color: '#94a3b8',
-                        fontSize: '12px',
+                        fontSize: '11px',
                         border: '1px dashed #cbd5e1',
-                        borderRadius: '8px',
+                        borderRadius: '6px',
                       }}
                     >
                       No clients currently in {stg.name}

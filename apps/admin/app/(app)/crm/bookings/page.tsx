@@ -18,7 +18,7 @@ import {
 } from '@/components/ui';
 import { CustomerSearchPicker, CustomerSummary } from '@/components/CustomerSearchPicker';
 import { CustomerDetailsModal } from '@/components/CustomerDetailsModal';
-import ProductSearchPicker from '@/components/ProductSearchPicker';
+import ProductPackageSelect from '@/components/ProductPackageSelect';
 
 interface CustomerOption {
   id: string;
@@ -76,6 +76,7 @@ export default function CrmBookingsPage() {
   const [customers, setCustomers] = useState<CustomerOption[]>([]);
   const [viewCustomerId, setViewCustomerId] = useState<string | null>(null);
   const [selectedCustomerObj, setSelectedCustomerObj] = useState<CustomerSummary | null>(null);
+  const [viewBooking, setViewBooking] = useState<BookingItem | null>(null);
 
   // Quick Customer Creation modal inside booking
   const [showAddCustomer, setShowAddCustomer] = useState(false);
@@ -427,38 +428,51 @@ export default function CrmBookingsPage() {
               />
             </div>
 
-            {/* Product / Service Selection */}
-            <div style={{ gridColumn: '1 / -1', marginBottom: 6 }}>
-              <ProductSearchPicker
-                label="📦 Product / Service (Tours, Fleet Rental, Hotel, Flight Bookings)"
+            {/* Unified Product / Package with Dropdown, Editable Price & Permissions */}
+            <div style={{ gridColumn: '1 / -1', marginBottom: 12 }}>
+              <ProductPackageSelect
+                isBooking={true}
                 selectedProductName={form.tourName}
-                placeholder="Select a product from the catalog..."
-                onSelect={(prod) => {
-                  if (prod) {
-                    const uPrice = prod.price != null ? Number(prod.price) : 0;
-                    const pax = Number(form.paxCount) || 1;
-                    const calc = uPrice > 0 ? (uPrice * pax).toFixed(0) : form.totalPrice;
-                    setForm((f) => ({
-                      ...f,
-                      tourName: prod.name,
-                      unitPrice: uPrice,
-                      totalPrice: calc,
-                      currency: prod.currency || f.currency,
-                    }));
-                  } else {
-                    setForm((f) => ({ ...f, tourName: '', unitPrice: 0 }));
-                  }
+                priceValue={form.unitPrice}
+                totalPrice={form.totalPrice}
+                currencyValue={form.currency}
+                paxCount={form.paxCount}
+                isSavedRecord={Boolean(editing)}
+                isAdmin={true}
+                onSelectProduct={(prod, newPrice, newCurr) => {
+                  setForm((f) => ({
+                    ...f,
+                    tourName: prod ? prod.name : '',
+                    unitPrice: newPrice != null ? Number(newPrice) : 0,
+                    currency: newCurr || f.currency,
+                  }));
+                }}
+                onPriceChange={(newPrice) => {
+                  setForm((f) => ({
+                    ...f,
+                    unitPrice: Number(newPrice) || 0,
+                  }));
+                }}
+                onCurrencyChange={(newCurr) => {
+                  setForm((f) => ({
+                    ...f,
+                    currency: newCurr,
+                  }));
+                }}
+                onPaxChange={(newPax) => {
+                  setForm((f) => ({
+                    ...f,
+                    paxCount: newPax,
+                  }));
+                }}
+                onTotalPriceChange={(newTotal) => {
+                  setForm((f) => ({
+                    ...f,
+                    totalPrice: newTotal,
+                  }));
                 }}
               />
             </div>
-
-            <Input
-              label="Tour Package / Product / Trip Name"
-              name="tourName"
-              value={form.tourName}
-              placeholder="e.g. December in Ghana 12 Days"
-              onChange={(e) => setForm({ ...form, tourName: e.target.value })}
-            />
 
             <Select
               label="Booking Status"
@@ -467,71 +481,6 @@ export default function CrmBookingsPage() {
               onChange={(e) => setForm({ ...form, status: e.target.value })}
               options={STATUSES.map((s) => ({ value: s, label: s }))}
             />
-
-            <Input
-              label="Guests (Pax Count)"
-              name="paxCount"
-              type="number"
-              min="1"
-              value={form.paxCount}
-              onChange={(e) => {
-                const pax = Number(e.target.value) || 1;
-                setForm((f) => ({
-                  ...f,
-                  paxCount: e.target.value,
-                  totalPrice: f.unitPrice > 0 ? (f.unitPrice * pax).toFixed(0) : f.totalPrice,
-                }));
-              }}
-            />
-
-            {/* FINANCIALS & EXPECTED AMOUNT SECTION */}
-            <div
-              style={{
-                gridColumn: '1 / -1',
-                padding: '14px 16px',
-                background: '#f0fdf4',
-                border: '1.5px solid #86efac',
-                borderRadius: '10px',
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 6 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 18 }}>💰</span>
-                  <span style={{ fontWeight: 800, color: '#166534', fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    Financials &amp; Expected Pricing
-                  </span>
-                </div>
-                {form.unitPrice > 0 && (
-                  <div style={{ fontSize: 12, color: '#15803d', fontWeight: 600 }}>
-                    Catalog: {form.currency} {form.unitPrice.toLocaleString()} × {form.paxCount} pax = {form.currency} {(form.unitPrice * (Number(form.paxCount) || 1)).toLocaleString()}
-                  </div>
-                )}
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
-                <Input
-                  label="Total Price ($/₵) *"
-                  name="totalPrice"
-                  type="number"
-                  value={form.totalPrice}
-                  placeholder="3160"
-                  onChange={(e) => setForm({ ...form, totalPrice: e.target.value })}
-                />
-
-                <Select
-                  label="Currency"
-                  name="currency"
-                  value={form.currency}
-                  options={CURRENCIES}
-                  onChange={(e) => setForm({ ...form, currency: e.target.value })}
-                />
-              </div>
-
-              <div style={{ marginTop: 8, fontSize: 11, color: '#166534', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span>ℹ️</span>
-                <span>Financials are automatically determined from the selected product. You can freely edit or adjust the total price where necessary (e.g. negotiated discounts, custom group quotes).</span>
-              </div>
-            </div>
           </div>
 
           <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
@@ -800,7 +749,27 @@ export default function CrmBookingsPage() {
                 key: 'actions',
                 label: 'Actions',
                 render: (b) => (
-                  <div style={{ display: 'flex', gap: 6, minWidth: '140px', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: 6, minWidth: '170px', alignItems: 'center' }}>
+                    <button
+                      type="button"
+                      onClick={() => setViewBooking(b)}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        background: '#0284c7',
+                        color: '#ffffff',
+                        border: 'none',
+                        padding: '4px 9px',
+                        borderRadius: 6,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                      title="View complete booking details"
+                    >
+                      👁️ View
+                    </button>
                     {b.status === 'PENDING' && (
                       <button
                         type="button"
@@ -1017,82 +986,48 @@ export default function CrmBookingsPage() {
             </div>
 
             <form onSubmit={submitConfirmModal} style={{ display: 'grid', gap: '14px' }}>
-              <ProductSearchPicker
-                label="Product / Package (Select from Catalog or Change)"
+              <ProductPackageSelect
+                isBooking={true}
                 selectedProductName={confirmForm.tourName}
-                onSelect={(prod) => {
-                  if (prod) {
-                    const uPrice = prod.price != null ? Number(prod.price) : 0;
-                    const pax = Number(confirmForm.paxCount) || 1;
-                    const calc = uPrice > 0 ? (uPrice * pax).toFixed(0) : confirmForm.totalPrice;
-                    setConfirmForm((f) => ({
-                      ...f,
-                      tourName: prod.name,
-                      unitPrice: uPrice,
-                      totalPrice: calc,
-                      currency: prod.currency || f.currency,
-                    }));
-                  }
+                priceValue={confirmForm.unitPrice}
+                totalPrice={confirmForm.totalPrice}
+                currencyValue={confirmForm.currency}
+                paxCount={confirmForm.paxCount}
+                isSavedRecord={true}
+                isAdmin={true}
+                onSelectProduct={(prod, newPrice, newCurr) => {
+                  setConfirmForm((f) => ({
+                    ...f,
+                    tourName: prod ? prod.name : '',
+                    unitPrice: newPrice != null ? Number(newPrice) : 0,
+                    currency: newCurr || f.currency,
+                  }));
+                }}
+                onPriceChange={(newPrice) => {
+                  setConfirmForm((f) => ({
+                    ...f,
+                    unitPrice: Number(newPrice) || 0,
+                  }));
+                }}
+                onCurrencyChange={(newCurr) => {
+                  setConfirmForm((f) => ({
+                    ...f,
+                    currency: newCurr,
+                  }));
+                }}
+                onPaxChange={(newPax) => {
+                  setConfirmForm((f) => ({
+                    ...f,
+                    paxCount: Number(newPax) || 1,
+                  }));
+                }}
+                onTotalPriceChange={(newTotal) => {
+                  setConfirmForm((f) => ({
+                    ...f,
+                    totalPrice: newTotal,
+                  }));
                 }}
               />
-
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12 }}>
-                <Input
-                  label="Tour / Package Name"
-                  name="tourName"
-                  value={confirmForm.tourName}
-                  onChange={(e) => setConfirmForm({ ...confirmForm, tourName: e.target.value })}
-                />
-                <Input
-                  label="Pax (Guests)"
-                  name="paxCount"
-                  type="number"
-                  min="1"
-                  value={confirmForm.paxCount}
-                  onChange={(e) => {
-                    const pax = Number(e.target.value) || 1;
-                    setConfirmForm((f) => ({
-                      ...f,
-                      paxCount: pax,
-                      totalPrice: f.unitPrice > 0 ? (f.unitPrice * pax).toFixed(0) : f.totalPrice,
-                    }));
-                  }}
-                />
-              </div>
-
-              {/* FINANCIALS SECTION IN MODAL */}
-              <div
-                style={{
-                  padding: '12px 14px',
-                  background: '#f0fdf4',
-                  border: '1.5px solid #86efac',
-                  borderRadius: '8px',
-                }}
-              >
-                <div style={{ fontWeight: 800, color: '#166534', fontSize: 12, marginBottom: 8, textTransform: 'uppercase' }}>
-                  💵 Financials / Total Amount
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10 }}>
-                  <Input
-                    label="Total Price *"
-                    name="totalPrice"
-                    type="number"
-                    value={confirmForm.totalPrice}
-                    onChange={(e) => setConfirmForm({ ...confirmForm, totalPrice: e.target.value })}
-                    required
-                  />
-                  <Select
-                    label="Currency"
-                    name="currency"
-                    value={confirmForm.currency}
-                    options={CURRENCIES}
-                    onChange={(e) => setConfirmForm({ ...confirmForm, currency: e.target.value })}
-                  />
-                </div>
-                <div style={{ fontSize: 11, color: '#15803d', marginTop: 6 }}>
-                  You can edit this financial price where necessary before confirming.
-                </div>
-              </div>
 
               <Select
                 label="Booking Status"
@@ -1119,6 +1054,145 @@ export default function CrmBookingsPage() {
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* VIEW BOOKING DETAILS MODAL */}
+      {viewBooking && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.6)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000,
+            padding: '20px',
+          }}
+        >
+          <div
+            style={{
+              background: '#ffffff',
+              borderRadius: '16px',
+              maxWidth: '650px',
+              width: '100%',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              padding: '24px',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid #e2e8f0', paddingBottom: 16, marginBottom: 16 }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                  <span style={{ fontSize: 20 }}>📋</span>
+                  <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: '#0f172a' }}>
+                    Booking Details: {viewBooking.bookingNumber}
+                  </h3>
+                </div>
+                <div style={{ fontSize: 12, color: '#64748b' }}>
+                  Booked on {viewBooking.bookedAt ? new Date(viewBooking.bookedAt).toLocaleString() : 'Recently'}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setViewBooking(null)}
+                style={{ background: '#f1f5f9', border: 'none', borderRadius: 8, width: 32, height: 32, cursor: 'pointer', fontSize: 16, color: '#64748b' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gap: 16 }}>
+              {/* Customer Info Card */}
+              <div style={{ padding: 14, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: '#475569', textTransform: 'uppercase' }}>Customer</div>
+                  {(viewBooking.customerId || viewBooking.customer?.id) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const cid = viewBooking.customerId || viewBooking.customer?.id;
+                        if (cid) setViewCustomerId(cid);
+                      }}
+                      style={{
+                        background: '#eff6ff',
+                        border: '1px solid #bfdbfe',
+                        color: '#1d4ed8',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        padding: '2px 8px',
+                        borderRadius: 6,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      👤 Full Customer Profile
+                    </button>
+                  )}
+                </div>
+                <div style={{ fontWeight: 700, fontSize: 15, color: '#0f172a' }}>
+                  {viewBooking.customer ? `${viewBooking.customer.firstName ?? ''} ${viewBooking.customer.lastName ?? ''}`.trim() : 'Customer'}
+                </div>
+                <div style={{ display: 'flex', gap: 16, marginTop: 6, fontSize: 12, color: '#64748b', flexWrap: 'wrap' }}>
+                  {viewBooking.customer?.email && <div>✉️ {viewBooking.customer.email}</div>}
+                  {viewBooking.customer?.phone && <div>📞 {viewBooking.customer.phone}</div>}
+                </div>
+              </div>
+
+              {/* Product & Financials Details */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
+                <div style={{ padding: 14, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10 }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: '#475569', textTransform: 'uppercase', marginBottom: 6 }}>Product / Tour</div>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: '#0f172a' }}>{viewBooking.tourName || '—'}</div>
+                  <div style={{ fontSize: 12, color: '#64748b', marginTop: 4 }}>Pax: <strong>{viewBooking.paxCount ?? 1} Guests</strong></div>
+                </div>
+
+                <div style={{ padding: 14, background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 10 }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: '#166534', textTransform: 'uppercase', marginBottom: 6 }}>Financials</div>
+                  <div style={{ fontWeight: 800, fontSize: 18, color: '#15803d' }}>
+                    {viewBooking.totalPrice != null ? `${viewBooking.currency ?? '$'} ${Number(viewBooking.totalPrice).toLocaleString()}` : '—'}
+                  </div>
+                  <div style={{ fontSize: 11, color: '#166534', marginTop: 4 }}>
+                    Status: <strong>{viewBooking.status}</strong>
+                  </div>
+                </div>
+              </div>
+
+              {/* Invoices and Payments preview */}
+              {((viewBooking.invoices && viewBooking.invoices.length > 0) || (viewBooking.payments && viewBooking.payments.length > 0)) && (
+                <div style={{ padding: 14, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 12 }}>
+                  <div style={{ fontWeight: 800, color: '#475569', marginBottom: 6, textTransform: 'uppercase', fontSize: 11 }}>Linked Documents</div>
+                  {viewBooking.invoices?.map((inv) => (
+                    <div key={inv.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0' }}>
+                      <span>📄 Invoice #{inv.invoiceNumber}</span>
+                      <strong style={{ color: '#166534' }}>${inv.amount.toLocaleString()} ({inv.status})</strong>
+                    </div>
+                  ))}
+                  {viewBooking.payments?.map((pm) => (
+                    <div key={pm.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0' }}>
+                      <span>💳 Payment #{pm.paymentNumber}</span>
+                      <strong style={{ color: '#0284c7' }}>${pm.amount.toLocaleString()}</strong>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  const b = viewBooking;
+                  setViewBooking(null);
+                  openConfirmModal(b);
+                }}
+              >
+                ✏️ Edit Financials / Status
+              </Button>
+              <Button onClick={() => setViewBooking(null)}>Close</Button>
+            </div>
           </div>
         </div>
       )}

@@ -146,7 +146,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           Sign out
         </button>
       </aside>
-      <main className="main" style={{ background: '#070f0c' }}>{children}</main>
+      <main className="main" style={{ background: '#f8fafc', minHeight: '100vh' }}>{children}</main>
     </div>
   );
 }
