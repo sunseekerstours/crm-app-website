@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { api } from '@/lib/api';
 import { Button, PageHeader, Spinner } from '@/components/ui';
 
@@ -167,7 +168,23 @@ export default function SettingsPage() {
 
   return (
     <>
-      <PageHeader title="Site Settings" subtitle="Configure the public website like WordPress settings" />
+      <PageHeader
+        title="Site Settings"
+        subtitle="Configure the public website like WordPress settings"
+        actions={
+          <div className="flex items-center gap-2">
+            <Link href="/settings/email">
+              <Button variant="secondary">✉️ Email & Backups</Button>
+            </Link>
+            <Link href="/settings/automations">
+              <Button variant="secondary">⚡ Automations</Button>
+            </Link>
+            <Link href="/settings/stages">
+              <Button variant="secondary">📊 Sales Stages</Button>
+            </Link>
+          </div>
+        }
+      />
       {notice ? <div className="toast">{notice}</div> : null}
       {error ? <div className="error-state">Error: {error}</div> : null}
 

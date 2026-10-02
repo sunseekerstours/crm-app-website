@@ -51,6 +51,16 @@ export interface AppConfig {
     botToken: string;
     chatId: string;
   };
+  smtp: {
+    enabled: boolean;
+    host: string;
+    port: number;
+    secure: boolean;
+    user: string;
+    pass: string;
+    from: string;
+    replyTo?: string;
+  };
 }
 
 export const configuration = (): AppConfig => ({
@@ -102,5 +112,15 @@ export const configuration = (): AppConfig => ({
     enabled: process.env.TELEGRAM_ENABLED === 'true',
     botToken: process.env.TELEGRAM_BOT_TOKEN ?? '',
     chatId: process.env.TELEGRAM_CHAT_ID ?? '',
+  },
+  smtp: {
+    enabled: process.env.SMTP_ENABLED === 'true' || Boolean(process.env.SMTP_HOST),
+    host: process.env.SMTP_HOST ?? '',
+    port: parseInt(process.env.SMTP_PORT ?? '587', 10),
+    secure: process.env.SMTP_SECURE === 'true',
+    user: process.env.SMTP_USER ?? '',
+    pass: process.env.SMTP_PASS ?? '',
+    from: process.env.SMTP_FROM ?? 'Sunseekers Tours <noreply@sunseekerstours.com>',
+    replyTo: process.env.SMTP_REPLY_TO ?? '',
   },
 });

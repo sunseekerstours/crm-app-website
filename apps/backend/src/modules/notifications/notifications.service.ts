@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@app/prisma/prisma.service';
 import { AuditService } from '@app/modules/audit/audit.service';
+import { MailService } from '@app/modules/mail/mail.service';
 import { ApiNotFoundException, ErrorCode } from '@app/common/errors';
 import { AuditableAction, NotificationChannel, NotificationType, Prisma } from '@prisma/client';
 
@@ -28,6 +29,7 @@ export class NotificationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly mailService: MailService,
   ) {}
 
   /** Returns the effective preferences for a user (merged with defaults). */
@@ -100,6 +102,20 @@ export class NotificationsService {
             data: entity as Prisma.InputJsonValue,
           },
         });
+      } else if (channel === NotificationChannel.EMAIL) {
+        try {
+          const user = await this.prisma.user.findUnique({
+            where: { id: input.userId },
+            select: { email: true, firstName: true },
+          });
+          if (user?.email) {
+            await this.mailService.sendNotificationEmail(user.email, input.title, input.message);
+          } else {
+            this.logger.warn(`Could not send email notification: user ${input.userId} has no email`);
+          }
+        } catch (err: any) {
+          this.logger.error(`Error sending notification email: ${err?.message}`);
+        }
       } else {
         this.logger.log(`[${channel}] -> ${input.userId} (${input.type}): ${input.title}`);
       }

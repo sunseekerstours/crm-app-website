@@ -81,6 +81,14 @@ services:
       JETPACK_CRM_SYNC_LIMIT: ${JETPACK_CRM_SYNC_LIMIT:-200}
       JETPACK_CRM_PAGE_SIZE: ${JETPACK_CRM_PAGE_SIZE:-100}
       JETPACK_CRM_WEBHOOK_SECRET: ${JETPACK_CRM_WEBHOOK_SECRET:-}
+      SMTP_ENABLED: ${SMTP_ENABLED:-false}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-Sunseekers Tours <noreply@sunseekerstours.com>}
+      SMTP_REPLY_TO: ${SMTP_REPLY_TO:-}
     networks:
       - default
       - dokploy-network

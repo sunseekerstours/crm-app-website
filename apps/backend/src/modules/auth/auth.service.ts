@@ -5,6 +5,7 @@ import * as bcrypt from 'bcrypt';
 import { createHash, randomBytes } from 'crypto';
 import { PrismaService } from '@app/prisma/prisma.service';
 import { AuditService } from '@app/modules/audit/audit.service';
+import { MailService } from '@app/modules/mail/mail.service';
 import { ApiNotFoundException, ApiUnauthorizedException, ErrorCode } from '@app/common/errors';
 import { resolvePermissions } from '@app/common/rbac';
 import { LoginDto } from './dto/login.dto';
@@ -39,6 +40,7 @@ export class AuthService {
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
     private readonly audit: AuditService,
+    private readonly mailService: MailService,
   ) {}
 
   private sha256(value: string): string {
@@ -205,8 +207,8 @@ export class AuthService {
         userAgent: meta.userAgent,
         requestId: meta.requestId,
       });
-      // NOTE: In production, send rawToken via email. Logged for dev convenience.
-      console.log(`[DEV] Password reset token for ${user.email}: ${rawToken}`);
+      // Send password reset email via configured mail service
+      await this.mailService.sendPasswordResetEmail(user.email, rawToken);
     }
     return { success: true };
   }
