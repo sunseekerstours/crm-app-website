@@ -16,6 +16,8 @@ import {
   Spinner,
   Table,
 } from '@/components/ui';
+import { CustomerDetailsModal } from '@/components/CustomerDetailsModal';
+import { formatDisplayPhone } from '@/lib/phone';
 
 interface CustomerItem {
   id: string;
@@ -96,6 +98,7 @@ export default function CrmCustomersPage() {
   const [data, setData] = useState<Paginated<CustomerItem> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<CustomerItem | null>(null);
+  const [viewCustomerId, setViewCustomerId] = useState<string | null>(null);
   const [form, setForm] = useState(initialForm);
   const [exportingAll, setExportingAll] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -587,7 +590,7 @@ export default function CrmCustomersPage() {
                   render: (c) => (
                     <div>
                       <div>{c.email || <span style={{ color: '#94a3b8' }}>—</span>}</div>
-                      {c.phone && <div style={{ fontSize: 12, color: '#64748b' }}>📞 {c.phone}</div>}
+                      {c.phone && <div style={{ fontSize: 12, color: '#64748b' }}>📞 {formatDisplayPhone(c.phone)}</div>}
                     </div>
                   ),
                 },
@@ -656,11 +659,31 @@ export default function CrmCustomersPage() {
                   key: 'actions',
                   label: 'Actions',
                   render: (c) => (
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <Button variant="secondary" onClick={() => loadIntoForm(c)}>
-                        Edit
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <button
+                        type="button"
+                        onClick={() => setViewCustomerId(c.id)}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          background: '#0284c7',
+                          color: '#ffffff',
+                          border: 'none',
+                          padding: '4px 9px',
+                          borderRadius: 6,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                        }}
+                        title="View complete customer profile and history"
+                      >
+                        👁️ View
+                      </button>
+                      <Button variant="secondary" onClick={() => loadIntoForm(c)} style={{ padding: '4px 8px', fontSize: '11px' }}>
+                        ✏️ Edit
                       </Button>
-                      <Button variant="danger" onClick={() => remove(c)}>
+                      <Button variant="danger" onClick={() => remove(c)} style={{ padding: '4px 8px', fontSize: '11px' }}>
                         Delete
                       </Button>
                     </div>
@@ -674,6 +697,12 @@ export default function CrmCustomersPage() {
           <Spinner />
         )}
       </div>
+
+      {/* Customer Full Details Modal */}
+      <CustomerDetailsModal
+        customerId={viewCustomerId}
+        onClose={() => setViewCustomerId(null)}
+      />
     </div>
   );
 }

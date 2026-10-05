@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { api, Paginated } from '@/lib/api';
 import { Button, Spinner } from './ui';
+import { formatDisplayPhone } from '@/lib/phone';
 
 export interface CustomerFullDetails {
   id: string;
@@ -98,8 +99,9 @@ export function CustomerDetailsModal({
   }
 
   const fullName = customer ? `${customer.firstName ?? ''} ${customer.lastName ?? ''}`.trim() || 'Customer Details' : 'Customer Profile';
-  const cleanPhone = customer?.phone?.replace(/[^0-9+]/g, '') || '';
-  const cleanWhatsApp = (customer?.whatsapp || customer?.phone || '').replace(/[^0-9]/g, '');
+  const displayPhone = formatDisplayPhone(customer?.phone);
+  const cleanPhone = displayPhone.replace(/[^0-9+]/g, '');
+  const cleanWhatsApp = (customer?.whatsapp || displayPhone || '').replace(/[^0-9]/g, '');
 
   return (
     <div
@@ -236,7 +238,7 @@ export function CustomerDetailsModal({
                   textDecoration: 'none',
                 }}
               >
-                📞 Call {customer.phone}
+                📞 Call {displayPhone}
               </a>
             )}
             {cleanWhatsApp && (
@@ -387,7 +389,7 @@ export function CustomerDetailsModal({
                       Phone / Mobile
                     </span>
                     <span style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a' }}>
-                      {customer.phone || '—'}
+                      {displayPhone || '—'}
                     </span>
                   </div>
 

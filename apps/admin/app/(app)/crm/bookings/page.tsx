@@ -19,6 +19,7 @@ import {
 import { CustomerSearchPicker, CustomerSummary } from '@/components/CustomerSearchPicker';
 import { CustomerDetailsModal } from '@/components/CustomerDetailsModal';
 import ProductPackageSelect from '@/components/ProductPackageSelect';
+import { formatDisplayPhone } from '@/lib/phone';
 
 interface CustomerOption {
   id: string;
@@ -40,6 +41,7 @@ interface BookingItem {
   totalPrice?: number | string;
   currency?: string;
   bookedAt?: string;
+  notes?: string;
   invoices?: { id: string; invoiceNumber: string; status: string; amount: number }[];
   payments?: { id: string; paymentNumber: string; amount: number }[];
 }
@@ -612,44 +614,43 @@ export default function CrmBookingsPage() {
               {
                 key: 'customer',
                 label: 'Customer',
-                render: (b) =>
-                  b.customer ? (
-                    <div style={{ minWidth: '170px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{ fontWeight: '700', color: '#0f172a' }}>
-                          {`${b.customer.firstName ?? ''} ${b.customer.lastName ?? ''}`.trim() || 'Customer'}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setViewCustomerId(b.customer!.id)}
-                          style={{
-                            background: '#eff6ff',
-                            border: '1px solid #bfdbfe',
-                            borderRadius: '4px',
-                            color: '#1d4ed8',
-                            fontSize: '11px',
-                            fontWeight: 700,
-                            padding: '2px 6px',
-                            cursor: 'pointer',
-                            whiteSpace: 'nowrap',
-                          }}
-                          title="View customer profile and history"
-                        >
-                          👁️ View
-                        </button>
+                render: (b) => {
+                  const cust = b.customer;
+                  const custName = cust ? `${cust.firstName ?? ''} ${cust.lastName ?? ''}`.trim() : '—';
+                  const initials = cust ? `${cust.firstName?.[0] || ''}${cust.lastName?.[0] || ''}`.toUpperCase() || '👤' : '👤';
+
+                  return (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 150 }}>
+                      <div
+                        style={{
+                          width: 30,
+                          height: 30,
+                          borderRadius: '50%',
+                          background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                          color: '#ffffff',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: 11,
+                          fontWeight: 700,
+                          flexShrink: 0,
+                        }}
+                      >
+                        {initials}
                       </div>
-                      {b.customer.phone && <div style={{ fontSize: '11px', color: '#64748b' }}>📞 {b.customer.phone}</div>}
-                      {b.customer.email && <div style={{ fontSize: '11px', color: '#64748b' }}>✉️ {b.customer.email}</div>}
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ fontWeight: 700, color: '#0f172a', fontSize: 13 }}>{custName}</span>
+                        {cust?.phone && <span style={{ fontSize: 11, color: '#64748b' }}>📞 {formatDisplayPhone(cust.phone)}</span>}
+                      </div>
                     </div>
-                  ) : (
-                    <span style={{ color: '#dc2626', fontSize: '12px' }}>No Customer</span>
-                  ),
+                  );
+                },
               },
               {
                 key: 'totalPrice',
                 label: 'Total Value',
                 render: (b) => (
-                  <span style={{ fontWeight: '800', color: '#008744', fontSize: '14px', whiteSpace: 'nowrap' }}>
+                  <span style={{ fontWeight: '800', color: '#008744', fontSize: '13px', whiteSpace: 'nowrap' }}>
                     {b.totalPrice != null ? `${b.currency ?? '$'} ${(Number(b.totalPrice) || 0).toLocaleString()}` : '—'}
                   </span>
                 ),
@@ -667,89 +668,10 @@ export default function CrmBookingsPage() {
                 },
               },
               {
-                key: 'docs',
-                label: 'Billing & Invoices',
-                render: (b) => (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: '200px' }}>
-                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                      <button
-                        type="button"
-                        onClick={() => generateInvoiceForBooking(b)}
-                        style={{
-                          background: '#f0fdf4',
-                          color: '#166534',
-                          border: '1px solid #bbf7d0',
-                          padding: '3px 7px',
-                          borderRadius: '4px',
-                          fontSize: '11px',
-                          fontWeight: '700',
-                          cursor: 'pointer',
-                          whiteSpace: 'nowrap',
-                        }}
-                        title="Generate Tax Invoice for this booking"
-                      >
-                        + Invoice
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => generateQuoteForBooking(b)}
-                        style={{
-                          background: '#eff6ff',
-                          color: '#1d4ed8',
-                          border: '1px solid #bfdbfe',
-                          padding: '3px 7px',
-                          borderRadius: '4px',
-                          fontSize: '11px',
-                          fontWeight: '700',
-                          cursor: 'pointer',
-                          whiteSpace: 'nowrap',
-                        }}
-                        title="Generate Quotation Proposal"
-                      >
-                        + Quote
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setRecordingPaymentFor(b);
-                          setPaymentForm({
-                            amount: b.totalPrice ? String(b.totalPrice) : '',
-                            currency: b.currency || 'USD',
-                            method: 'CASH',
-                            reference: '',
-                            notes: `Payment for booking ${b.bookingNumber}`,
-                          });
-                        }}
-                        style={{
-                          background: '#fffbeb',
-                          color: '#b45309',
-                          border: '1px solid #fde68a',
-                          padding: '3px 7px',
-                          borderRadius: '4px',
-                          fontSize: '11px',
-                          fontWeight: '700',
-                          cursor: 'pointer',
-                          whiteSpace: 'nowrap',
-                        }}
-                        title="Record Payment & Issue Stamped Receipt"
-                      >
-                        + Payment
-                      </button>
-                    </div>
-                    <Link
-                      href="/crm/invoices"
-                      style={{ fontSize: '11px', color: '#0284c7', textDecoration: 'none', fontWeight: '600' }}
-                    >
-                      View All Invoices ↗
-                    </Link>
-                  </div>
-                ),
-              },
-              {
                 key: 'actions',
                 label: 'Actions',
                 render: (b) => (
-                  <div style={{ display: 'flex', gap: 6, minWidth: '170px', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', whiteSpace: 'nowrap' }}>
                     <button
                       type="button"
                       onClick={() => setViewBooking(b)}
@@ -766,39 +688,48 @@ export default function CrmBookingsPage() {
                         fontWeight: 700,
                         cursor: 'pointer',
                       }}
-                      title="View complete booking details"
+                      title="View complete booking details, billing, and customer profile"
                     >
                       👁️ View
                     </button>
-                    {b.status === 'PENDING' && (
-                      <button
-                        type="button"
-                        onClick={() => openConfirmModal(b)}
-                        style={{
-                          background: '#16a34a',
-                          color: '#ffffff',
-                          border: 'none',
-                          borderRadius: '6px',
-                          padding: '4px 8px',
-                          fontSize: '11px',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                          whiteSpace: 'nowrap',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 3,
-                        }}
-                        title="Confirm Booking & Save Financials"
-                      >
-                        <span>✓</span> Confirm
-                      </button>
-                    )}
-                    <Button variant="secondary" onClick={() => loadIntoForm(b)} style={{ padding: '4px 8px', fontSize: '12px' }}>
-                      Edit
-                    </Button>
-                    <Button variant="danger" onClick={() => remove(b)} style={{ padding: '4px 8px', fontSize: '12px' }}>
-                      Delete
-                    </Button>
+                    <button
+                      type="button"
+                      onClick={() => openConfirmModal(b)}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        background: '#eff6ff',
+                        color: '#1d4ed8',
+                        border: '1px solid #bfdbfe',
+                        borderRadius: 6,
+                        padding: '4px 8px',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                      }}
+                      title="Edit financials & booking status"
+                    >
+                      ✏️ Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => remove(b)}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        background: 'none',
+                        border: 'none',
+                        color: '#ef4444',
+                        padding: '4px 6px',
+                        fontSize: 13,
+                        cursor: 'pointer',
+                      }}
+                      title="Delete booking"
+                    >
+                      🗑️
+                    </button>
                   </div>
                 ),
               },
@@ -1136,8 +1067,16 @@ export default function CrmBookingsPage() {
                   {viewBooking.customer ? `${viewBooking.customer.firstName ?? ''} ${viewBooking.customer.lastName ?? ''}`.trim() : 'Customer'}
                 </div>
                 <div style={{ display: 'flex', gap: 16, marginTop: 6, fontSize: 12, color: '#64748b', flexWrap: 'wrap' }}>
-                  {viewBooking.customer?.email && <div>✉️ {viewBooking.customer.email}</div>}
-                  {viewBooking.customer?.phone && <div>📞 {viewBooking.customer.phone}</div>}
+                  {viewBooking.customer?.email && (
+                    <a href={`mailto:${viewBooking.customer.email}`} style={{ color: '#0284c7', textDecoration: 'none' }}>
+                      ✉️ {viewBooking.customer.email}
+                    </a>
+                  )}
+                  {viewBooking.customer?.phone && (
+                    <a href={`tel:${formatDisplayPhone(viewBooking.customer.phone).replace(/[^0-9+]/g, '')}`} style={{ color: '#64748b', textDecoration: 'none' }}>
+                      📞 {formatDisplayPhone(viewBooking.customer.phone)}
+                    </a>
+                  )}
                 </div>
               </div>
 
@@ -1160,6 +1099,117 @@ export default function CrmBookingsPage() {
                 </div>
               </div>
 
+              {/* Billing, Invoices & Payment Actions */}
+              <div style={{ padding: 14, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10 }}>
+                <div style={{ fontSize: 11, fontWeight: 800, color: '#475569', textTransform: 'uppercase', marginBottom: 8 }}>
+                  Billing &amp; Invoice Actions
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const b = viewBooking;
+                      setViewBooking(null);
+                      generateInvoiceForBooking(b);
+                    }}
+                    style={{
+                      background: '#f0fdf4',
+                      color: '#166534',
+                      border: '1px solid #bbf7d0',
+                      padding: '6px 12px',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      fontWeight: '700',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                    }}
+                    title="Generate Tax Invoice for this booking"
+                  >
+                    📄 + Tax Invoice
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const b = viewBooking;
+                      setViewBooking(null);
+                      generateQuoteForBooking(b);
+                    }}
+                    style={{
+                      background: '#eff6ff',
+                      color: '#1d4ed8',
+                      border: '1px solid #bfdbfe',
+                      padding: '6px 12px',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      fontWeight: '700',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                    }}
+                    title="Generate Quotation Proposal"
+                  >
+                    📑 + Quote Proposal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const b = viewBooking;
+                      setViewBooking(null);
+                      setRecordingPaymentFor(b);
+                      setPaymentForm({
+                        amount: b.totalPrice ? String(b.totalPrice) : '',
+                        currency: b.currency || 'USD',
+                        method: 'CASH',
+                        reference: '',
+                        notes: `Payment for booking ${b.bookingNumber}`,
+                      });
+                    }}
+                    style={{
+                      background: '#fffbeb',
+                      color: '#b45309',
+                      border: '1px solid #fde68a',
+                      padding: '6px 12px',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      fontWeight: '700',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                    }}
+                    title="Record Payment & Issue Stamped Receipt"
+                  >
+                    💳 + Record Payment
+                  </button>
+                  <Link
+                    href="/crm/invoices"
+                    onClick={() => setViewBooking(null)}
+                    style={{
+                      marginLeft: 'auto',
+                      fontSize: '12px',
+                      color: '#0284c7',
+                      textDecoration: 'none',
+                      fontWeight: '600',
+                    }}
+                  >
+                    View All Invoices ↗
+                  </Link>
+                </div>
+              </div>
+
+              {/* Notes & Terms */}
+              {viewBooking.notes && (
+                <div style={{ padding: 14, background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10 }}>
+                  <div style={{ fontSize: 11, fontWeight: 800, color: '#92400e', textTransform: 'uppercase', marginBottom: 4 }}>
+                    Notes &amp; Instructions
+                  </div>
+                  <div style={{ fontSize: 13, color: '#78350f' }}>{viewBooking.notes}</div>
+                </div>
+              )}
+
               {/* Invoices and Payments preview */}
               {((viewBooking.invoices && viewBooking.invoices.length > 0) || (viewBooking.payments && viewBooking.payments.length > 0)) && (
                 <div style={{ padding: 14, background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, fontSize: 12 }}>
@@ -1181,6 +1231,31 @@ export default function CrmBookingsPage() {
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
+              {viewBooking.status === 'PENDING' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const b = viewBooking;
+                    setViewBooking(null);
+                    openConfirmModal(b);
+                  }}
+                  style={{
+                    background: '#16a34a',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '8px',
+                    padding: '8px 14px',
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                  }}
+                >
+                  ✓ Confirm Reservation
+                </button>
+              )}
               <Button
                 variant="secondary"
                 onClick={() => {
@@ -1189,7 +1264,7 @@ export default function CrmBookingsPage() {
                   openConfirmModal(b);
                 }}
               >
-                ✏️ Edit Financials / Status
+                ✏️ Edit Financials / Details
               </Button>
               <Button onClick={() => setViewBooking(null)}>Close</Button>
             </div>

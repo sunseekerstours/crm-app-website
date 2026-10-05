@@ -18,6 +18,7 @@ import {
 } from '@/components/ui';
 import { CustomerSearchPicker, CustomerSummary } from '@/components/CustomerSearchPicker';
 import { CustomerDetailsModal } from '@/components/CustomerDetailsModal';
+import { formatDisplayPhone } from '@/lib/phone';
 
 interface CustomerOption {
   id: string;
@@ -31,6 +32,10 @@ interface RecordedNote {
   id: string;
   content: string;
   createdAt: string;
+  user?: {
+    name?: string;
+    email?: string;
+  };
   createdBy?: {
     firstName?: string;
     lastName?: string;
@@ -49,6 +54,7 @@ interface DealItem {
   expectedCloseDate?: string;
   tour?: string;
   destination?: string;
+  createdAt?: string;
   recordedNotes?: RecordedNote[];
 }
 
@@ -115,6 +121,11 @@ export default function CrmSalesStagesDealsPage() {
   const [noteDeal, setNoteDeal] = useState<DealItem | null>(null);
   const [noteContent, setNoteContent] = useState('');
   const [savingNote, setSavingNote] = useState(false);
+
+  // Deal Details View Modal State
+  const [viewDeal, setViewDeal] = useState<DealItem | null>(null);
+  const [viewDealNote, setViewDealNote] = useState('');
+  const [viewDealSavingNote, setViewDealSavingNote] = useState(false);
 
   // Quick Customer Creation modal inside deal form
   const [showAddCustomer, setShowAddCustomer] = useState(false);
@@ -276,6 +287,7 @@ export default function CrmSalesStagesDealsPage() {
   const handleMoveStage = async (dealId: string, newStage: string) => {
     try {
       await api.patch(`/deals/${dealId}`, { stage: newStage });
+      setViewDeal((prev) => (prev && prev.id === dealId ? { ...prev, stage: newStage } : prev));
       void load();
     } catch (err: any) {
       alert(err?.message || 'Failed to update stage');
@@ -294,6 +306,21 @@ export default function CrmSalesStagesDealsPage() {
       alert(err?.message || 'Failed to save note');
     } finally {
       setSavingNote(false);
+    }
+  };
+
+  const handleSaveViewDealNote = async () => {
+    if (!viewDeal || !viewDealNote.trim()) return;
+    setViewDealSavingNote(true);
+    try {
+      const res = await api.post<RecordedNote>(`/deals/${viewDeal.id}/notes`, { content: viewDealNote.trim() });
+      setViewDeal((prev) => (prev ? { ...prev, recordedNotes: [res, ...(prev.recordedNotes || [])] } : null));
+      setViewDealNote('');
+      void load();
+    } catch (err: any) {
+      alert(err?.message || 'Failed to save note');
+    } finally {
+      setViewDealSavingNote(false);
     }
   };
 
@@ -700,10 +727,10 @@ export default function CrmSalesStagesDealsPage() {
                                 <span style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                   {custName}
                                 </span>
-                                {custId && (
+                                <div style={{ display: 'flex', gap: '8px', marginTop: '2px', alignItems: 'center' }}>
                                   <button
                                     type="button"
-                                    onClick={() => setViewCustomerId(custId)}
+                                    onClick={() => setViewDeal(item)}
                                     style={{
                                       background: 'none',
                                       border: 'none',
@@ -717,9 +744,29 @@ export default function CrmSalesStagesDealsPage() {
                                       gap: '2px',
                                     }}
                                   >
-                                    👁️ View Profile
+                                    👁️ View Deal
                                   </button>
-                                )}
+                                  {custId && (
+                                    <>
+                                      <span style={{ color: '#cbd5e1' }}>•</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => setViewCustomerId(custId)}
+                                        style={{
+                                          background: 'none',
+                                          border: 'none',
+                                          color: '#64748b',
+                                          fontSize: '11px',
+                                          fontWeight: 600,
+                                          cursor: 'pointer',
+                                          padding: 0,
+                                        }}
+                                      >
+                                        👤 Profile
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
                               </div>
                             </div>
 
@@ -735,8 +782,8 @@ export default function CrmSalesStagesDealsPage() {
                               </span>
                             )}
                             {item.customer?.phone && (
-                              <a href={`tel:${item.customer.phone}`} style={{ color: '#64748b', textDecoration: 'none' }}>
-                                📞 {item.customer.phone}
+                              <a href={`tel:${formatDisplayPhone(item.customer.phone).replace(/[^0-9+]/g, '')}`} style={{ color: '#64748b', textDecoration: 'none' }}>
+                                📞 {formatDisplayPhone(item.customer.phone)}
                               </a>
                             )}
                             {item.customer?.email && (
@@ -846,7 +893,6 @@ export default function CrmSalesStagesDealsPage() {
                   const custName = cust
                     ? `${cust.firstName ?? ''} ${cust.lastName ?? ''}`.trim()
                     : d.name || 'Unassigned Customer';
-                  const custId = d.customerId ?? cust?.id;
                   const initials = cust
                     ? `${cust.firstName?.[0] || ''}${cust.lastName?.[0] || ''}`.toUpperCase() || '👤'
                     : '👤';
@@ -855,15 +901,15 @@ export default function CrmSalesStagesDealsPage() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <div
                         style={{
-                          width: '36px',
-                          height: '36px',
+                          width: '34px',
+                          height: '34px',
                           borderRadius: '50%',
                           background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
                           color: '#ffffff',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          fontSize: '13px',
+                          fontSize: '12px',
                           fontWeight: 700,
                           flexShrink: 0,
                         }}
@@ -871,32 +917,12 @@ export default function CrmSalesStagesDealsPage() {
                         {initials}
                       </div>
                       <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontWeight: 700, color: '#0f172a', fontSize: '13px' }}>
-                            {custName}
-                          </span>
-                          {custId && (
-                            <button
-                              type="button"
-                              onClick={() => setViewCustomerId(custId)}
-                              style={{
-                                background: '#eff6ff',
-                                border: '1px solid #bfdbfe',
-                                color: '#1d4ed8',
-                                fontSize: '11px',
-                                fontWeight: 700,
-                                borderRadius: '4px',
-                                padding: '2px 6px',
-                                cursor: 'pointer',
-                              }}
-                            >
-                              👁️ View Details
-                            </button>
-                          )}
-                        </div>
-                        <div style={{ display: 'flex', gap: '10px', fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
-                          {cust?.phone && <a href={`tel:${cust.phone}`} style={{ color: '#64748b', textDecoration: 'none' }}>📞 {cust.phone}</a>}
-                          {cust?.email && <a href={`mailto:${cust.email}`} style={{ color: '#64748b', textDecoration: 'none' }}>✉️ {cust.email}</a>}
+                        <span style={{ fontWeight: 700, color: '#0f172a', fontSize: '13px', display: 'block' }}>
+                          {custName}
+                        </span>
+                        <div style={{ display: 'flex', gap: '10px', fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
+                          {cust?.phone && <span>📞 {formatDisplayPhone(cust.phone)}</span>}
+                          {cust?.email && <span>✉️ {cust.email}</span>}
                         </div>
                       </div>
                     </div>
@@ -905,32 +931,28 @@ export default function CrmSalesStagesDealsPage() {
               },
               {
                 key: 'stage',
-                label: 'Current Sales Stage',
+                label: 'Sales Stage',
                 render: (d: DealItem) => {
                   const currentStg = getStageConfig(d.stage);
                   return (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <select
-                        value={d.stage || 'NEW'}
-                        onChange={(e) => handleMoveStage(d.id, e.target.value)}
-                        style={{
-                          fontSize: '12px',
-                          fontWeight: 700,
-                          padding: '5px 10px',
-                          borderRadius: '6px',
-                          border: `2px solid ${currentStg.color}`,
-                          background: '#ffffff',
-                          color: '#0f172a',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        {stages.map((st) => (
-                          <option key={st.key} value={st.key}>
-                            ➔ {st.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                    <span
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        padding: '3px 8px',
+                        borderRadius: 12,
+                        background: `${currentStg.color}15`,
+                        color: currentStg.color,
+                        border: `1px solid ${currentStg.color}35`,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: currentStg.color }} />
+                      {currentStg.name}
+                    </span>
                   );
                 },
               },
@@ -952,61 +974,73 @@ export default function CrmSalesStagesDealsPage() {
                 key: 'value',
                 label: 'Estimated Value',
                 render: (d: DealItem) => (
-                  <span style={{ fontWeight: 800, color: '#0284c7', fontSize: '13px' }}>
+                  <span style={{ fontWeight: 800, color: '#0284c7', fontSize: '13px', whiteSpace: 'nowrap' }}>
                     {d.value != null ? `${Number(d.value).toLocaleString()} ${d.currency || 'USD'}` : '—'}
                   </span>
                 ),
               },
               {
-                key: 'notes',
-                label: 'Latest Note',
-                render: (d: DealItem) => {
-                  const note = d.recordedNotes?.[0];
-                  return (
-                    <div style={{ maxWidth: '240px' }}>
-                      {note ? (
-                        <span style={{ fontSize: '12px', color: '#475569', display: 'block' }}>{note.content}</span>
-                      ) : (
-                        <span style={{ fontSize: '12px', color: '#94a3b8' }}>No notes yet</span>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setNoteDeal(d);
-                          setNoteContent('');
-                        }}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          marginTop: '4px',
-                          background: '#f0fdf4',
-                          border: '1px solid #bbf7d0',
-                          color: '#15803d',
-                          fontSize: '11px',
-                          fontWeight: 700,
-                          borderRadius: '4px',
-                          padding: '2px 6px',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        📝 Add Note
-                      </button>
-                    </div>
-                  );
-                },
-              },
-              {
                 key: 'actions',
                 label: 'Actions',
                 render: (d: DealItem) => (
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <Button variant="ghost" onClick={() => loadIntoForm(d)} style={{ fontSize: '12px' }}>
+                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center', whiteSpace: 'nowrap' }}>
+                    <button
+                      type="button"
+                      onClick={() => setViewDeal(d)}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        background: '#0284c7',
+                        color: '#ffffff',
+                        border: 'none',
+                        padding: '4px 9px',
+                        borderRadius: 6,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                      title="View complete deal details, client profile, and notes"
+                    >
+                      👁️ View
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => loadIntoForm(d)}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        background: '#eff6ff',
+                        color: '#1d4ed8',
+                        border: '1px solid #bfdbfe',
+                        borderRadius: 6,
+                        padding: '4px 8px',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
                       ✏️ Edit
-                    </Button>
-                    <Button variant="ghost" onClick={() => handleDelete(d)} style={{ fontSize: '12px', color: '#ef4444' }}>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(d)}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        background: 'none',
+                        border: 'none',
+                        color: '#ef4444',
+                        padding: '4px 6px',
+                        fontSize: 13,
+                        cursor: 'pointer',
+                      }}
+                      title="Delete deal"
+                    >
                       🗑️
-                    </Button>
+                    </button>
                   </div>
                 ),
               },
@@ -1327,6 +1361,364 @@ export default function CrmSalesStagesDealsPage() {
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* VIEW DEAL FULL DETAILS MODAL */}
+      {viewDeal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(3px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9998,
+            padding: '20px',
+          }}
+          onClick={() => setViewDeal(null)}
+        >
+          <div
+            style={{
+              background: '#ffffff',
+              borderRadius: '16px',
+              maxWidth: '680px',
+              width: '100%',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div
+              style={{
+                padding: '20px 24px',
+                borderBottom: '1px solid #e2e8f0',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                background: '#f8fafc',
+                borderTopLeftRadius: '16px',
+                borderTopRightRadius: '16px',
+              }}
+            >
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>
+                    {viewDeal.name}
+                  </h3>
+                  {(() => {
+                    const stg = getStageConfig(viewDeal.stage);
+                    return (
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          padding: '3px 10px',
+                          borderRadius: 20,
+                          background: `${stg.color}15`,
+                          color: stg.color,
+                          border: `1px solid ${stg.color}40`,
+                          fontSize: 12,
+                          fontWeight: 700,
+                        }}
+                      >
+                        <span style={{ width: 7, height: 7, borderRadius: '50%', background: stg.color }} />
+                        {stg.name}
+                      </span>
+                    );
+                  })()}
+                </div>
+                <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+                  Deal ID: {viewDeal.id}
+                  {viewDeal.createdAt && ` • Created ${new Date(viewDeal.createdAt).toLocaleDateString()}`}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setViewDeal(null)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '20px',
+                  color: '#94a3b8',
+                  padding: '4px',
+                  borderRadius: '6px',
+                  lineHeight: 1,
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Content Body */}
+            <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {/* Customer Information Card */}
+              <div
+                style={{
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '12px',
+                  padding: '16px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: '12px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div
+                    style={{
+                      width: '44px',
+                      height: '44px',
+                      borderRadius: '50%',
+                      background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                      color: '#ffffff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontWeight: 800,
+                      fontSize: '16px',
+                      flexShrink: 0,
+                    }}
+                  >
+                    {viewDeal.customer
+                      ? `${(viewDeal.customer.firstName || '')[0] || ''}${(viewDeal.customer.lastName || '')[0] || ''}`.toUpperCase() || 'C'
+                      : 'C'}
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '15px' }}>
+                      {viewDeal.customer
+                        ? `${viewDeal.customer.firstName ?? ''} ${viewDeal.customer.lastName ?? ''}`.trim()
+                        : 'No Customer Linked'}
+                    </div>
+                    <div style={{ display: 'flex', gap: '14px', marginTop: '4px', fontSize: '12px', color: '#64748b', flexWrap: 'wrap' }}>
+                      {viewDeal.customer?.email && (
+                        <a href={`mailto:${viewDeal.customer.email}`} style={{ color: '#0284c7', textDecoration: 'none' }}>
+                          ✉️ {viewDeal.customer.email}
+                        </a>
+                      )}
+                      {viewDeal.customer?.phone && (
+                        <a
+                          href={`tel:${formatDisplayPhone(viewDeal.customer.phone).replace(/[^0-9+]/g, '')}`}
+                          style={{ color: '#475569', textDecoration: 'none' }}
+                        >
+                          📞 {formatDisplayPhone(viewDeal.customer.phone)}
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {(viewDeal.customer?.id || viewDeal.customerId) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const cid = viewDeal.customer?.id || viewDeal.customerId;
+                      if (cid) setViewCustomerId(cid);
+                    }}
+                    style={{
+                      background: '#e0f2fe',
+                      color: '#0369a1',
+                      border: '1px solid #bae6fd',
+                      padding: '7px 12px',
+                      borderRadius: '8px',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                    }}
+                  >
+                    👤 View Full Customer Profile
+                  </button>
+                )}
+              </div>
+
+              {/* Deal Details & Value Grid */}
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                  gap: '12px',
+                }}
+              >
+                <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', padding: '14px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 800, color: '#166534', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Estimated Value
+                  </div>
+                  <div style={{ fontSize: '20px', fontWeight: 800, color: '#15803d', marginTop: '4px' }}>
+                    {viewDeal.value != null ? `${Number(viewDeal.value).toLocaleString()} ${viewDeal.currency || 'USD'}` : '—'}
+                  </div>
+                </div>
+
+                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '14px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Tour / Experience
+                  </div>
+                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginTop: '4px' }}>
+                    {viewDeal.tour || '—'}
+                  </div>
+                </div>
+
+                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '14px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Destination
+                  </div>
+                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginTop: '4px' }}>
+                    {viewDeal.destination || '—'}
+                  </div>
+                </div>
+
+                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '14px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Win Probability / Date
+                  </div>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: '#334155', marginTop: '4px' }}>
+                    {viewDeal.probability != null ? `${viewDeal.probability}%` : '—'}
+                    {viewDeal.expectedCloseDate && ` • ${new Date(viewDeal.expectedCloseDate).toLocaleDateString()}`}
+                  </div>
+                </div>
+              </div>
+
+              {/* Stage Progression Selector */}
+              <div style={{ padding: '14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px' }}>
+                <div style={{ fontSize: '12px', fontWeight: 800, color: '#334155', marginBottom: '8px' }}>
+                  Move Sales Stage:
+                </div>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {stages.map((st) => {
+                    const isCurrent = (viewDeal.stage || 'NEW') === st.key;
+                    return (
+                      <button
+                        key={st.key}
+                        type="button"
+                        onClick={() => {
+                          handleMoveStage(viewDeal.id, st.key);
+                          setViewDeal((prev) => (prev ? { ...prev, stage: st.key } : null));
+                        }}
+                        style={{
+                          padding: '6px 12px',
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          border: isCurrent ? `2px solid ${st.color}` : '1px solid #cbd5e1',
+                          background: isCurrent ? st.color : '#ffffff',
+                          color: isCurrent ? '#ffffff' : '#334155',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                        }}
+                      >
+                        <span style={{ width: 6, height: 6, borderRadius: '50%', background: isCurrent ? '#ffffff' : st.color }} />
+                        {st.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Notes & Activity History */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ fontSize: '13px', fontWeight: 800, color: '#0f172a', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>📝 Activity &amp; Recorded Notes ({viewDeal.recordedNotes?.length || 0})</span>
+                </div>
+
+                {/* Add new note box */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: '#f8fafc', padding: '12px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                  <textarea
+                    rows={2}
+                    placeholder="Log a client conversation, preference, or tour update..."
+                    value={viewDealNote}
+                    onChange={(e) => setViewDealNote(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      borderRadius: '6px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '13px',
+                      fontFamily: 'inherit',
+                      resize: 'vertical',
+                    }}
+                  />
+                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <Button
+                      variant="primary"
+                      onClick={handleSaveViewDealNote}
+                      disabled={viewDealSavingNote || !viewDealNote.trim()}
+                      style={{ fontSize: '12px', padding: '6px 14px' }}
+                    >
+                      {viewDealSavingNote ? <Spinner size={12} /> : 'Save Note to Deal'}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* List of notes */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '200px', overflowY: 'auto' }}>
+                  {viewDeal.recordedNotes && viewDeal.recordedNotes.length > 0 ? (
+                    viewDeal.recordedNotes.map((n) => (
+                      <div
+                        key={n.id}
+                        style={{
+                          background: '#ffffff',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: '8px',
+                          padding: '10px 14px',
+                          fontSize: '13px',
+                        }}
+                      >
+                        <div style={{ color: '#1e293b', whiteSpace: 'pre-wrap' }}>{n.content}</div>
+                        <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '6px', display: 'flex', gap: '8px' }}>
+                          <span>🕒 {new Date(n.createdAt).toLocaleString()}</span>
+                          {n.user && <span>• by {n.user.name || n.user.email}</span>}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{ fontSize: '12px', color: '#94a3b8', textAlign: 'center', padding: '12px' }}>
+                      No activity notes logged yet.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div
+              style={{
+                padding: '16px 24px',
+                background: '#f8fafc',
+                borderTop: '1px solid #e2e8f0',
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: '10px',
+                borderBottomLeftRadius: '16px',
+                borderBottomRightRadius: '16px',
+              }}
+            >
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  const d = viewDeal;
+                  setViewDeal(null);
+                  loadIntoForm(d);
+                }}
+              >
+                ✏️ Edit Deal
+              </Button>
+              <Button onClick={() => setViewDeal(null)}>Close</Button>
+            </div>
           </div>
         </div>
       )}
