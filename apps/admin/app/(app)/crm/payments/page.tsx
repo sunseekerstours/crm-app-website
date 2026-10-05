@@ -16,6 +16,8 @@ import {
   Spinner,
   Table,
 } from '@/components/ui';
+import { CustomerDetailsModal } from '@/components/CustomerDetailsModal';
+import { formatDisplayPhone } from '@/lib/phone';
 
 interface CustomerOption {
   id: string;
@@ -29,6 +31,7 @@ interface BookingOption {
   id: string;
   bookingNumber?: string;
   tourName?: string;
+  customer?: CustomerOption;
 }
 
 interface PaymentItem {
@@ -89,8 +92,9 @@ export default function CrmPaymentsPage() {
   const [customers, setCustomers] = useState<CustomerOption[]>([]);
   const [bookings, setBookings] = useState<BookingOption[]>([]);
 
-  // Stamped Receipt Print Modal
+  // Stamped Receipt Print Modal & Customer Details
   const [receiptDoc, setReceiptDoc] = useState<PaymentItem | null>(null);
+  const [viewCustomerId, setViewCustomerId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
@@ -379,17 +383,63 @@ export default function CrmPaymentsPage() {
               {
                 key: 'customer',
                 label: 'Customer / Payer',
-                render: (p) =>
-                  p.customer ? (
-                    <div>
-                      <div style={{ fontWeight: '700', color: '#0f172a' }}>
-                        {`${p.customer.firstName ?? ''} ${p.customer.lastName ?? ''}`.trim() || 'Customer'}
+                render: (p) => {
+                  const cust = p.customer || p.booking?.customer;
+                  if (!cust) return <span style={{ color: '#94a3b8' }}>—</span>;
+                  const initials = `${cust.firstName?.[0] || ''}${cust.lastName?.[0] || ''}`.toUpperCase() || '👤';
+                  const custId = cust.id || p.customerId;
+
+                  return (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div
+                        style={{
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '50%',
+                          background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                          color: '#ffffff',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '12px',
+                          fontWeight: 700,
+                          flexShrink: 0,
+                        }}
+                      >
+                        {initials}
                       </div>
-                      {p.customer.email && <div style={{ fontSize: '11px', color: '#64748b' }}>{p.customer.email}</div>}
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontWeight: '700', color: '#0f172a' }}>
+                            {`${cust.firstName ?? ''} ${cust.lastName ?? ''}`.trim() || 'Customer'}
+                          </span>
+                          {custId && (
+                            <button
+                              type="button"
+                              onClick={() => setViewCustomerId(custId)}
+                              style={{
+                                background: '#eff6ff',
+                                border: '1px solid #bfdbfe',
+                                color: '#1d4ed8',
+                                fontSize: '11px',
+                                fontWeight: 700,
+                                borderRadius: '4px',
+                                padding: '2px 6px',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              👁️ View
+                            </button>
+                          )}
+                        </div>
+                        <div style={{ display: 'flex', gap: '10px', fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
+                          {cust.phone && <span>📞 {formatDisplayPhone(cust.phone)}</span>}
+                          {cust.email && <span>✉️ {cust.email}</span>}
+                        </div>
+                      </div>
                     </div>
-                  ) : (
-                    <span style={{ color: '#94a3b8' }}>—</span>
-                  ),
+                  );
+                },
               },
               {
                 key: 'amount',
@@ -565,6 +615,12 @@ export default function CrmPaymentsPage() {
           </div>
         </div>
       )}
+
+      {/* Customer Full Profile Modal */}
+      <CustomerDetailsModal
+        customerId={viewCustomerId}
+        onClose={() => setViewCustomerId(null)}
+      />
     </div>
   );
 }

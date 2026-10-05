@@ -117,6 +117,8 @@ export class PaymentsService {
         { reference: { contains: params.search, mode: 'insensitive' } },
         { customer: { firstName: { contains: params.search, mode: 'insensitive' } } },
         { customer: { lastName: { contains: params.search, mode: 'insensitive' } } },
+        { booking: { customer: { firstName: { contains: params.search, mode: 'insensitive' } } } },
+        { booking: { customer: { lastName: { contains: params.search, mode: 'insensitive' } } } },
       ];
     }
 
@@ -129,8 +131,8 @@ export class PaymentsService {
         include: {
           customer: true,
           deal: true,
-          booking: { select: { id: true, bookingNumber: true, tourName: true } },
-          invoice: { select: { id: true, invoiceNumber: true, amount: true, amountPaid: true } },
+          booking: { select: { id: true, bookingNumber: true, tourName: true, customer: true } },
+          invoice: { select: { id: true, invoiceNumber: true, amount: true, amountPaid: true, customer: true } },
         },
       }),
       this.prisma.payment.count({ where }),
