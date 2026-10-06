@@ -18,6 +18,7 @@ import {
 } from '@/components/ui';
 import { CustomerSearchPicker, CustomerSummary } from '@/components/CustomerSearchPicker';
 import { CustomerDetailsModal } from '@/components/CustomerDetailsModal';
+import { PhoneBadge } from '@/components/PhoneBadge';
 import { formatDisplayPhone } from '@/lib/phone';
 
 interface CustomerOption {
@@ -782,9 +783,9 @@ export default function CrmSalesStagesDealsPage() {
                               </span>
                             )}
                             {item.customer?.phone && (
-                              <a href={`tel:${formatDisplayPhone(item.customer.phone).replace(/[^0-9+]/g, '')}`} style={{ color: '#64748b', textDecoration: 'none' }}>
-                                📞 {formatDisplayPhone(item.customer.phone)}
-                              </a>
+                              <div style={{ marginTop: 2 }}>
+                                <PhoneBadge phone={item.customer.phone} size="sm" />
+                              </div>
                             )}
                             {item.customer?.email && (
                               <a href={`mailto:${item.customer.email}`} style={{ color: '#64748b', textDecoration: 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -920,8 +921,8 @@ export default function CrmSalesStagesDealsPage() {
                         <span style={{ fontWeight: 700, color: '#0f172a', fontSize: '13px', display: 'block' }}>
                           {custName}
                         </span>
-                        <div style={{ display: 'flex', gap: '10px', fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
-                          {cust?.phone && <span>📞 {formatDisplayPhone(cust.phone)}</span>}
+                        <div style={{ display: 'flex', gap: '8px', fontSize: '11px', color: '#64748b', marginTop: '4px', alignItems: 'center' }}>
+                          {cust?.phone && <PhoneBadge phone={cust.phone} size="sm" />}
                           {cust?.email && <span>✉️ {cust.email}</span>}
                         </div>
                       </div>
@@ -1508,12 +1509,7 @@ export default function CrmSalesStagesDealsPage() {
                         </a>
                       )}
                       {viewDeal.customer?.phone && (
-                        <a
-                          href={`tel:${formatDisplayPhone(viewDeal.customer.phone).replace(/[^0-9+]/g, '')}`}
-                          style={{ color: '#475569', textDecoration: 'none' }}
-                        >
-                          📞 {formatDisplayPhone(viewDeal.customer.phone)}
-                        </a>
+                        <PhoneBadge phone={viewDeal.customer.phone} size="sm" />
                       )}
                     </div>
                   </div>

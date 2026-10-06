@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { api, Paginated } from '@/lib/api';
 import { Button, Spinner } from './ui';
-import { formatDisplayPhone } from '@/lib/phone';
+import { formatDisplayPhone, parsePhoneNumber } from '@/lib/phone';
+import { PhoneBadge } from './PhoneBadge';
 
 export interface CustomerFullDetails {
   id: string;
@@ -98,9 +99,12 @@ export function CustomerDetailsModal({
   }
 
   const fullName = customer ? `${customer.firstName ?? ''} ${customer.lastName ?? ''}`.trim() || 'Customer Details' : 'Customer Profile';
-  const displayPhone = formatDisplayPhone(customer?.phone);
-  const cleanPhone = displayPhone.replace(/[^0-9+]/g, '');
-  const cleanWhatsApp = (customer?.whatsapp || displayPhone || '').replace(/[^0-9]/g, '');
+  const phoneInfo = parsePhoneNumber(customer?.phone, customer?.country);
+  const displayPhone = phoneInfo.formatted;
+  const cleanPhone = phoneInfo.telUrl;
+  const cleanWhatsAppUrl = customer?.whatsapp
+    ? parsePhoneNumber(customer.whatsapp, customer?.country).whatsAppUrl
+    : phoneInfo.whatsAppUrl;
 
   return (
     <div
@@ -222,7 +226,7 @@ export function CustomerDetailsModal({
           >
             {customer.phone && (
               <a
-                href={`tel:${cleanPhone}`}
+                href={cleanPhone}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -237,12 +241,12 @@ export function CustomerDetailsModal({
                   textDecoration: 'none',
                 }}
               >
-                📞 Call {displayPhone}
+                <span>{phoneInfo.flag}</span> Call {displayPhone}
               </a>
             )}
-            {cleanWhatsApp && (
+            {cleanWhatsAppUrl && (
               <a
-                href={`https://wa.me/${cleanWhatsApp}`}
+                href={cleanWhatsAppUrl}
                 target="_blank"
                 rel="noreferrer"
                 style={{
@@ -387,9 +391,13 @@ export function CustomerDetailsModal({
                     <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 600, display: 'block', textTransform: 'uppercase' }}>
                       Phone / Mobile
                     </span>
-                    <span style={{ fontSize: '14px', fontWeight: 600, color: '#0f172a' }}>
-                      {displayPhone || '—'}
-                    </span>
+                    <div style={{ marginTop: '4px' }}>
+                      {customer.phone ? (
+                        <PhoneBadge phone={customer.phone} countryHint={customer.country} showWhatsApp={true} showCall={true} />
+                      ) : (
+                        <span style={{ fontSize: '14px', color: '#94a3b8' }}>—</span>
+                      )}
+                    </div>
                   </div>
 
                   <div style={{ background: '#f8fafc', padding: '12px 16px', borderRadius: '8px' }}>

@@ -53,6 +53,16 @@ export class JetpackCrmController {
   }
 
   /**
+   * Clean made-up products, synthetic payments, and fake bookings
+   */
+  @ApiBearerAuth()
+  @Post('clean-financials')
+  @RequirePermissions(Permission.SETTINGS_UPDATE)
+  async cleanFinancials() {
+    return this.jetpackService.cleanMadeUpFinancials();
+  }
+
+  /**
    * View raw contacts from Jetpack CRM
    */
   @ApiBearerAuth()

@@ -6,6 +6,7 @@ import { useList } from '@/lib/use-list';
 import { api } from '@/lib/api';
 import { CustomerSearchPicker, CustomerSummary } from '@/components/CustomerSearchPicker';
 import { CustomerDetailsModal } from '@/components/CustomerDetailsModal';
+import { PhoneBadge } from '@/components/PhoneBadge';
 import ProductPackageSelect, { ProductItem } from '@/components/ProductPackageSelect';
 import { useAuth } from '@/lib/auth';
 
@@ -438,21 +439,22 @@ export default function LeadsPage() {
                     {
                       key: 'contact',
                       label: 'Contact Info',
-                      render: (r: Lead) => (
-                        <div style={{ fontSize: 12 }}>
-                          {r.phone ? (
-                            <a href={`tel:${r.phone}`} style={{ color: '#0284c7', textDecoration: 'none', fontWeight: 600, display: 'block', whiteSpace: 'nowrap' }}>
-                              📞 {r.phone}
-                            </a>
-                          ) : r.email ? (
-                            <a href={`mailto:${r.email}`} style={{ color: '#475569', textDecoration: 'none', display: 'block', whiteSpace: 'nowrap' }}>
-                              ✉️ {r.email}
-                            </a>
-                          ) : (
-                            <span style={{ color: '#94a3b8' }}>—</span>
-                          )}
-                        </div>
-                      ),
+                      render: (r: Lead) => {
+                        const phoneNum = r.phone || r.customer?.phone;
+                        return (
+                          <div style={{ fontSize: 12, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            {phoneNum && (
+                              <PhoneBadge phone={phoneNum} size="sm" />
+                            )}
+                            {r.email && (
+                              <a href={`mailto:${r.email}`} style={{ color: '#64748b', textDecoration: 'none', display: 'block', whiteSpace: 'nowrap', fontSize: 11 }}>
+                                ✉️ {r.email}
+                              </a>
+                            )}
+                            {!phoneNum && !r.email && <span style={{ color: '#94a3b8' }}>—</span>}
+                          </div>
+                        );
+                      },
                     },
                     {
                       key: 'destination',
@@ -634,12 +636,12 @@ export default function LeadsPage() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                   <div>
                     <span style={{ fontSize: '11px', color: '#64748b' }}>Phone:</span>
-                    <div style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a', marginTop: '2px' }}>
+                    <div style={{ marginTop: '4px' }}>
                       {viewLead.phone ? (
-                        <a href={`tel:${viewLead.phone}`} style={{ color: '#0284c7', textDecoration: 'none' }}>
-                          {viewLead.phone}
-                        </a>
-                      ) : '—'}
+                        <PhoneBadge phone={viewLead.phone} />
+                      ) : (
+                        <span style={{ fontSize: '13px', color: '#94a3b8' }}>—</span>
+                      )}
                     </div>
                   </div>
                   <div>

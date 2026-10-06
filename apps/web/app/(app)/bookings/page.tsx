@@ -6,6 +6,7 @@ import { useList } from '@/lib/use-list';
 import { api } from '@/lib/api';
 import { CustomerSearchPicker, CustomerSummary } from '@/components/CustomerSearchPicker';
 import { CustomerDetailsModal } from '@/components/CustomerDetailsModal';
+import { PhoneBadge } from '@/components/PhoneBadge';
 import ProductPackageSelect, { ProductItem } from '@/components/ProductPackageSelect';
 import { useAuth } from '@/lib/auth';
 
@@ -296,7 +297,11 @@ export default function BookingsPage() {
                           </div>
                           <div style={{ display: 'flex', flexDirection: 'column' }}>
                             <span style={{ fontWeight: 700, color: '#0f172a', fontSize: 13 }}>{custName}</span>
-                            {cust?.phone && <span style={{ fontSize: 11, color: '#64748b' }}>📞 {cust.phone}</span>}
+                            {cust?.phone && (
+                              <div style={{ marginTop: 2 }}>
+                                <PhoneBadge phone={cust.phone} size="sm" />
+                              </div>
+                            )}
                           </div>
                         </div>
                       );
@@ -488,7 +493,9 @@ export default function BookingsPage() {
                 </div>
                 <div style={{ display: 'flex', gap: 16, marginTop: 6, fontSize: 12, color: '#64748b', flexWrap: 'wrap' }}>
                   {viewBooking.customer?.email && <div>✉️ {viewBooking.customer.email}</div>}
-                  {viewBooking.customer?.phone && <div>📞 {viewBooking.customer.phone}</div>}
+                  {viewBooking.customer?.phone && (
+                    <PhoneBadge phone={viewBooking.customer.phone} size="sm" />
+                  )}
                 </div>
               </div>
 

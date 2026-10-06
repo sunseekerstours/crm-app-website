@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as xlsx from 'xlsx';
 import { PrismaClient, CustomerStatus, LeadSource, LeadStage } from '@prisma/client';
+import { normalizePhoneNumber } from './clean-phone-numbers';
 
 const prisma = new PrismaClient();
 
@@ -85,7 +86,7 @@ export async function importJetpackContacts(csvFilePath?: string): Promise<{
 
   // Pre-load Fair and Company Enrichment from Sunseekers Data.xlsx & upload Crm.csv
   const enrichmentByEmail = new Map<string, { tags: string[]; company?: string; fair?: string; phone?: string; name?: string }>();
-  const enrichmentByPhone = new Map<string, { tags: string[]; company?: string; fair?: string }>();
+  const enrichmentByPhone = new Map<string, { tags: string[]; company?: string; fair?: string; phone?: string }>();
 
   // 1. Check upload Crm.csv
   const uploadCrmPath = path.resolve(__dirname, 'data/upload Crm.csv');
@@ -223,7 +224,10 @@ export async function importJetpackContacts(csvFilePath?: string): Promise<{
     const homeTel = idx.homeTel !== -1 ? row[idx.homeTel]?.trim() : '';
     const workTel = idx.workTel !== -1 ? row[idx.workTel]?.trim() : '';
     const mobTel = idx.mobTel !== -1 ? row[idx.mobTel]?.trim() : '';
-    const phone = mobTel || workTel || homeTel || '';
+    let phone = mobTel || workTel || homeTel || '';
+    if (/[eE]\+/.test(phone)) {
+      phone = '';
+    }
 
     let fname = idx.firstName !== -1 ? row[idx.firstName]?.trim() : '';
     let lname = idx.lastName !== -1 ? row[idx.lastName]?.trim() : '';
@@ -245,7 +249,7 @@ export async function importJetpackContacts(csvFilePath?: string): Promise<{
     const rawStatus = (idx.status !== -1 ? row[idx.status]?.trim() : '') || 'Lead';
     const isCustomer = rawStatus.toLowerCase().includes('customer');
 
-    const country = idx.country !== -1 ? row[idx.country]?.trim() : '';
+    let country = idx.country !== -1 ? row[idx.country]?.trim() : '';
     const addr1 = idx.addr1 !== -1 ? row[idx.addr1]?.trim() : '';
     const addr2 = idx.addr2 !== -1 ? row[idx.addr2]?.trim() : '';
     const city = idx.city !== -1 ? row[idx.city]?.trim() : '';
@@ -260,10 +264,25 @@ export async function importJetpackContacts(csvFilePath?: string): Promise<{
     const rawTags = idx.tags !== -1 ? row[idx.tags]?.trim() : '';
     const createdDate = idx.createdDate !== -1 ? parseDate(row[idx.createdDate]) : null;
 
-    // Check enrichment sources
+    // Check enrichment sources for company and uncorrupted phone number
     const enrich = (rawEmail ? enrichmentByEmail.get(rawEmail) : null) || (phone ? enrichmentByPhone.get(phone) : null);
     if (enrich?.company && !company) {
       company = enrich.company;
+    }
+    if (enrich?.phone && (!phone || /[eE]\+/.test(phone) || phone.endsWith('000000'))) {
+      phone = enrich.phone;
+    }
+
+    // Normalize phone number and identify Ghanaian contacts
+    let finalPhone = phone || null;
+    if (phone) {
+      const norm = normalizePhoneNumber(phone, country);
+      if (norm) {
+        finalPhone = norm.formatted;
+        if (norm.isGhana && !country) {
+          country = 'Ghana';
+        }
+      }
     }
 
     const parsedRowTags = cleanTags(rawTags);
@@ -284,7 +303,7 @@ export async function importJetpackContacts(csvFilePath?: string): Promise<{
       where: {
         OR: [
           ...(rawEmail ? [{ email: rawEmail }] : []),
-          ...(phone ? [{ phone }] : []),
+          ...(finalPhone ? [{ phone: finalPhone }] : []),
         ],
       },
     });
@@ -295,7 +314,7 @@ export async function importJetpackContacts(csvFilePath?: string): Promise<{
           firstName: fname,
           lastName: lname,
           email: rawEmail || null,
-          phone: phone || null,
+          phone: finalPhone,
           country: country || null,
           address: fullAddress,
           status: CustomerStatus.ACTIVE,
@@ -335,7 +354,7 @@ export async function importJetpackContacts(csvFilePath?: string): Promise<{
       await prisma.customer.update({
         where: { id: customer.id },
         data: {
-          phone: customer.phone || phone || null,
+          phone: customer.phone || finalPhone || null,
           country: customer.country || country || null,
           address: customer.address || fullAddress || null,
           tags: updatedTags,
@@ -356,7 +375,7 @@ export async function importJetpackContacts(csvFilePath?: string): Promise<{
             firstName: fname,
             lastName: lname,
             email: rawEmail,
-            phone: phone || null,
+            phone: finalPhone || null,
             source: LeadSource.WEBSITE,
             stage: LeadStage.NEW,
             destination: tour || null,
@@ -392,19 +411,30 @@ export async function importJetpackContacts(csvFilePath?: string): Promise<{
 
   // Also import any contacts present in Sunseekers Data.xlsx not yet in DB
   let fairAdded = 0;
-  for (const [email, info] of enrichmentByEmail.entries()) {
+  for (const [email, info] of Array.from(enrichmentByEmail.entries())) {
     if (!email) continue;
     const existing = await prisma.customer.findFirst({ where: { email } });
     if (!existing && info.name) {
       const parts = info.name.split(' ');
       const f = parts[0] || 'Fair';
       const l = parts.slice(1).join(' ') || 'Attendee';
+      let fairPhone = info.phone || null;
+      let fairCountry: string | null = null;
+      if (fairPhone) {
+        const norm = normalizePhoneNumber(fairPhone);
+        if (norm) {
+          fairPhone = norm.formatted;
+          if (norm.isGhana) fairCountry = 'Ghana';
+        }
+      }
+
       const fairCustomer = await prisma.customer.create({
         data: {
           firstName: f,
           lastName: l,
           email,
-          phone: info.phone || null,
+          phone: fairPhone,
+          country: fairCountry,
           status: CustomerStatus.ACTIVE,
           leadSource: LeadSource.WEBSITE,
           tags: Array.from(new Set(['JETPACK_CRM', 'FAIR_ATTENDEE', ...info.tags])),

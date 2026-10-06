@@ -19,6 +19,7 @@ import {
 import { CustomerSearchPicker, CustomerSummary } from '@/components/CustomerSearchPicker';
 import { CustomerDetailsModal } from '@/components/CustomerDetailsModal';
 import ProductPackageSelect from '@/components/ProductPackageSelect';
+import { PhoneBadge } from '@/components/PhoneBadge';
 import { formatDisplayPhone } from '@/lib/phone';
 
 interface CustomerOption {
@@ -640,7 +641,11 @@ export default function CrmBookingsPage() {
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column' }}>
                         <span style={{ fontWeight: 700, color: '#0f172a', fontSize: 13 }}>{custName}</span>
-                        {cust?.phone && <span style={{ fontSize: 11, color: '#64748b' }}>📞 {formatDisplayPhone(cust.phone)}</span>}
+                        {cust?.phone && (
+                          <div style={{ marginTop: 2 }}>
+                            <PhoneBadge phone={cust.phone} defaultCountry={cust.country} size="sm" />
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
@@ -1073,9 +1078,7 @@ export default function CrmBookingsPage() {
                     </a>
                   )}
                   {viewBooking.customer?.phone && (
-                    <a href={`tel:${formatDisplayPhone(viewBooking.customer.phone).replace(/[^0-9+]/g, '')}`} style={{ color: '#64748b', textDecoration: 'none' }}>
-                      📞 {formatDisplayPhone(viewBooking.customer.phone)}
-                    </a>
+                    <PhoneBadge phone={viewBooking.customer.phone} defaultCountry={viewBooking.customer.country} size="sm" />
                   )}
                 </div>
               </div>

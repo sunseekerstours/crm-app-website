@@ -17,6 +17,7 @@ import {
   Table,
 } from '@/components/ui';
 import { CustomerDetailsModal } from '@/components/CustomerDetailsModal';
+import { PhoneBadge } from '@/components/PhoneBadge';
 import { formatDisplayPhone } from '@/lib/phone';
 
 interface CustomerOption {
@@ -95,6 +96,31 @@ export default function CrmPaymentsPage() {
   // Stamped Receipt Print Modal & Customer Details
   const [receiptDoc, setReceiptDoc] = useState<PaymentItem | null>(null);
   const [viewCustomerId, setViewCustomerId] = useState<string | null>(null);
+  const [cleaning, setCleaning] = useState(false);
+
+  async function handleCleanMadeUpPayments() {
+    if (
+      !confirm(
+        'Clean all made-up products, synthetic payments, and fake bookings (e.g. Volta Adventure, Tema Port Excursion, Ghana Heritage expedition)?\n\nThis will remove synthetic records and keep real bookings and payments.'
+      )
+    ) {
+      return;
+    }
+    setCleaning(true);
+    try {
+      const res = await api.post<{ deletedPayments?: number; deletedBookings?: number; deletedInvoices?: number }>(
+        '/jetpack/clean-financials'
+      );
+      alert(
+        `Successfully cleaned synthetic records!\n- Payments removed: ${res.deletedPayments || 0}\n- Bookings removed: ${res.deletedBookings || 0}\n- Invoices removed: ${res.deletedInvoices || 0}`
+      );
+      void load();
+    } catch (err: any) {
+      alert('Failed to clean records: ' + (err.message || 'Unknown error'));
+    } finally {
+      setCleaning(false);
+    }
+  }
 
   const load = useCallback(async () => {
     setError(null);
@@ -243,6 +269,19 @@ export default function CrmPaymentsPage() {
                 Cancel Edit
               </Button>
             ) : null}
+            <Button
+              variant="secondary"
+              onClick={handleCleanMadeUpPayments}
+              disabled={cleaning}
+              style={{
+                borderColor: '#fca5a5',
+                color: '#b91c1c',
+                background: '#ffffff',
+                fontWeight: 700,
+              }}
+            >
+              {cleaning ? '⏳ Cleaning...' : '🧹 Clean Made-Up Records'}
+            </Button>
             <Button
               onClick={() => {
                 reset();
@@ -432,9 +471,23 @@ export default function CrmPaymentsPage() {
                             </button>
                           )}
                         </div>
-                        <div style={{ display: 'flex', gap: '10px', fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
-                          {cust.phone && <span>📞 {formatDisplayPhone(cust.phone)}</span>}
-                          {cust.email && <span>✉️ {cust.email}</span>}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '4px' }}>
+                          {cust.phone && (
+                            <PhoneBadge
+                              phone={cust.phone}
+                              compact={true}
+                              showWhatsApp={true}
+                              showCall={true}
+                            />
+                          )}
+                          {cust.email && (
+                            <a
+                              href={`mailto:${cust.email}`}
+                              style={{ color: '#0284c7', textDecoration: 'none', fontSize: '11px' }}
+                            >
+                              ✉️ {cust.email}
+                            </a>
+                          )}
                         </div>
                       </div>
                     </div>

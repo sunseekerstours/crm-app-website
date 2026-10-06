@@ -16,6 +16,7 @@ import {
 } from '@/components/ui';
 import { CustomerSearchPicker, CustomerSummary } from '@/components/CustomerSearchPicker';
 import { CustomerDetailsModal } from '@/components/CustomerDetailsModal';
+import { PhoneBadge } from '@/components/PhoneBadge';
 import { formatDisplayPhone } from '@/lib/phone';
 
 interface CustomerOption {
@@ -103,6 +104,7 @@ export default function PaymentsPage() {
   // Customer Profile Modal & Printable Stamped Receipt Modal
   const [viewCustomerId, setViewCustomerId] = useState<string | null>(null);
   const [receiptDoc, setReceiptDoc] = useState<PaymentItem | null>(null);
+  const [cleaning, setCleaning] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -187,6 +189,47 @@ export default function PaymentsPage() {
     }
   }
 
+  async function handleCleanMadeUpPayments() {
+    if (
+      !confirm(
+        'Clean all made-up products, synthetic payments, and fake bookings (e.g. Volta Adventure, Tema Port Excursion, Ghana Heritage expedition)?\n\nThis will remove synthetic records and keep real bookings and payments.'
+      )
+    ) {
+      return;
+    }
+    setCleaning(true);
+    try {
+      const res = await api.post<{ deletedPayments?: number; deletedBookings?: number; deletedInvoices?: number }>(
+        '/jetpack/clean-financials'
+      );
+      alert(
+        `Successfully cleaned synthetic records!\n- Payments removed: ${res.deletedPayments || 0}\n- Bookings removed: ${res.deletedBookings || 0}\n- Invoices removed: ${res.deletedInvoices || 0}`
+      );
+      void load();
+    } catch (err: any) {
+      alert('Failed to clean records: ' + (err.message || 'Unknown error'));
+    } finally {
+      setCleaning(false);
+    }
+  }
+
+  async function handleDeletePayment(p: PaymentItem) {
+    const ref = p.receiptNumber || p.paymentNumber || p.id;
+    if (
+      !confirm(
+        `Are you sure you want to void and delete payment receipt "${ref}"?\n\nThis will remove the transaction record and update the linked invoice balance.`
+      )
+    ) {
+      return;
+    }
+    try {
+      await api.delete(`/payments/${p.id}`);
+      void load();
+    } catch (err: any) {
+      alert('Failed to delete payment: ' + (err.message || 'Unknown error'));
+    }
+  }
+
   // Filter available bookings based on selected customer
   const filteredBookings = form.customerId
     ? bookings.filter((b) => b.customerId === form.customerId || b.customer?.id === form.customerId)
@@ -197,6 +240,22 @@ export default function PaymentsPage() {
       <PageHeader
         title="💳 Payments &amp; Customer Receipts"
         subtitle="Record payments linked to customers and bookings, and issue official stamped receipts"
+        action={
+          <Button
+            variant="secondary"
+            onClick={handleCleanMadeUpPayments}
+            disabled={cleaning}
+            style={{
+              borderColor: '#fca5a5',
+              color: '#b91c1c',
+              background: '#ffffff',
+              fontSize: '13px',
+              fontWeight: 700,
+            }}
+          >
+            {cleaning ? '⏳ Cleaning...' : '🧹 Clean Made-Up Records'}
+          </Button>
+        }
       />
 
       {/* Record Payment Card */}
@@ -444,17 +503,21 @@ export default function PaymentsPage() {
                               </button>
                             )}
                           </div>
-                          <div style={{ display: 'flex', gap: '10px', fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginTop: '4px' }}>
                             {cust?.phone && (
-                              <a
-                                href={`tel:${formatDisplayPhone(cust.phone).replace(/[^0-9+]/g, '')}`}
-                                style={{ color: '#64748b', textDecoration: 'none' }}
-                              >
-                                📞 {formatDisplayPhone(cust.phone)}
-                              </a>
+                              <PhoneBadge
+                                phone={cust.phone}
+                                countryHint={cust.country}
+                                compact={true}
+                                showWhatsApp={true}
+                                showCall={true}
+                              />
                             )}
                             {cust?.email && (
-                              <a href={`mailto:${cust.email}`} style={{ color: '#0284c7', textDecoration: 'none' }}>
+                              <a
+                                href={`mailto:${cust.email}`}
+                                style={{ color: '#0284c7', textDecoration: 'none', fontSize: '11px' }}
+                              >
                                 ✉️ {cust.email}
                               </a>
                             )}
@@ -513,29 +576,52 @@ export default function PaymentsPage() {
                 },
                 {
                   key: 'actions',
-                  label: 'Receipt',
+                  label: 'Actions',
                   render: (p: PaymentItem) => (
-                    <button
-                      type="button"
-                      onClick={() => setReceiptDoc(p)}
-                      style={{
-                        background: '#f0fdf4',
-                        color: '#166534',
-                        border: '1px solid #bbf7d0',
-                        padding: '4px 10px',
-                        borderRadius: '6px',
-                        fontSize: '12px',
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        whiteSpace: 'nowrap',
-                      }}
-                      title="View & Print Official Stamped Receipt"
-                    >
-                      🧾 Print Receipt
-                    </button>
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                      <button
+                        type="button"
+                        onClick={() => setReceiptDoc(p)}
+                        style={{
+                          background: '#f0fdf4',
+                          color: '#166534',
+                          border: '1px solid #bbf7d0',
+                          padding: '4px 8px',
+                          borderRadius: '6px',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '3px',
+                          whiteSpace: 'nowrap',
+                        }}
+                        title="View & Print Official Stamped Receipt"
+                      >
+                        🧾 Receipt
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeletePayment(p)}
+                        style={{
+                          background: '#fef2f2',
+                          color: '#dc2626',
+                          border: '1px solid #fecaca',
+                          padding: '4px 8px',
+                          borderRadius: '6px',
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '3px',
+                          whiteSpace: 'nowrap',
+                        }}
+                        title="Void and delete this payment"
+                      >
+                        🗑️ Delete
+                      </button>
+                    </div>
                   ),
                 },
               ]}

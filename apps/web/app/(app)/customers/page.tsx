@@ -5,6 +5,7 @@ import { Button, Card, Input, PageHeader, Table, Pagination, Spinner, ErrorState
 import { useList } from '@/lib/use-list';
 import { api } from '@/lib/api';
 import { CustomerDetailsModal } from '@/components/CustomerDetailsModal';
+import { PhoneBadge } from '@/components/PhoneBadge';
 import { formatDisplayPhone } from '@/lib/phone';
 
 interface Customer {
@@ -388,13 +389,25 @@ export default function CustomersPage() {
                   key: 'contact',
                   label: 'Contact Details',
                   render: (r) => (
-                    <div>
-                      <div>{r.email || <span style={{ color: '#94a3b8' }}>No email</span>}</div>
-                      {r.phone && (
-                        <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
-                          📞 {formatDisplayPhone(r.phone)}
-                        </div>
+                    <div style={{ display: 'grid', gap: '4px' }}>
+                      {r.email && (
+                        <a
+                          href={`mailto:${r.email}`}
+                          style={{ color: '#0284c7', textDecoration: 'none', fontSize: '13px' }}
+                        >
+                          ✉️ {r.email}
+                        </a>
                       )}
+                      {r.phone && (
+                        <PhoneBadge
+                          phone={r.phone}
+                          countryHint={r.country}
+                          compact={true}
+                          showWhatsApp={true}
+                          showCall={true}
+                        />
+                      )}
+                      {!r.email && !r.phone && <span style={{ color: '#94a3b8', fontSize: '12px' }}>No contact details</span>}
                     </div>
                   ),
                 },

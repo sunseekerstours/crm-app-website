@@ -16,6 +16,7 @@ import {
   Table,
   Textarea,
 } from '@/components/ui';
+import { PhoneBadge } from '@/components/PhoneBadge';
 
 interface LineItem {
   description: string;
@@ -989,6 +990,11 @@ export default function CrmInvoicesQuotesPage() {
                         ? `${r.customer.firstName} ${r.customer.lastName}`
                         : (r.notes?.split('for ')[1]?.split(' (')[0] || r.notes || 'Charter Client')}
                     </div>
+                    {r.customer?.phone && (
+                      <div style={{ marginTop: 2 }}>
+                        <PhoneBadge phone={r.customer.phone} size="sm" />
+                      </div>
+                    )}
                     {r.customer?.email && <div style={{ fontSize: '11px', color: '#64748b' }}>{r.customer.email}</div>}
                   </div>
                 ),

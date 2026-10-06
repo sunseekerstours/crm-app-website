@@ -6,6 +6,7 @@ import { Button, Card, Input, Select, PageHeader, Table, Pagination, Spinner, Er
 import { api, Paginated } from '@/lib/api';
 import { CustomerSearchPicker, CustomerSummary } from '@/components/CustomerSearchPicker';
 import { CustomerDetailsModal } from '@/components/CustomerDetailsModal';
+import { PhoneBadge } from '@/components/PhoneBadge';
 import { formatDisplayPhone } from '@/lib/phone';
 
 interface CustomerOption {
@@ -658,12 +659,9 @@ export default function StaffSalesStagesPage() {
                               </span>
                             )}
                             {item.customer?.phone && (
-                              <a
-                                href={`tel:${formatDisplayPhone(item.customer.phone).replace(/[^0-9+]/g, '')}`}
-                                style={{ color: '#64748b', textDecoration: 'none' }}
-                              >
-                                📞 {formatDisplayPhone(item.customer.phone)}
-                              </a>
+                              <div style={{ marginTop: 2 }}>
+                                <PhoneBadge phone={item.customer.phone} size="sm" />
+                              </div>
                             )}
                             {item.customer?.email && (
                               <a href={`mailto:${item.customer.email}`} style={{ color: '#64748b', textDecoration: 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -768,14 +766,9 @@ export default function StaffSalesStagesPage() {
                         <span style={{ fontWeight: 700, color: '#0f172a', fontSize: '13px', display: 'block' }}>
                           {custName}
                         </span>
-                        <div style={{ display: 'flex', gap: '10px', fontSize: '11px', color: '#64748b', marginTop: '2px' }}>
+                        <div style={{ display: 'flex', gap: '8px', fontSize: '11px', color: '#64748b', marginTop: '4px', alignItems: 'center' }}>
                           {cust?.phone && (
-                            <a
-                              href={`tel:${formatDisplayPhone(cust.phone).replace(/[^0-9+]/g, '')}`}
-                              style={{ color: '#64748b', textDecoration: 'none' }}
-                            >
-                              📞 {formatDisplayPhone(cust.phone)}
-                            </a>
+                            <PhoneBadge phone={cust.phone} size="sm" />
                           )}
                           {cust?.email && (
                             <a href={`mailto:${cust.email}`} style={{ color: '#0284c7', textDecoration: 'none' }}>
@@ -1305,12 +1298,7 @@ export default function StaffSalesStagesPage() {
                         </a>
                       )}
                       {viewDeal.customer?.phone && (
-                        <a
-                          href={`tel:${formatDisplayPhone(viewDeal.customer.phone).replace(/[^0-9+]/g, '')}`}
-                          style={{ color: '#475569', textDecoration: 'none' }}
-                        >
-                          📞 {formatDisplayPhone(viewDeal.customer.phone)}
-                        </a>
+                        <PhoneBadge phone={viewDeal.customer.phone} size="sm" />
                       )}
                     </div>
                   </div>

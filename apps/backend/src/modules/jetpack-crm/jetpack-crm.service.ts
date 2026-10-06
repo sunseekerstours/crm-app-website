@@ -929,5 +929,13 @@ export class JetpackCrmService {
     const { executeFinancialSync } = await import('./jetpack-financials');
     return executeFinancialSync(this.prisma as any);
   }
+
+  /**
+   * Clean made-up products and synthetic payments/invoices/bookings
+   */
+  async cleanMadeUpFinancials(): Promise<any> {
+    const { cleanMadeUpFinancials } = await import('./jetpack-financials');
+    return cleanMadeUpFinancials(this.prisma as any);
+  }
 }
 

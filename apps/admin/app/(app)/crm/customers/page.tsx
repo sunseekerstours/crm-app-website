@@ -17,6 +17,7 @@ import {
   Table,
 } from '@/components/ui';
 import { CustomerDetailsModal } from '@/components/CustomerDetailsModal';
+import { PhoneBadge } from '@/components/PhoneBadge';
 import { formatDisplayPhone } from '@/lib/phone';
 
 interface CustomerItem {
@@ -590,7 +591,11 @@ export default function CrmCustomersPage() {
                   render: (c) => (
                     <div>
                       <div>{c.email || <span style={{ color: '#94a3b8' }}>—</span>}</div>
-                      {c.phone && <div style={{ fontSize: 12, color: '#64748b' }}>📞 {formatDisplayPhone(c.phone)}</div>}
+                      {c.phone && (
+                        <div style={{ marginTop: 4 }}>
+                          <PhoneBadge phone={c.phone} defaultCountry={c.country} size="sm" />
+                        </div>
+                      )}
                     </div>
                   ),
                 },

@@ -17,6 +17,7 @@ import {
 } from '@/components/ui';
 import { CustomerSearchPicker, CustomerSummary } from '@/components/CustomerSearchPicker';
 import { CustomerDetailsModal } from '@/components/CustomerDetailsModal';
+import { PhoneBadge } from '@/components/PhoneBadge';
 import ProductPackageSelect, { ProductItem } from '@/components/ProductPackageSelect';
 
 interface LeadItem {
@@ -567,27 +568,9 @@ export default function CrmLeadsPage() {
                     key: 'phone',
                     label: 'Contact Info',
                     render: (l) => (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxWidth: 190, minWidth: 140 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 200, minWidth: 140 }}>
                         {l.phone ? (
-                          <a
-                            href={`tel:${l.phone}`}
-                            style={{
-                              fontSize: 12,
-                              fontWeight: 600,
-                              color: '#0284c7',
-                              textDecoration: 'none',
-                              whiteSpace: 'nowrap',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 4,
-                            }}
-                            title={`Call ${l.phone}`}
-                          >
-                            <span>📞</span>
-                            <span>{l.phone}</span>
-                          </a>
+                          <PhoneBadge phone={l.phone} size="sm" />
                         ) : null}
                         {l.email ? (
                           <a
@@ -906,9 +889,15 @@ export default function CrmLeadsPage() {
                     </button>
                   )}
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8, fontSize: 13 }}>
-                  <div>📞 Phone: <strong>{viewLead.phone || '—'}</strong></div>
-                  <div>✉️ Email: <strong>{viewLead.email || '—'}</strong></div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 8, fontSize: 13, alignItems: 'center' }}>
+                  <div>
+                    <span style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 2 }}>Phone:</span>
+                    {viewLead.phone ? <PhoneBadge phone={viewLead.phone} /> : <strong>—</strong>}
+                  </div>
+                  <div>
+                    <span style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 2 }}>Email:</span>
+                    <strong>{viewLead.email || '—'}</strong>
+                  </div>
                 </div>
               </div>
 
