@@ -157,11 +157,15 @@ export function getAutoStatus(checklist: TourChecklistItem[]): TourOpsStatus {
   return 'PLANNING';
 }
 
-const STORAGE_KEY = 'sunseekers_custom_tours_ops_v1';
+const STORAGE_KEY = 'sunseekers_custom_tours_ops_v2';
 
 export function getStoredCustomTours(): CustomTour[] {
   if (typeof window === 'undefined') return [];
   try {
+    // Force purge old v1 mock cache keys
+    localStorage.removeItem('sunseekers_custom_tours_ops_v1');
+    localStorage.removeItem('sunseekers_custom_tours_ops');
+
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
       return [];
@@ -169,7 +173,12 @@ export function getStoredCustomTours(): CustomTour[] {
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
       // Filter out any mock/sample items so operational side starts cleanly from scratch
-      const clean = parsed.filter((t: any) => !t.id?.startsWith('ct_sample_'));
+      const clean = parsed.filter((t: any) => 
+        !t.id?.startsWith('ct_sample_') &&
+        !t.tourName?.includes('Smith Family') &&
+        !t.tourName?.includes('Howard University') &&
+        !t.tourName?.includes('Solo Adventurer')
+      );
       if (clean.length !== parsed.length) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(clean));
       }
@@ -184,11 +193,27 @@ export function getStoredCustomTours(): CustomTour[] {
 export function saveStoredCustomTours(tours: CustomTour[]): void {
   if (typeof window === 'undefined') return;
   try {
-    // Ensure mock data is never saved
-    const clean = tours.filter((t) => !t.id.startsWith('ct_sample_'));
+    localStorage.removeItem('sunseekers_custom_tours_ops_v1');
+    const clean = tours.filter((t) => 
+      !t.id?.startsWith('ct_sample_') &&
+      !t.tourName?.includes('Smith Family') &&
+      !t.tourName?.includes('Howard University') &&
+      !t.tourName?.includes('Solo Adventurer')
+    );
     localStorage.setItem(STORAGE_KEY, JSON.stringify(clean));
   } catch (e) {
     console.warn('Failed to save custom tours to storage', e);
+  }
+}
+
+export function clearAllCustomTours(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.removeItem('sunseekers_custom_tours_ops_v1');
+    localStorage.removeItem('sunseekers_custom_tours_ops_v2');
+    localStorage.removeItem('sunseekers_custom_tours_ops');
+  } catch (e) {
+    console.warn('Failed to clear custom tours', e);
   }
 }
 

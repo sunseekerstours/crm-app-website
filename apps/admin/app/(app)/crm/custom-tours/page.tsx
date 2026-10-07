@@ -12,6 +12,7 @@ import {
   type TourOpsStatus,
   getStoredCustomTours,
   saveStoredCustomTours,
+  clearAllCustomTours,
   createDefaultChecklist,
   computeChecklistProgress,
   getAutoStatus,
@@ -58,13 +59,20 @@ export default function AdminCustomToursOperationsPage() {
   // Load Tours & Employees (Staff / Guides)
   useEffect(() => {
     try {
+      // Forcefully remove legacy mock data keys
+      localStorage.removeItem('sunseekers_custom_tours_ops_v1');
+      localStorage.removeItem('sunseekers_custom_tours_ops');
+
       const stored = getStoredCustomTours();
       // Ensure any legacy mock tours are wiped
-      const clean = stored.filter(t => !t.id?.startsWith('ct_sample_'));
+      const clean = stored.filter(t => 
+        !t.id?.startsWith('ct_sample_') &&
+        !t.tourName?.includes('Smith Family') &&
+        !t.tourName?.includes('Howard University') &&
+        !t.tourName?.includes('Solo Adventurer')
+      );
       setTours(clean);
-      if (clean.length !== stored.length) {
-        saveStoredCustomTours(clean);
-      }
+      saveStoredCustomTours(clean);
     } catch (e) {
       console.warn('Could not load custom tours from storage', e);
     } finally {
@@ -78,7 +86,12 @@ export default function AdminCustomToursOperationsPage() {
   }, []);
 
   const persistTours = useCallback((updated: CustomTour[]) => {
-    const clean = updated.filter(t => !t.id?.startsWith('ct_sample_'));
+    const clean = updated.filter(t => 
+      !t.id?.startsWith('ct_sample_') &&
+      !t.tourName?.includes('Smith Family') &&
+      !t.tourName?.includes('Howard University') &&
+      !t.tourName?.includes('Solo Adventurer')
+    );
     setTours(clean);
     saveStoredCustomTours(clean);
   }, []);
@@ -401,6 +414,30 @@ export default function AdminCustomToursOperationsPage() {
             >
               🚌 Fleet Timeline &amp; Drivers ↗
             </Link>
+            {tours.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (window.confirm('Clear all operational custom tours and start 100% clean from scratch?')) {
+                    clearAllCustomTours();
+                    persistTours([]);
+                  }
+                }}
+                style={{
+                  background: 'rgba(239, 68, 68, 0.1)',
+                  color: '#f87171',
+                  border: '1px solid rgba(239, 68, 68, 0.25)',
+                  borderRadius: 6,
+                  padding: '8px 14px',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+                title="Wipe mock/temporary tours and start completely clean"
+              >
+                🧹 Clear All &amp; Start Fresh
+              </button>
+            )}
             <Button onClick={handleOpenCreate}>
               + Create Customised Tour
             </Button>
