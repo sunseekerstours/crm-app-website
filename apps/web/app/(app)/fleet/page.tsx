@@ -168,7 +168,15 @@ export default function FleetPage() {
   const [selectedBooking, setSelectedBooking] = useState<FleetBooking | null>(null);
   const [submittingBooking, setSubmittingBooking] = useState(false);
   const [bookingFormError, setBookingFormError] = useState<string | null>(null);
-  const [customers, setCustomers] = useState<{ id: string; firstName: string; lastName: string; email?: string }[]>([]);
+  const [customers, setCustomers] = useState<{ id: string; firstName: string; lastName: string; email?: string; company?: string; phone?: string; country?: string }[]>([]);
+  const [showCustomerSearchModal, setShowCustomerSearchModal] = useState(false);
+  const [customerSearchQuery, setCustomerSearchQuery] = useState('');
+  const [customerSearchResults, setCustomerSearchResults] = useState<any[]>([]);
+  const [customerSearchLoading, setCustomerSearchLoading] = useState(false);
+  const [showQuickAddCustomer, setShowQuickAddCustomer] = useState(false);
+  const [newCustomerForm, setNewCustomerForm] = useState({ firstName: '', lastName: '', email: '', phone: '', company: '' });
+  const [newCustomerLoading, setNewCustomerLoading] = useState(false);
+  const [newCustomerError, setNewCustomerError] = useState<string | null>(null);
   const [previewDoc, setPreviewDoc] = useState<{
     type: 'INVOICE' | 'QUOTE' | 'RECEIPT';
     data: any;
@@ -306,10 +314,73 @@ export default function FleetPage() {
   }, [year, month]);
 
   const loadCustomers = useCallback(() => {
-    api.get<Paginated<any>>('/customers?limit=200')
+    api.get<Paginated<any>>('/customers?limit=500')
       .then(r => setCustomers(r.items || []))
       .catch(() => {});
   }, []);
+
+  // Debounced search for all CRM customers
+  useEffect(() => {
+    if (!showCustomerSearchModal) return;
+    const timer = setTimeout(() => {
+      setCustomerSearchLoading(true);
+      const q = new URLSearchParams({ limit: '50' });
+      if (customerSearchQuery.trim()) q.set('search', customerSearchQuery.trim());
+      api.get<Paginated<any>>(`/customers?${q.toString()}`)
+        .then(res => setCustomerSearchResults(res.items || []))
+        .catch(() => setCustomerSearchResults([]))
+        .finally(() => setCustomerSearchLoading(false));
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [customerSearchQuery, showCustomerSearchModal]);
+
+  function handleSelectCustomer(c: any) {
+    const displayName = [c.firstName, c.lastName].filter(Boolean).join(' ') || c.company || 'Customer';
+    setBookingForm(bf => ({
+      ...bf,
+      customerId: c.id,
+      company: c.company || displayName,
+    }));
+    setCustomers(prev => {
+      if (prev.some(x => x.id === c.id)) return prev;
+      return [c, ...prev];
+    });
+    setShowCustomerSearchModal(false);
+  }
+
+  async function handleQuickAddCustomer(e: React.FormEvent) {
+    e.preventDefault();
+    setNewCustomerError(null);
+    if (!newCustomerForm.firstName.trim() && !newCustomerForm.company.trim()) {
+      setNewCustomerError('First name or company name is required');
+      return;
+    }
+    setNewCustomerLoading(true);
+    try {
+      const created = await api.post<any>('/customers', {
+        firstName: newCustomerForm.firstName.trim() || undefined,
+        lastName: newCustomerForm.lastName.trim() || undefined,
+        company: newCustomerForm.company.trim() || undefined,
+        email: newCustomerForm.email.trim() || undefined,
+        phone: newCustomerForm.phone.trim() || undefined,
+        status: 'ACTIVE',
+      });
+      const displayName = [created.firstName, created.lastName].filter(Boolean).join(' ') || created.company || 'New Customer';
+      setCustomers(prev => [created, ...prev.filter(c => c.id !== created.id)]);
+      setBookingForm(bf => ({
+        ...bf,
+        customerId: created.id,
+        company: created.company || displayName,
+      }));
+      setShowQuickAddCustomer(false);
+      setShowCustomerSearchModal(false);
+      setNewCustomerForm({ firstName: '', lastName: '', email: '', phone: '', company: '' });
+    } catch (err: any) {
+      setNewCustomerError(err.message || 'Failed to create customer');
+    } finally {
+      setNewCustomerLoading(false);
+    }
+  }
 
   useEffect(() => {
     loadVehicles();
@@ -1704,17 +1775,105 @@ export default function FleetPage() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 {/* Company Name & Customer Lookup */}
                 <div style={{ gridColumn: 'span 2' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                    <label style={{ fontSize: 12, color: '#94a3b8' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: '#94a3b8' }}>
                       Company / Organization / Customer *
                     </label>
-                    {customers.length > 0 && (
-                      <span style={{ fontSize: 11, color: '#64748b' }}>
-                        Type or pick CRM client
-                      </span>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowCustomerSearchModal(true);
+                        setCustomerSearchQuery('');
+                      }}
+                      style={{
+                        background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                        border: 'none',
+                        borderRadius: 6,
+                        color: '#fff',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        padding: '4px 10px',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 5,
+                        boxShadow: '0 2px 4px rgba(2, 132, 199, 0.3)',
+                      }}
+                    >
+                      🔍 Search All CRM Clients
+                    </button>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: customers.length > 0 ? '1.2fr 1fr' : '1fr', gap: 8 }}>
+
+                  {/* Connected Customer Alert / Chip */}
+                  {bookingForm.customerId && (
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '8px 12px',
+                      background: 'rgba(2, 132, 199, 0.15)',
+                      border: '1px solid rgba(56, 189, 248, 0.4)',
+                      borderRadius: 8,
+                      marginBottom: 8,
+                      fontSize: 12,
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 16 }}>👤</span>
+                        <div>
+                          <span style={{ fontWeight: 700, color: '#38bdf8' }}>Linked CRM Client: </span>
+                          <span style={{ color: '#f1f5f9', fontWeight: 600 }}>
+                            {(() => {
+                              const match = customers.find(c => c.id === bookingForm.customerId);
+                              if (match) return `${match.firstName || ''} ${match.lastName || ''}`.trim() || match.company || match.email || 'Customer';
+                              return bookingForm.company || 'Selected Client';
+                            })()}
+                          </span>
+                          {(() => {
+                            const match = customers.find(c => c.id === bookingForm.customerId);
+                            if (match?.email) return <span style={{ color: '#94a3b8', marginLeft: 6 }}>({match.email})</span>;
+                            return null;
+                          })()}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowCustomerSearchModal(true);
+                            setCustomerSearchQuery('');
+                          }}
+                          style={{
+                            background: 'rgba(255,255,255,0.1)',
+                            border: '1px solid rgba(255,255,255,0.2)',
+                            borderRadius: 4,
+                            color: '#e2e8f0',
+                            padding: '3px 8px',
+                            fontSize: 11,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Change
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setBookingForm({ ...bookingForm, customerId: '' })}
+                          style={{
+                            background: 'rgba(239, 68, 68, 0.2)',
+                            border: '1px solid rgba(239, 68, 68, 0.4)',
+                            borderRadius: 4,
+                            color: '#fca5a5',
+                            padding: '3px 8px',
+                            fontSize: 11,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          ✕ Unlink
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 8 }}>
                     <input
                       type="text"
                       required
@@ -1723,32 +1882,30 @@ export default function FleetPage() {
                       onChange={e => setBookingForm({ ...bookingForm, company: e.target.value })}
                       style={{ width: '100%', padding: '9px 12px', background: '#0f172a', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, color: '#fff', fontSize: 13 }}
                     />
-                    {customers.length > 0 && (
-                      <select
-                        value={bookingForm.customerId}
-                        onChange={e => {
-                          const custId = e.target.value;
-                          const cust = customers.find(c => c.id === custId);
-                          if (cust) {
-                            setBookingForm({
-                              ...bookingForm,
-                              customerId: cust.id,
-                              company: `${cust.firstName} ${cust.lastName}`.trim(),
-                            });
-                          } else {
-                            setBookingForm({ ...bookingForm, customerId: '' });
-                          }
-                        }}
-                        style={{ width: '100%', padding: '9px 12px', background: '#0f172a', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, color: '#94a3b8', fontSize: 12 }}
-                      >
-                        <option value="">-- Quick Select CRM Client --</option>
-                        {customers.map(c => (
-                          <option key={c.id} value={c.id}>
-                            {c.firstName} {c.lastName} {c.email ? `(${c.email})` : ''}
-                          </option>
-                        ))}
-                      </select>
-                    )}
+                    <select
+                      value={bookingForm.customerId}
+                      onChange={e => {
+                        const custId = e.target.value;
+                        const cust = customers.find(c => c.id === custId);
+                        if (cust) {
+                          setBookingForm({
+                            ...bookingForm,
+                            customerId: cust.id,
+                            company: [cust.firstName, cust.lastName].filter(Boolean).join(' ') || cust.company || cust.email || bookingForm.company,
+                          });
+                        } else {
+                          setBookingForm({ ...bookingForm, customerId: '' });
+                        }
+                      }}
+                      style={{ width: '100%', padding: '9px 12px', background: '#0f172a', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, color: '#94a3b8', fontSize: 12 }}
+                    >
+                      <option value="">-- Quick Select CRM Client --</option>
+                      {customers.map(c => (
+                        <option key={c.id} value={c.id}>
+                          {[c.firstName, c.lastName].filter(Boolean).join(' ') || c.company || c.email || 'Client'} {c.email ? `(${c.email})` : ''}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
@@ -3136,6 +3293,336 @@ export default function FleetPage() {
                 <div style={{ fontWeight: '700', color: '#334155', marginBottom: '2px' }}>Terms &amp; Payment Details:</div>
                 <div>Bank Transfer / Cheque payable to Sunseekers Tours Ltd. • Standard Net 7 payment terms apply.</div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Search All CRM Clients Modal ─────────────────────────────── */}
+      {showCustomerSearchModal && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0, 0, 0, 0.75)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1100,
+          padding: 16,
+        }}>
+          <div style={{
+            background: '#1e293b',
+            border: '1px solid rgba(255, 255, 255, 0.15)',
+            borderRadius: 12,
+            width: '100%',
+            maxWidth: 620,
+            maxHeight: '88vh',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+            overflow: 'hidden',
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              padding: '16px 20px',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              background: '#0f172a',
+            }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span>🔍</span> Search All CRM Clients &amp; Companies
+                </h3>
+                <p style={{ margin: '3px 0 0', fontSize: 12, color: '#94a3b8' }}>
+                  Search live database by name, phone, email, or company organization
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCustomerSearchModal(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#94a3b8',
+                  fontSize: 20,
+                  cursor: 'pointer',
+                  padding: 4,
+                  lineHeight: 1,
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Search Input Bar */}
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}>
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <span style={{ position: 'absolute', left: 12, fontSize: 14, color: '#64748b' }}>🔍</span>
+                <input
+                  type="text"
+                  autoFocus
+                  placeholder="Type client name, email, phone number, or company..."
+                  value={customerSearchQuery}
+                  onChange={e => setCustomerSearchQuery(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 38px 10px 36px',
+                    background: '#0f172a',
+                    border: '1.5px solid #0284c7',
+                    borderRadius: 8,
+                    color: '#fff',
+                    fontSize: 14,
+                    outline: 'none',
+                  }}
+                />
+                {customerSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setCustomerSearchQuery('')}
+                    style={{
+                      position: 'absolute',
+                      right: 12,
+                      background: 'none',
+                      border: 'none',
+                      color: '#94a3b8',
+                      fontSize: 14,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+
+              {/* Quick Add Toggle Header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
+                <span style={{ fontSize: 12, color: '#94a3b8' }}>
+                  {customerSearchLoading ? 'Searching entire CRM database…' : `${customerSearchResults.length} client(s) found`}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowQuickAddCustomer(prev => !prev)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#38bdf8',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    padding: 0,
+                  }}
+                >
+                  {showQuickAddCustomer ? 'Hide Add Form ▲' : '+ Can\'t find client? Add New to CRM ▼'}
+                </button>
+              </div>
+
+              {/* Quick Add Customer Inline Form */}
+              {showQuickAddCustomer && (
+                <form
+                  onSubmit={handleQuickAddCustomer}
+                  style={{
+                    marginTop: 12,
+                    padding: 12,
+                    background: '#0f172a',
+                    borderRadius: 8,
+                    border: '1px solid rgba(56, 189, 248, 0.3)',
+                  }}
+                >
+                  <div style={{ fontWeight: 700, fontSize: 13, color: '#38bdf8', marginBottom: 8 }}>
+                    Create New Client in CRM
+                  </div>
+                  {newCustomerError && (
+                    <div style={{ padding: '6px 10px', background: 'rgba(239, 68, 68, 0.2)', border: '1px solid #ef4444', borderRadius: 4, color: '#fca5a5', fontSize: 12, marginBottom: 8 }}>
+                      {newCustomerError}
+                    </div>
+                  )}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+                    <input
+                      type="text"
+                      placeholder="First Name *"
+                      value={newCustomerForm.firstName}
+                      onChange={e => setNewCustomerForm({ ...newCustomerForm, firstName: e.target.value })}
+                      style={{ padding: '7px 10px', background: '#1e293b', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, color: '#fff', fontSize: 12 }}
+                    />
+                    <input
+                      type="text"
+                      placeholder="Last Name"
+                      value={newCustomerForm.lastName}
+                      onChange={e => setNewCustomerForm({ ...newCustomerForm, lastName: e.target.value })}
+                      style={{ padding: '7px 10px', background: '#1e293b', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, color: '#fff', fontSize: 12 }}
+                    />
+                    <input
+                      type="text"
+                      placeholder="Company / Organization"
+                      value={newCustomerForm.company}
+                      onChange={e => setNewCustomerForm({ ...newCustomerForm, company: e.target.value })}
+                      style={{ padding: '7px 10px', background: '#1e293b', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, color: '#fff', fontSize: 12 }}
+                    />
+                    <input
+                      type="text"
+                      placeholder="Phone Number"
+                      value={newCustomerForm.phone}
+                      onChange={e => setNewCustomerForm({ ...newCustomerForm, phone: e.target.value })}
+                      style={{ padding: '7px 10px', background: '#1e293b', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, color: '#fff', fontSize: 12 }}
+                    />
+                    <input
+                      type="email"
+                      placeholder="Email Address"
+                      value={newCustomerForm.email}
+                      onChange={e => setNewCustomerForm({ ...newCustomerForm, email: e.target.value })}
+                      style={{ gridColumn: 'span 2', padding: '7px 10px', background: '#1e293b', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, color: '#fff', fontSize: 12 }}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                    <button
+                      type="button"
+                      onClick={() => setShowQuickAddCustomer(false)}
+                      style={{ padding: '5px 10px', background: 'none', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 6, color: '#cbd5e1', fontSize: 11, cursor: 'pointer' }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={newCustomerLoading}
+                      style={{
+                        padding: '5px 14px',
+                        background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)',
+                        border: 'none',
+                        borderRadius: 6,
+                        color: '#fff',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        cursor: newCustomerLoading ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      {newCustomerLoading ? 'Saving…' : '✓ Create & Link to Booking'}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+
+            {/* Results List */}
+            <div style={{ padding: '12px 20px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 380 }}>
+              {customerSearchResults.length === 0 && !customerSearchLoading ? (
+                <div style={{ textAlign: 'center', padding: '32px 16px', color: '#94a3b8' }}>
+                  <div style={{ fontSize: 32, marginBottom: 8 }}>👥</div>
+                  <div style={{ fontWeight: 600, color: '#f1f5f9', fontSize: 14 }}>No clients found</div>
+                  <div style={{ fontSize: 12, marginTop: 4 }}>
+                    Try another search term or click &quot;Add New to CRM&quot; above to add them right away.
+                  </div>
+                </div>
+              ) : (
+                customerSearchResults.map(c => {
+                  const name = [c.firstName, c.lastName].filter(Boolean).join(' ') || 'Named Customer';
+                  const initials = `${c.firstName?.[0] || ''}${c.lastName?.[0] || ''}`.toUpperCase() || '👤';
+                  const isSelected = bookingForm.customerId === c.id;
+                  return (
+                    <div
+                      key={c.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '10px 14px',
+                        background: isSelected ? 'rgba(2, 132, 199, 0.2)' : '#0f172a',
+                        border: isSelected ? '1.5px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.08)',
+                        borderRadius: 8,
+                        gap: 12,
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
+                        <div style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: '50%',
+                          background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                          color: '#fff',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: 12,
+                          fontWeight: 700,
+                          flexShrink: 0,
+                        }}>
+                          {initials}
+                        </div>
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ fontWeight: 700, fontSize: 13, color: '#f8fafc', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {name}
+                            {c.company && (
+                              <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 500, color: '#38bdf8' }}>
+                                • {c.company}
+                              </span>
+                            )}
+                            {c.country && (
+                              <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 500, color: '#94a3b8' }}>
+                                ({c.country})
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {c.phone ? `📞 ${c.phone}` : ''}
+                            {c.phone && c.email ? ' • ' : ''}
+                            {c.email ? `✉️ ${c.email}` : ''}
+                            {!c.phone && !c.email ? 'No contact on file' : ''}
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleSelectCustomer(c)}
+                        style={{
+                          padding: '6px 12px',
+                          background: isSelected ? '#16a34a' : 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                          border: 'none',
+                          borderRadius: 6,
+                          color: '#fff',
+                          fontSize: 12,
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          flexShrink: 0,
+                        }}
+                      >
+                        {isSelected ? '✓ Selected' : 'Select Client'}
+                      </button>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{
+              padding: '12px 20px',
+              borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+              background: '#0f172a',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}>
+              <span style={{ fontSize: 11, color: '#64748b' }}>
+                Tip: Selecting a customer automatically populates booking company &amp; links CRM record
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowCustomerSearchModal(false)}
+                style={{
+                  padding: '6px 14px',
+                  background: 'rgba(255,255,255,0.1)',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  borderRadius: 6,
+                  color: '#e2e8f0',
+                  fontSize: 12,
+                  cursor: 'pointer',
+                }}
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

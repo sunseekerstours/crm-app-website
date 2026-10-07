@@ -15,6 +15,7 @@ const NAV = [
   { href: '/bookings', label: 'Bookings', icon: '✈️' },
   { href: '/tours', label: 'Customised Tours & Ops', icon: '🗺️' },
   { href: '/fleet', label: 'Fleet Management', icon: '🚌' },
+  { href: '/qr-codes', label: 'QR Code Studio', icon: '📱' },
   { href: '/invoices', label: 'Invoices & Quotes', icon: '🧾' },
   { href: '/payments', label: 'Payments', icon: '💳' },
   { href: '/notifications', label: 'Notifications', icon: '🔔', isNotification: true },
