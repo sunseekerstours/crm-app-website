@@ -515,17 +515,25 @@ export default function FleetPage() {
   }
 
   function handleStartDateChange(dateVal: string) {
-    const newDays = calculateDays(dateVal, bookingForm.endDate);
+    let newEnd = bookingForm.endDate;
+    if (newEnd && dateVal > newEnd) {
+      newEnd = dateVal;
+    }
+    const newDays = calculateDays(dateVal, newEnd);
     const rateNum = parseFloat(bookingForm.ratePerDay);
     const newTotal = !isNaN(rateNum) ? String(rateNum * newDays) : bookingForm.totalAmount;
-    setBookingForm(prev => ({ ...prev, startDate: dateVal, totalAmount: newTotal }));
+    setBookingForm(prev => ({ ...prev, startDate: dateVal, endDate: newEnd, totalAmount: newTotal }));
   }
 
   function handleEndDateChange(dateVal: string) {
-    const newDays = calculateDays(bookingForm.startDate, dateVal);
+    let newStart = bookingForm.startDate;
+    if (newStart && dateVal < newStart) {
+      newStart = dateVal;
+    }
+    const newDays = calculateDays(newStart, dateVal);
     const rateNum = parseFloat(bookingForm.ratePerDay);
     const newTotal = !isNaN(rateNum) ? String(rateNum * newDays) : bookingForm.totalAmount;
-    setBookingForm(prev => ({ ...prev, endDate: dateVal, totalAmount: newTotal }));
+    setBookingForm(prev => ({ ...prev, startDate: newStart, endDate: dateVal, totalAmount: newTotal }));
   }
 
   // ── Booking Handlers ───────────────────────────────────────
@@ -1990,15 +1998,206 @@ export default function FleetPage() {
                   ))}
                 </div>
 
+                {/* ── LIVE CALENDAR DURATION & DRIVER ALLOWANCE / HOSTEL CALCULATOR ── */}
+                <div style={{
+                  gridColumn: 'span 2',
+                  background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(30, 41, 59, 0.98))',
+                  border: '1px solid rgba(56, 189, 248, 0.4)',
+                  borderRadius: 10,
+                  padding: '14px 16px',
+                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.35)',
+                }}>
+                  {/* Top Bar: Calculated Days & Scope Toggle */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 12, borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ fontSize: 22 }}>⚡</span>
+                      <div>
+                        <div style={{ fontSize: 11, textTransform: 'uppercase', color: '#94a3b8', fontWeight: 700, letterSpacing: '0.05em' }}>
+                          Live Calculated Trip Duration &amp; Allowances
+                        </div>
+                        <div style={{ fontSize: 17, fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: 8, marginTop: 1 }}>
+                          <span style={{ color: '#38bdf8' }}>{bookingDays} {bookingDays === 1 ? 'Day' : 'Days'}</span>
+                          <span style={{ color: '#94a3b8', fontSize: 13, fontWeight: 500 }}>
+                            ({driverPerDiemCalc.isOutside ? `${driverPerDiemCalc.nights} ${driverPerDiemCalc.nights === 1 ? 'night' : 'nights'} outstation` : 'Intra-city Accra / 0 nights'})
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Quick Location Scope Toggle */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#0f172a', padding: 4, borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)' }}>
+                      <button
+                        type="button"
+                        onClick={() => setBookingForm(prev => ({ ...prev, isOutsideAccra: false }))}
+                        style={{
+                          padding: '5px 12px',
+                          borderRadius: 6,
+                          fontSize: 12,
+                          fontWeight: 700,
+                          border: 'none',
+                          cursor: 'pointer',
+                          background: !bookingForm.isOutsideAccra ? '#0284c7' : 'transparent',
+                          color: !bookingForm.isOutsideAccra ? '#ffffff' : '#94a3b8',
+                          transition: 'all 0.15s ease',
+                        }}
+                      >
+                        📍 Within Accra (GH₵100/day)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setBookingForm(prev => ({ ...prev, isOutsideAccra: true }))}
+                        style={{
+                          padding: '5px 12px',
+                          borderRadius: 6,
+                          fontSize: 12,
+                          fontWeight: 700,
+                          border: 'none',
+                          cursor: 'pointer',
+                          background: bookingForm.isOutsideAccra ? '#0d9488' : 'transparent',
+                          color: bookingForm.isOutsideAccra ? '#ffffff' : '#94a3b8',
+                          transition: 'all 0.15s ease',
+                        }}
+                      >
+                        🚗 Outside Accra (GH₵100/d + GH₵200 ret + GH₵250 hotel)
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Free Hostel Checkbox if Outside Accra & >1 Day */}
+                  {bookingForm.isOutsideAccra && bookingDays > 1 && (
+                    <div style={{ marginBottom: 12, background: 'rgba(251, 191, 36, 0.08)', padding: '7px 12px', borderRadius: 6, border: '1px solid rgba(251, 191, 36, 0.25)' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#fde68a', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={bookingForm.freeAccommodation}
+                          onChange={e => setBookingForm(prev => ({ ...prev, freeAccommodation: e.target.checked }))}
+                        />
+                        <span>
+                          🏨 Hotel / Hostel provided by client or lodge (Driver hostel cost: <b>GH₵ 0</b>)
+                        </span>
+                      </label>
+                    </div>
+                  )}
+
+                  {/* 4 Metric Cards */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(135px, 1fr))', gap: 10 }}>
+                    {/* 1. Days */}
+                    <div style={{ background: '#0f172a', padding: 10, borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)' }}>
+                      <div style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700 }}>Total Days</div>
+                      <div style={{ fontSize: 18, fontWeight: 800, color: '#f8fafc', marginTop: 2 }}>
+                        {bookingDays} {bookingDays === 1 ? 'Day' : 'Days'}
+                      </div>
+                      <div style={{ fontSize: 11, color: '#64748b' }}>
+                        {driverPerDiemCalc.isOutside ? `${driverPerDiemCalc.nights} nights out` : 'Same-day return'}
+                      </div>
+                    </div>
+
+                    {/* 2. Allowance */}
+                    <div style={{ background: '#0f172a', padding: 10, borderRadius: 8, border: '1px solid rgba(56, 189, 248, 0.25)' }}>
+                      <div style={{ fontSize: 10, color: '#38bdf8', textTransform: 'uppercase', fontWeight: 700 }}>Driver Allowance</div>
+                      <div style={{ fontSize: 18, fontWeight: 800, color: '#38bdf8', marginTop: 2 }}>
+                        GH₵ {driverPerDiemCalc.dailyAllowanceTotal}
+                      </div>
+                      <div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.2, marginTop: 2 }}>
+                        {driverPerDiemCalc.allowanceBreakdown}
+                      </div>
+                    </div>
+
+                    {/* 3. Hostel Money */}
+                    <div style={{ background: '#0f172a', padding: 10, borderRadius: 8, border: '1px solid rgba(251, 191, 36, 0.25)' }}>
+                      <div style={{ fontSize: 10, color: '#fbbf24', textTransform: 'uppercase', fontWeight: 700 }}>Hostel / Lodging</div>
+                      <div style={{ fontSize: 18, fontWeight: 800, color: driverPerDiemCalc.accommodationTotal > 0 ? '#fbbf24' : '#94a3b8', marginTop: 2 }}>
+                        GH₵ {driverPerDiemCalc.accommodationTotal}
+                      </div>
+                      <div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.2, marginTop: 2 }}>
+                        {driverPerDiemCalc.accommodationBreakdown}
+                      </div>
+                    </div>
+
+                    {/* 4. Total Driver Payout */}
+                    <div style={{ background: 'rgba(52, 211, 153, 0.12)', padding: 10, borderRadius: 8, border: '1px solid rgba(52, 211, 153, 0.4)' }}>
+                      <div style={{ fontSize: 10, color: '#34d399', textTransform: 'uppercase', fontWeight: 800 }}>Total Driver Payout</div>
+                      <div style={{ fontSize: 20, fontWeight: 900, color: '#34d399', marginTop: 2 }}>
+                        GH₵ {driverPerDiemCalc.totalDriverExpense}
+                      </div>
+                      <div style={{ fontSize: 10, color: '#a7f3d0' }}>
+                        Allowance + Hostel Money
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Formula explanation and Add Cost Button */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, flexWrap: 'wrap', gap: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                    <div style={{ fontSize: 11, color: '#cbd5e1' }}>
+                      <b style={{ color: '#f8fafc' }}>Formula:</b> {driverPerDiemCalc.isOutside 
+                        ? (bookingDays === 1 
+                            ? '1 day outside Accra = GH₵200 allowance + GH₵0 hotel' 
+                            : `${bookingDays - 1} ${bookingDays - 1 === 1 ? 'day' : 'days'} @ GH₵100 + return day @ GH₵200 (GH₵${driverPerDiemCalc.dailyAllowanceTotal}) + ${driverPerDiemCalc.nights} nights hostel @ GH₵250 (GH₵${driverPerDiemCalc.accommodationTotal})`)
+                        : `${bookingDays} ${bookingDays === 1 ? 'day' : 'days'} in Accra @ GH₵100/day = GH₵${driverPerDiemCalc.dailyAllowanceTotal} + GH₵0 hotel`}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleAddDriverCostToTotal}
+                      style={{
+                        background: 'rgba(56, 189, 248, 0.15)',
+                        color: '#38bdf8',
+                        border: '1px solid rgba(56, 189, 248, 0.4)',
+                        padding: '6px 14px',
+                        borderRadius: 6,
+                        fontSize: 12,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6
+                      }}
+                      title="Add this calculated driver per diem to the Total Amount charter fee"
+                    >
+                      <span>+ Add Driver Cost (GH₵ {driverPerDiemCalc.totalDriverExpense}) to Charter Total</span>
+                    </button>
+                  </div>
+                </div>
+
                 {/* Destination */}
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                     <label style={{ fontSize: 12, color: '#94a3b8' }}>
                       Trip Destination
                     </label>
-                    <span style={{ fontSize: 10, color: bookingForm.isOutsideAccra ? '#2dd4bf' : '#38bdf8', fontWeight: 600 }}>
-                      {bookingForm.isOutsideAccra ? '🚗 Outside Accra' : '📍 Within Accra'}
-                    </span>
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      <button
+                        type="button"
+                        onClick={() => setBookingForm(prev => ({ ...prev, isOutsideAccra: false }))}
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 700,
+                          padding: '1px 6px',
+                          borderRadius: 4,
+                          border: `1px solid ${!bookingForm.isOutsideAccra ? '#38bdf8' : 'rgba(255,255,255,0.1)'}`,
+                          background: !bookingForm.isOutsideAccra ? 'rgba(56, 189, 248, 0.2)' : 'transparent',
+                          color: !bookingForm.isOutsideAccra ? '#38bdf8' : '#64748b',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        📍 Within Accra
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setBookingForm(prev => ({ ...prev, isOutsideAccra: true }))}
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 700,
+                          padding: '1px 6px',
+                          borderRadius: 4,
+                          border: `1px solid ${bookingForm.isOutsideAccra ? '#2dd4bf' : 'rgba(255,255,255,0.1)'}`,
+                          background: bookingForm.isOutsideAccra ? 'rgba(45, 212, 191, 0.2)' : 'transparent',
+                          color: bookingForm.isOutsideAccra ? '#2dd4bf' : '#64748b',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        🚗 Outside Accra
+                      </button>
+                    </div>
                   </div>
                   <input
                     type="text"
