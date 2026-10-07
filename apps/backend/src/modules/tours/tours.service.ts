@@ -256,6 +256,54 @@ export class ToursService {
 
     return { success: true };
   }
+
+  async getCustomOperations() {
+    const setting = await this.prisma.siteSetting.findUnique({
+      where: { key: 'crm_custom_tours_ops' },
+    });
+    if (setting?.value) {
+      try {
+        const parsed = JSON.parse(setting.value);
+        if (Array.isArray(parsed)) return parsed;
+      } catch {}
+    }
+    return [];
+  }
+
+  async updateCustomOperations(tours: any[], ctx: RequestContext) {
+    const cleanTours = Array.isArray(tours) ? tours : [];
+    const jsonStr = JSON.stringify(cleanTours);
+    await this.prisma.siteSetting.upsert({
+      where: { key: 'crm_custom_tours_ops' },
+      create: {
+        key: 'crm_custom_tours_ops',
+        group: 'tours',
+        value: jsonStr,
+        valueJson: { tours: cleanTours },
+        description: 'Global customised tours and operational checklists for all users',
+        isPublic: false,
+      },
+      update: {
+        value: jsonStr,
+        valueJson: { tours: cleanTours },
+      },
+    });
+
+    try {
+      await this.audit.record({
+        userId: ctx.userId,
+        action: AuditableAction.SITE_SETTING_UPDATED,
+        entityType: 'SiteSetting',
+        entityId: 'crm_custom_tours_ops',
+        after: { count: cleanTours.length },
+        ipAddress: ctx.ipAddress,
+        userAgent: ctx.userAgent,
+        requestId: ctx.requestId,
+      });
+    } catch {}
+
+    return cleanTours;
+  }
 }
 
 function toPricingData(p: CreateTourPricingDto, defaultCurrency?: string): Prisma.TourPricingCreateWithoutTourInput {

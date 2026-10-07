@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, Req } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 import { RequirePermissions } from '@app/common/decorators/permissions.decorator';
@@ -31,6 +31,18 @@ export class ToursController {
       status: query.status,
       destinationId: query.destinationId,
     });
+  }
+
+  @Get('custom-operations')
+  @RequirePermissions(Permission.TOUR_VIEW)
+  getCustomOperations() {
+    return this.toursService.getCustomOperations();
+  }
+
+  @Put('custom-operations')
+  @RequirePermissions(Permission.TOUR_VIEW)
+  updateCustomOperations(@Body() body: { tours: any[] }, @Req() req: Request, @CurrentUser('id') userId: string) {
+    return this.toursService.updateCustomOperations(body.tours || [], toRequestContext(req, userId));
   }
 
   @Post(':id/publish')

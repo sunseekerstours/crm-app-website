@@ -1,4 +1,5 @@
 // Customised Tours & Operational Checklist Types & Store
+import { api } from '@/lib/api';
 
 export type TourType = 'INDIVIDUAL' | 'GROUP';
 
@@ -206,14 +207,59 @@ export function saveStoredCustomTours(tours: CustomTour[]): void {
   }
 }
 
-export function clearAllCustomTours(): void {
-  if (typeof window === 'undefined') return;
+/**
+ * Fetch global custom tours from the server/PostgreSQL database.
+ * Falls back to local cache if network is unavailable.
+ */
+export async function fetchServerCustomTours(): Promise<CustomTour[]> {
   try {
+    const serverTours = await api.get<CustomTour[]>('/tours/custom-operations');
+    if (Array.isArray(serverTours)) {
+      const clean = serverTours.filter((t: any) => 
+        !t.id?.startsWith('ct_sample_') &&
+        !t.tourName?.includes('Smith Family') &&
+        !t.tourName?.includes('Howard University') &&
+        !t.tourName?.includes('Solo Adventurer')
+      );
+      saveStoredCustomTours(clean);
+      return clean;
+    }
+  } catch (e) {
+    console.warn('Could not fetch custom tours from backend server, using local cache:', e);
+  }
+  return getStoredCustomTours();
+}
+
+/**
+ * Synchronize custom tours globally to all users via backend PostgreSQL database.
+ */
+export async function syncServerCustomTours(tours: CustomTour[]): Promise<void> {
+  const clean = tours.filter((t) => 
+    !t.id?.startsWith('ct_sample_') &&
+    !t.tourName?.includes('Smith Family') &&
+    !t.tourName?.includes('Howard University') &&
+    !t.tourName?.includes('Solo Adventurer')
+  );
+  // Save locally first for instant UI response
+  saveStoredCustomTours(clean);
+  // Sync globally to server
+  try {
+    await api.put('/tours/custom-operations', { tours: clean });
+  } catch (e) {
+    console.warn('Failed to persist custom tours to server database:', e);
+  }
+}
+
+export async function clearAllCustomTours(): Promise<void> {
+  if (typeof window !== 'undefined') {
     localStorage.removeItem('sunseekers_custom_tours_ops_v1');
     localStorage.removeItem('sunseekers_custom_tours_ops_v2');
     localStorage.removeItem('sunseekers_custom_tours_ops');
+  }
+  try {
+    await api.put('/tours/custom-operations', { tours: [] });
   } catch (e) {
-    console.warn('Failed to clear custom tours', e);
+    console.warn('Failed to clear custom tours on server:', e);
   }
 }
 

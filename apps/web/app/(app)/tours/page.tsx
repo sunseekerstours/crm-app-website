@@ -12,6 +12,8 @@ import {
   type TourOpsStatus,
   getStoredCustomTours,
   saveStoredCustomTours,
+  fetchServerCustomTours,
+  syncServerCustomTours,
   clearAllCustomTours,
   createDefaultChecklist,
   computeChecklistProgress,
@@ -55,35 +57,30 @@ export default function CustomToursOperationsPage() {
     specialRequests: '',
   };
   const [form, setForm] = useState(initialForm);
+  const [isSyncing, setIsSyncing] = useState(false);
 
-  // Load Tours & Employees (Staff / Guides)
-  useEffect(() => {
+  // Load Tours Globally & Employees (Staff / Guides)
+  const loadGlobalTours = useCallback(async () => {
+    setIsSyncing(true);
     try {
-      // Forcefully remove legacy mock data keys
-      localStorage.removeItem('sunseekers_custom_tours_ops_v1');
-      localStorage.removeItem('sunseekers_custom_tours_ops');
-
-      const stored = getStoredCustomTours();
-      // Ensure any legacy mock tours are wiped
-      const clean = stored.filter(t => 
-        !t.id?.startsWith('ct_sample_') &&
-        !t.tourName?.includes('Smith Family') &&
-        !t.tourName?.includes('Howard University') &&
-        !t.tourName?.includes('Solo Adventurer')
-      );
-      setTours(clean);
-      saveStoredCustomTours(clean);
-    } catch (e) {
-      console.warn('Could not load custom tours from storage', e);
+      const serverTours = await fetchServerCustomTours();
+      setTours(serverTours);
+    } catch {
+      setTours(getStoredCustomTours());
     } finally {
+      setIsSyncing(false);
       setLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    loadGlobalTours();
 
     // Load registered staff/guides for assignment
     api.get<Paginated<any>>('/employees?limit=200')
       .then(r => setEmployees(r.items || []))
       .catch(() => {});
-  }, []);
+  }, [loadGlobalTours]);
 
   const persistTours = useCallback((updated: CustomTour[]) => {
     const clean = updated.filter(t => 
@@ -93,7 +90,7 @@ export default function CustomToursOperationsPage() {
       !t.tourName?.includes('Solo Adventurer')
     );
     setTours(clean);
-    saveStoredCustomTours(clean);
+    syncServerCustomTours(clean);
   }, []);
 
   // Filtered list
@@ -360,12 +357,33 @@ export default function CustomToursOperationsPage() {
             >
               🚌 Fleet Timeline &amp; Drivers ↗
             </Link>
+            <button
+              type="button"
+              onClick={loadGlobalTours}
+              disabled={isSyncing}
+              style={{
+                background: 'rgba(56, 189, 248, 0.1)',
+                color: '#38bdf8',
+                border: '1px solid rgba(56, 189, 248, 0.3)',
+                borderRadius: 6,
+                padding: '8px 14px',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: isSyncing ? 'not-allowed' : 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+              title="Refresh global tour operations from the database"
+            >
+              {isSyncing ? '⏳ Syncing...' : '🔄 Sync with Team'}
+            </button>
             {tours.length > 0 && (
               <button
                 type="button"
-                onClick={() => {
+                onClick={async () => {
                   if (window.confirm('Clear all operational custom tours and start 100% clean from scratch?')) {
-                    clearAllCustomTours();
+                    await clearAllCustomTours();
                     persistTours([]);
                   }
                 }}
@@ -1025,29 +1043,39 @@ export default function CustomToursOperationsPage() {
 
                 {/* Start Date */}
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, color: '#94a3b8', marginBottom: 4 }}>
-                    Start Date *
-                  </label>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                    <label style={{ fontSize: 12, color: '#94a3b8', fontWeight: 600 }}>
+                      Start Date *
+                    </label>
+                    <span style={{ fontSize: 11, color: '#38bdf8' }}>📅 Click to pick</span>
+                  </div>
                   <input
                     type="date"
                     required
                     value={form.startDate}
+                    onClick={(e) => { try { (e.currentTarget as HTMLInputElement).showPicker?.(); } catch {} }}
+                    onFocus={(e) => { try { (e.currentTarget as HTMLInputElement).showPicker?.(); } catch {} }}
                     onChange={(e) => setForm({ ...form, startDate: e.target.value })}
-                    style={{ width: '100%', padding: '8px 10px', background: '#0f172a', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, color: '#fff', fontSize: 13 }}
+                    style={{ width: '100%', padding: '9px 12px', background: '#0f172a', border: '1px solid rgba(56, 189, 248, 0.4)', borderRadius: 6, color: '#fff', fontSize: 13, cursor: 'pointer', colorScheme: 'dark' }}
                   />
                 </div>
 
                 {/* End Date */}
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, color: '#94a3b8', marginBottom: 4 }}>
-                    Return / End Date *
-                  </label>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                    <label style={{ fontSize: 12, color: '#94a3b8', fontWeight: 600 }}>
+                      Return / End Date *
+                    </label>
+                    <span style={{ fontSize: 11, color: '#38bdf8' }}>📅 Click to pick</span>
+                  </div>
                   <input
                     type="date"
                     required
                     value={form.endDate}
+                    onClick={(e) => { try { (e.currentTarget as HTMLInputElement).showPicker?.(); } catch {} }}
+                    onFocus={(e) => { try { (e.currentTarget as HTMLInputElement).showPicker?.(); } catch {} }}
                     onChange={(e) => setForm({ ...form, endDate: e.target.value })}
-                    style={{ width: '100%', padding: '8px 10px', background: '#0f172a', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, color: '#fff', fontSize: 13 }}
+                    style={{ width: '100%', padding: '9px 12px', background: '#0f172a', border: '1px solid rgba(56, 189, 248, 0.4)', borderRadius: 6, color: '#fff', fontSize: 13, cursor: 'pointer', colorScheme: 'dark' }}
                   />
                 </div>
 

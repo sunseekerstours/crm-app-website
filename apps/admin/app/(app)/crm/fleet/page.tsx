@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { api, type Paginated } from '@/lib/api';
 import { exportToCSV, exportAllFromApi } from '@/lib/export';
@@ -199,6 +199,8 @@ export default function FleetPage() {
     freeAccommodation: false,
   };
   const [bookingForm, setBookingForm] = useState(blankBooking);
+  const startDateInputRef = useRef<HTMLInputElement>(null);
+  const endDateInputRef = useRef<HTMLInputElement>(null);
 
   // ── Vehicle Modal state ────────────────────────────────────
   const [showVehicleModal, setShowVehicleModal] = useState(false);
@@ -1844,30 +1846,148 @@ export default function FleetPage() {
 
                 {/* Start Date */}
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, color: '#94a3b8', marginBottom: 4 }}>
-                    Start / Departure Date *
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={bookingForm.startDate}
-                    onChange={e => handleStartDateChange(e.target.value)}
-                    style={{ width: '100%', padding: '8px 10px', background: '#0f172a', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, color: '#fff', fontSize: 13 }}
-                  />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                    <label style={{ fontSize: 12, color: '#94a3b8', fontWeight: 600 }}>
+                      Start / Departure Date *
+                    </label>
+                    <span style={{ fontSize: 11, color: '#38bdf8' }}>📅 Click box to pick date</span>
+                  </div>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      ref={startDateInputRef}
+                      type="date"
+                      required
+                      value={bookingForm.startDate}
+                      onClick={(e) => { try { (e.currentTarget as HTMLInputElement).showPicker?.(); } catch {} }}
+                      onFocus={(e) => { try { (e.currentTarget as HTMLInputElement).showPicker?.(); } catch {} }}
+                      onChange={e => handleStartDateChange(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '9px 38px 9px 12px',
+                        background: '#0f172a',
+                        border: '1px solid rgba(56, 189, 248, 0.4)',
+                        borderRadius: 6,
+                        color: '#fff',
+                        fontSize: 13,
+                        cursor: 'pointer',
+                        colorScheme: 'dark',
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => { try { startDateInputRef.current?.showPicker?.(); } catch {} }}
+                      title="Open calendar date picker"
+                      style={{
+                        position: 'absolute',
+                        right: 8,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'rgba(56, 189, 248, 0.15)',
+                        border: '1px solid rgba(56, 189, 248, 0.3)',
+                        borderRadius: 4,
+                        color: '#38bdf8',
+                        padding: '3px 6px',
+                        fontSize: 12,
+                        cursor: 'pointer',
+                        lineHeight: 1,
+                      }}
+                    >
+                      📅
+                    </button>
+                  </div>
                 </div>
 
                 {/* End Date */}
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, color: '#94a3b8', marginBottom: 4 }}>
-                    End / Return Date *
-                  </label>
-                  <input
-                    type="date"
-                    required
-                    value={bookingForm.endDate}
-                    onChange={e => handleEndDateChange(e.target.value)}
-                    style={{ width: '100%', padding: '8px 10px', background: '#0f172a', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, color: '#fff', fontSize: 13 }}
-                  />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                    <label style={{ fontSize: 12, color: '#94a3b8', fontWeight: 600 }}>
+                      End / Return Date *
+                    </label>
+                    <span style={{ fontSize: 11, color: '#38bdf8' }}>📅 Click box to pick date</span>
+                  </div>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      ref={endDateInputRef}
+                      type="date"
+                      required
+                      value={bookingForm.endDate}
+                      onClick={(e) => { try { (e.currentTarget as HTMLInputElement).showPicker?.(); } catch {} }}
+                      onFocus={(e) => { try { (e.currentTarget as HTMLInputElement).showPicker?.(); } catch {} }}
+                      onChange={e => handleEndDateChange(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '9px 38px 9px 12px',
+                        background: '#0f172a',
+                        border: '1px solid rgba(56, 189, 248, 0.4)',
+                        borderRadius: 6,
+                        color: '#fff',
+                        fontSize: 13,
+                        cursor: 'pointer',
+                        colorScheme: 'dark',
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => { try { endDateInputRef.current?.showPicker?.(); } catch {} }}
+                      title="Open calendar date picker"
+                      style={{
+                        position: 'absolute',
+                        right: 8,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'rgba(56, 189, 248, 0.15)',
+                        border: '1px solid rgba(56, 189, 248, 0.3)',
+                        borderRadius: 4,
+                        color: '#38bdf8',
+                        padding: '3px 6px',
+                        fontSize: 12,
+                        cursor: 'pointer',
+                        lineHeight: 1,
+                      }}
+                    >
+                      📅
+                    </button>
+                  </div>
+                </div>
+
+                {/* Quick Duration Helper Buttons */}
+                <div style={{ gridColumn: 'span 2', display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', padding: '8px 12px', background: 'rgba(15, 23, 42, 0.6)', borderRadius: 6, border: '1px dashed rgba(56, 189, 248, 0.25)' }}>
+                  <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 600 }}>⚡ Quick Trip Duration:</span>
+                  {[
+                    { label: '1 Day (Same Day)', days: 1 },
+                    { label: '2 Days (Overnight)', days: 2 },
+                    { label: '3 Days', days: 3 },
+                    { label: '4 Days', days: 4 },
+                    { label: '5 Days', days: 5 },
+                    { label: '7 Days (1 Week)', days: 7 },
+                  ].map((preset) => (
+                    <button
+                      key={preset.label}
+                      type="button"
+                      onClick={() => {
+                        const start = bookingForm.startDate || new Date().toISOString().split('T')[0];
+                        const parts = start.split('-').map(Number);
+                        const d = new Date(parts[0], parts[1] - 1, parts[2]);
+                        d.setDate(d.getDate() + (preset.days - 1));
+                        const y = d.getFullYear();
+                        const m = String(d.getMonth() + 1).padStart(2, '0');
+                        const day = String(d.getDate()).padStart(2, '0');
+                        handleEndDateChange(`${y}-${m}-${day}`);
+                      }}
+                      style={{
+                        padding: '3px 8px',
+                        fontSize: 11,
+                        borderRadius: 4,
+                        background: 'rgba(56, 189, 248, 0.12)',
+                        color: '#38bdf8',
+                        border: '1px solid rgba(56, 189, 248, 0.25)',
+                        cursor: 'pointer',
+                        fontWeight: 500,
+                      }}
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
                 </div>
 
                 {/* Destination */}
