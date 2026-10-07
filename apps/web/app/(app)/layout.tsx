@@ -13,6 +13,7 @@ const NAV = [
   { href: '/leads', label: 'Leads', icon: '🎯' },
   { href: '/deals', label: 'Sales Stages (Deals)', icon: '💼' },
   { href: '/bookings', label: 'Bookings', icon: '✈️' },
+  { href: '/tours', label: 'Customised Tours & Ops', icon: '🗺️' },
   { href: '/fleet', label: 'Fleet Management', icon: '🚌' },
   { href: '/invoices', label: 'Invoices & Quotes', icon: '🧾' },
   { href: '/payments', label: 'Payments', icon: '💳' },

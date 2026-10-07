@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { api, type Paginated } from '@/lib/api';
-import { PageHeader, Card, Button, Badge, Spinner } from '@/components/ui';
+import { PageHeader, Card, Button, Spinner } from '@/components/ui';
 import {
   type CustomTour,
   type TourChecklistItem,
@@ -16,7 +16,7 @@ import {
   getAutoStatus,
 } from '@/lib/custom-tours';
 
-export default function CustomToursOperationsPage() {
+export default function AdminCustomToursOperationsPage() {
   const [tours, setTours] = useState<CustomTour[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'ALL' | 'INDIVIDUAL' | 'GROUP' | 'ACTIVE' | 'COMPLETED'>('ALL');
@@ -114,7 +114,7 @@ export default function CustomToursOperationsPage() {
           ...item,
           isCompleted: nextState,
           completedAt: nextState ? new Date().toISOString() : undefined,
-          completedBy: nextState ? 'Staff Ops' : undefined,
+          completedBy: nextState ? 'Admin Ops' : undefined,
         };
       });
       const newStatus = getAutoStatus(updatedChecklist);
@@ -273,14 +273,68 @@ export default function CustomToursOperationsPage() {
 
   return (
     <div style={{ maxWidth: 1400, margin: '0 auto', paddingBottom: 60 }}>
+      {/* Top Navigation Switcher between Public Packages & Custom Ops */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        background: '#1e293b',
+        border: '1px solid rgba(255,255,255,0.08)',
+        borderRadius: 8,
+        padding: '6px 12px',
+        marginBottom: 16
+      }}>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <span style={{
+            padding: '6px 14px',
+            borderRadius: 6,
+            fontSize: 13,
+            fontWeight: 700,
+            background: '#0284c7',
+            color: '#ffffff'
+          }}>
+            📋 Customised Tours &amp; Ops Checklists
+          </span>
+          <Link
+            href="/crm/tours"
+            style={{
+              padding: '6px 14px',
+              borderRadius: 6,
+              fontSize: 13,
+              fontWeight: 600,
+              background: 'rgba(255,255,255,0.04)',
+              color: '#94a3b8',
+              textDecoration: 'none'
+            }}
+          >
+            🗺️ Public Tour Catalogue &amp; Packages ↗
+          </Link>
+        </div>
+
+        <Link
+          href="/crm/fleet"
+          style={{
+            color: '#38bdf8',
+            fontSize: 12,
+            fontWeight: 600,
+            textDecoration: 'none',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4
+          }}
+        >
+          🚌 Fleet Timeline &amp; Driver Per Diem ↗
+        </Link>
+      </div>
+
       {/* Page Header */}
       <PageHeader
         title="Customised Tours & Trip Operations Hub"
-        subtitle="Operational execution management for tailor-made tourist packages, individual FITs, and group departures"
+        subtitle="Manage tailor-made individual (FIT) and group departures with full operational readiness checklists"
         action={
           <div style={{ display: 'flex', gap: 10 }}>
             <Link
-              href="/fleet"
+              href="/crm/fleet"
               className="btn"
               style={{
                 background: '#1e293b',
@@ -491,7 +545,7 @@ export default function CustomToursOperationsPage() {
                   {/* Quick Card Actions */}
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <Link
-                      href={`/fleet`}
+                      href={`/crm/fleet`}
                       style={{
                         background: '#0f172a',
                         color: '#38bdf8',

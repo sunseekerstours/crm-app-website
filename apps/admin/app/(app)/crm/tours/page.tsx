@@ -458,6 +458,59 @@ export default function CrmToursPage() {
 
   return (
     <div style={{ display: 'grid', gap: '24px' }}>
+      {/* Quick Switcher between Catalogue Tours & Customised Operational Tours */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        background: '#1e293b',
+        border: '1px solid rgba(255,255,255,0.08)',
+        borderRadius: 8,
+        padding: '6px 12px'
+      }}>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <span style={{
+            padding: '6px 14px',
+            borderRadius: 6,
+            fontSize: 13,
+            fontWeight: 700,
+            background: '#0284c7',
+            color: '#ffffff'
+          }}>
+            🗺️ Public Tour Catalogue &amp; Packages
+          </span>
+          <Link
+            href="/crm/custom-tours"
+            style={{
+              padding: '6px 14px',
+              borderRadius: 6,
+              fontSize: 13,
+              fontWeight: 600,
+              background: 'rgba(255,255,255,0.04)',
+              color: '#38bdf8',
+              textDecoration: 'none'
+            }}
+          >
+            📋 Customised Tours &amp; Ops Checklists ↗
+          </Link>
+        </div>
+
+        <Link
+          href="/crm/fleet"
+          style={{
+            color: '#38bdf8',
+            fontSize: 12,
+            fontWeight: 600,
+            textDecoration: 'none',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4
+          }}
+        >
+          🚌 Fleet Timeline &amp; Driver Per Diem ↗
+        </Link>
+      </div>
+
       <PageHeader
         title="Tours & Packages"
         subtitle={editing ? `Editing: ${editing.name}` : 'Manage tour packages, multiple pricing tiers, dates & itineraries'}
