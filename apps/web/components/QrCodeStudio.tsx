@@ -6,6 +6,7 @@ import QRCodeStyling, {
   CornerDotType,
   CornerSquareType,
 } from 'qr-code-styling';
+import { api } from '@/lib/api';
 
 // ── SVG Logo Presets (Data URLs) ─────────────────────────────────────────────
 const SVG_PRESETS = {
@@ -212,6 +213,7 @@ export function QrCodeStudio({ titlePrefix = 'Sunseekers' }: { titlePrefix?: str
 
   // ── Load Stored Library ────────────────────────────────────────────────────
   useEffect(() => {
+    // 1. Instant local cache load
     try {
       const saved = localStorage.getItem('sunseekers_qr_library_v2');
       if (saved) {
@@ -222,13 +224,43 @@ export function QrCodeStudio({ titlePrefix = 'Sunseekers' }: { titlePrefix?: str
         setCategories(JSON.parse(savedCats));
       }
     } catch (e) {}
+
+    // 2. Global fetch from backend PostgreSQL database
+    api.get<{ items: QrItem[]; categories?: string[] }>('/qr-library')
+      .then((data) => {
+        if (data && Array.isArray(data.items)) {
+          setLibrary(data.items);
+          try {
+            localStorage.setItem('sunseekers_qr_library_v2', JSON.stringify(data.items));
+          } catch {}
+        }
+        if (data && Array.isArray(data.categories) && data.categories.length > 0) {
+          setCategories(data.categories);
+          try {
+            localStorage.setItem('sunseekers_categories_v1', JSON.stringify(data.categories));
+          } catch {}
+        }
+      })
+      .catch((err) => {
+        console.warn('Could not load global QR library from server, using local cache:', err);
+      });
   }, []);
 
-  function saveLibrary(items: QrItem[]) {
+  function saveLibrary(items: QrItem[], newCats?: string[]) {
     setLibrary(items);
+    const catsToSave = newCats || categories;
     try {
       localStorage.setItem('sunseekers_qr_library_v2', JSON.stringify(items));
+      if (newCats) {
+        localStorage.setItem('sunseekers_categories_v1', JSON.stringify(newCats));
+      }
     } catch (e) {}
+
+    // Global persistence to backend database
+    api.put('/qr-library', { items, categories: catsToSave })
+      .catch((err) => {
+        console.warn('Failed to sync QR library to server database:', err);
+      });
   }
 
   // ── Compute Payload String ─────────────────────────────────────────────────
@@ -663,6 +695,19 @@ export function QrCodeStudio({ titlePrefix = 'Sunseekers' }: { titlePrefix?: str
                   verticalAlign: 'middle',
                 }}>
                   PRO HD
+                </span>
+                <span style={{
+                  marginLeft: 8,
+                  fontSize: 11,
+                  padding: '3px 8px',
+                  borderRadius: 12,
+                  background: 'rgba(34, 197, 94, 0.15)',
+                  border: '1px solid rgba(34, 197, 94, 0.3)',
+                  color: '#4ade80',
+                  fontWeight: 700,
+                  verticalAlign: 'middle',
+                }}>
+                  ☁️ Global Cloud Synced
                 </span>
               </h1>
               <p style={{ margin: '4px 0 0', fontSize: 13, color: '#94a3b8' }}>
@@ -2007,9 +2052,9 @@ export function QrCodeStudio({ titlePrefix = 'Sunseekers' }: { titlePrefix?: str
                   if (categories.includes(trimmed)) return;
                   const updated = [...categories, trimmed];
                   setCategories(updated);
-                  localStorage.setItem('sunseekers_categories_v1', JSON.stringify(updated));
                   setCategory(trimmed);
                   setNewCatInput('');
+                  saveLibrary(library, updated);
                 }}
                 style={{ padding: '8px 14px', background: '#0284c7', border: 'none', borderRadius: 6, color: '#fff', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}
               >
@@ -2027,8 +2072,8 @@ export function QrCodeStudio({ titlePrefix = 'Sunseekers' }: { titlePrefix?: str
                       onClick={() => {
                         const updated = categories.filter((x) => x !== c);
                         setCategories(updated);
-                        localStorage.setItem('sunseekers_categories_v1', JSON.stringify(updated));
                         if (category === c) setCategory(updated[0]);
+                        saveLibrary(library, updated);
                       }}
                       style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: 12, cursor: 'pointer' }}
                     >

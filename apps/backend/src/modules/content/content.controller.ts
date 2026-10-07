@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, Req } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 import { RequirePermissions } from '@app/common/decorators/permissions.decorator';
@@ -15,6 +15,22 @@ import { UpdateSiteSettingDto } from './dto/update-site-setting.dto';
 @Controller()
 export class ContentController {
   constructor(private readonly contentService: ContentService) {}
+
+  // ---- QR Code Studio Library ----
+
+  @Get('qr-library')
+  getQrLibrary() {
+    return this.contentService.getQrLibrary();
+  }
+
+  @Put('qr-library')
+  updateQrLibrary(
+    @Body() body: { items: any[]; categories?: string[] },
+    @Req() req: Request,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.contentService.updateQrLibrary(body, toRequestContext(req, userId));
+  }
 
   // ---- Pages ----
 

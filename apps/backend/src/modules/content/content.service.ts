@@ -199,4 +199,61 @@ export class ContentService {
 
     return setting;
   }
+
+  async getQrLibrary() {
+    const setting = await this.prisma.siteSetting.findUnique({
+      where: { key: 'crm_qr_codes_library' },
+    });
+    if (setting?.value) {
+      try {
+        const parsed = JSON.parse(setting.value);
+        return parsed;
+      } catch {}
+    }
+    return {
+      items: [],
+      categories: ['General', 'Buses & Fleet', 'Tours & Excursions', 'Wi-Fi & Passes'],
+    };
+  }
+
+  async updateQrLibrary(payload: { items: any[]; categories?: string[] }, ctx: RequestContext) {
+    const cleanItems = Array.isArray(payload.items) ? payload.items : [];
+    const cleanCategories =
+      Array.isArray(payload.categories) && payload.categories.length > 0
+        ? payload.categories
+        : ['General', 'Buses & Fleet', 'Tours & Excursions', 'Wi-Fi & Passes'];
+    const dataToStore = { items: cleanItems, categories: cleanCategories };
+    const jsonStr = JSON.stringify(dataToStore);
+
+    await this.prisma.siteSetting.upsert({
+      where: { key: 'crm_qr_codes_library' },
+      create: {
+        key: 'crm_qr_codes_library',
+        group: 'tools',
+        value: jsonStr,
+        valueJson: dataToStore,
+        description: 'Global QR Code Studio library and categories for all users',
+        isPublic: false,
+      },
+      update: {
+        value: jsonStr,
+        valueJson: dataToStore,
+      },
+    });
+
+    try {
+      await this.audit.record({
+        userId: ctx.userId,
+        action: AuditableAction.SITE_SETTING_UPDATED,
+        entityType: 'SiteSetting',
+        entityId: 'crm_qr_codes_library',
+        after: { count: cleanItems.length },
+        ipAddress: ctx.ipAddress,
+        userAgent: ctx.userAgent,
+        requestId: ctx.requestId,
+      });
+    } catch {}
+
+    return dataToStore;
+  }
 }
