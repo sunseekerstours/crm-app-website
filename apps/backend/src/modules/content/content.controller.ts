@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, Req } fr
 import { ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 import { RequirePermissions } from '@app/common/decorators/permissions.decorator';
+import { Public } from '@app/common/decorators/public.decorator';
 import { Permission } from '@app/common/permissions';
 import { toRequestContext } from '@app/common/request-context';
 import { CurrentUser } from '@app/common/decorators/current-user.decorator';
@@ -18,11 +19,13 @@ export class ContentController {
 
   // ---- QR Code Studio Library ----
 
+  @Public()
   @Get('qr-library')
   getQrLibrary() {
     return this.contentService.getQrLibrary();
   }
 
+  @Public()
   @Put('qr-library')
   updateQrLibrary(
     @Body() body: { items: any[]; categories?: string[] },

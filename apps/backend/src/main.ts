@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
+import { json, urlencoded } from 'express';
 import { AppModule } from './app.module';
 
 async function bootstrap(): Promise<void> {
@@ -15,6 +16,8 @@ async function bootstrap(): Promise<void> {
   app.setGlobalPrefix(apiPrefix);
 
   app.use(helmet());
+  app.use(json({ limit: '50mb' }));
+  app.use(urlencoded({ limit: '50mb', extended: true }));
   app.enableCors({
     origin: config.get<string[]>('corsOrigins') ?? [],
     credentials: true,

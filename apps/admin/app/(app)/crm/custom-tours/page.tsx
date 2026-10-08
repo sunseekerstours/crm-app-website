@@ -82,7 +82,7 @@ export default function AdminCustomToursOperationsPage() {
       .catch(() => {});
   }, [loadGlobalTours]);
 
-  const persistTours = useCallback((updated: CustomTour[]) => {
+  const persistTours = useCallback(async (updated: CustomTour[]) => {
     const clean = updated.filter(t => 
       !t.id?.startsWith('ct_sample_') &&
       !t.tourName?.includes('Smith Family') &&
@@ -90,7 +90,12 @@ export default function AdminCustomToursOperationsPage() {
       !t.tourName?.includes('Solo Adventurer')
     );
     setTours(clean);
-    syncServerCustomTours(clean);
+    setIsSyncing(true);
+    try {
+      await syncServerCustomTours(clean);
+    } finally {
+      setIsSyncing(false);
+    }
   }, []);
 
   // Filtered list

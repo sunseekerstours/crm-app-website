@@ -196,6 +196,7 @@ export function QrCodeStudio({ titlePrefix = 'Admin' }: { titlePrefix?: string }
   const [libFilter, setLibFilter] = useState('all');
   const [libSearch, setLibSearch] = useState('');
   const [activeWorkingId, setActiveWorkingId] = useState<string | null>(null);
+  const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'offline'>('syncing');
 
   // Print Dialog
   const [showPrintModal, setShowPrintModal] = useState(false);
@@ -226,6 +227,7 @@ export function QrCodeStudio({ titlePrefix = 'Admin' }: { titlePrefix?: string }
     } catch (e) {}
 
     // 2. Global fetch from backend PostgreSQL database
+    setSyncStatus('syncing');
     api.get<{ items: QrItem[]; categories?: string[] }>('/qr-library')
       .then((data) => {
         if (data && Array.isArray(data.items)) {
@@ -240,9 +242,11 @@ export function QrCodeStudio({ titlePrefix = 'Admin' }: { titlePrefix?: string }
             localStorage.setItem('sunseekers_categories_v1', JSON.stringify(data.categories));
           } catch {}
         }
+        setSyncStatus('synced');
       })
       .catch((err) => {
         console.warn('Could not load global QR library from server, using local cache:', err);
+        setSyncStatus('offline');
       });
   }, []);
 
@@ -256,10 +260,15 @@ export function QrCodeStudio({ titlePrefix = 'Admin' }: { titlePrefix?: string }
       }
     } catch (e) {}
 
-    // Global persistence to backend database
+    // Global persistence to backend PostgreSQL database
+    setSyncStatus('syncing');
     api.put('/qr-library', { items, categories: catsToSave })
+      .then(() => {
+        setSyncStatus('synced');
+      })
       .catch((err) => {
         console.warn('Failed to sync QR library to server database:', err);
+        setSyncStatus('offline');
       });
   }
 
@@ -535,11 +544,69 @@ export function QrCodeStudio({ titlePrefix = 'Admin' }: { titlePrefix?: string }
     }
   }
 
+  // ── Reset Studio to Create a Brand New QR Code ──────────────────────────────
+  function resetToNewQr() {
+    setActiveWorkingId(null);
+    setQrName('Sunseekers Express QR');
+    setSubtitle('Point camera to scan & view details');
+    setCategory(categories[0] || 'General');
+    setDataType('url');
+    setRawUrl('https://sunseekerstours.com');
+    setWifiSsid('Sunseekers-Fleet-Guest');
+    setWifiPass('');
+    setWifiEnc('WPA');
+    setWaPhone('+233541234567');
+    setWaMsg('Hello Sunseekers, I would like to inquire about bookings.');
+    setVcardName('Sunseekers Travel Operations');
+    setVcardPhone('+233 30 200 0000');
+    setVcardEmail('info@sunseekerstravel.com');
+    setVcardOrg('Fleet & Customer Logistics');
+    setPlainText('Welcome onboard Sunseekers Luxury Travel!');
+    setSelectedTheme('sunset');
+    setColorMode('linear');
+    setGradientAngle(45);
+    setPrimaryColor('#F57C00');
+    setSecondaryColor('#D84315');
+    setBgColor('#FFFFFF');
+    setTransparentBg(false);
+    setCustomEyes(true);
+    setEyeFrameColor('#BF360C');
+    setEyeDotColor('#F57C00');
+    setLogoPreset('sunseekers');
+    setCustomLogoUrl(null);
+    setCustomLogoName('');
+    setFrameStyle('bottom-banner');
+    setFrameText('SCAN TO BOOK');
+    setFrameBgColor('#F57C00');
+    setFrameTextColor('#FFFFFF');
+    setActiveTab('studio');
+    triggerToast('✨ Studio ready: Create a brand new QR code!', 'info');
+  }
+
+  // ── Duplicate Item as New Copy ─────────────────────────────────────────────
+  function duplicateItem(item: QrItem) {
+    loadFromLibrary(item);
+    setActiveWorkingId(null); // Key: clearing activeWorkingId ensures next save creates a new copy!
+    setQrName(`${item.name} (Copy)`);
+    triggerToast(`📑 Duplicated "${item.name}"! Edit and save as a new QR code.`, 'info');
+  }
+
   // ── Save to Library ────────────────────────────────────────────────────────
-  function saveToLibrary() {
+  function saveToLibrary(saveAsNewCopy = false) {
+    const isCreatingNew = saveAsNewCopy || !activeWorkingId;
+    const finalId = isCreatingNew
+      ? `qr_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`
+      : activeWorkingId!;
+
+    let finalName = qrName.trim() || 'Sunseekers QR';
+    if (saveAsNewCopy && !finalName.endsWith('(Copy)') && library.some(i => i.id === activeWorkingId && i.name === finalName)) {
+      finalName = `${finalName} (Copy)`;
+      setQrName(finalName);
+    }
+
     const item: QrItem = {
-      id: activeWorkingId || `qr_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
-      name: qrName.trim() || 'Sunseekers QR',
+      id: finalId,
+      name: finalName,
       category,
       url: getComputedData(),
       subtitle,
@@ -565,7 +632,12 @@ export function QrCodeStudio({ titlePrefix = 'Admin' }: { titlePrefix?: string }
 
     setActiveWorkingId(item.id);
     saveLibrary(updated);
-    triggerToast(`Saved "${item.name}" to Sunseekers Library!`, 'success');
+    triggerToast(
+      isCreatingNew
+        ? `Saved new QR code "${item.name}" to Global Library!`
+        : `Updated "${item.name}" in Global Library!`,
+      'success'
+    );
   }
 
   // ── Load Item from Library ─────────────────────────────────────────────────
@@ -718,7 +790,7 @@ export function QrCodeStudio({ titlePrefix = 'Admin' }: { titlePrefix?: string }
         </div>
 
         {/* Tab & Action Controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', background: '#1e293b', padding: 4, borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)' }}>
             <button
               type="button"
@@ -760,6 +832,47 @@ export function QrCodeStudio({ titlePrefix = 'Admin' }: { titlePrefix?: string }
             </button>
           </div>
 
+          {/* Prominent Create New QR Button */}
+          <button
+            type="button"
+            onClick={resetToNewQr}
+            style={{
+              padding: '7px 14px',
+              borderRadius: 8,
+              background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+              border: '1px solid rgba(56, 189, 248, 0.4)',
+              color: '#fff',
+              fontSize: 12,
+              fontWeight: 800,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              boxShadow: '0 2px 8px rgba(2, 132, 199, 0.3)',
+            }}
+            title="Start creating a new QR code from scratch"
+          >
+            <span>➕</span>
+            <span>New QR Code</span>
+          </button>
+
+          {/* Sync Status Badge */}
+          <div style={{
+            padding: '6px 12px',
+            borderRadius: 8,
+            background: syncStatus === 'synced' ? 'rgba(34, 197, 94, 0.12)' : syncStatus === 'syncing' ? 'rgba(56, 189, 248, 0.12)' : 'rgba(245, 158, 11, 0.12)',
+            border: `1px solid ${syncStatus === 'synced' ? 'rgba(34, 197, 94, 0.3)' : syncStatus === 'syncing' ? 'rgba(56, 189, 248, 0.3)' : 'rgba(245, 158, 11, 0.3)'}`,
+            color: syncStatus === 'synced' ? '#4ade80' : syncStatus === 'syncing' ? '#38bdf8' : '#fbbf24',
+            fontSize: 11,
+            fontWeight: 700,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+          }}>
+            <span>{syncStatus === 'synced' ? '🟢' : syncStatus === 'syncing' ? '🔄' : '🟡'}</span>
+            <span>{syncStatus === 'synced' ? 'Global Database Synced' : syncStatus === 'syncing' ? 'Syncing...' : 'Local Cache'}</span>
+          </div>
+
           <button
             type="button"
             onClick={() => setShowPrintModal(true)}
@@ -787,6 +900,88 @@ export function QrCodeStudio({ titlePrefix = 'Admin' }: { titlePrefix?: string }
       {activeTab === 'studio' && (
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.4fr) minmax(340px, 1fr)', gap: 24, alignItems: 'start' }}>
           
+          {/* Active Mode Banner */}
+          {activeWorkingId ? (
+            <div style={{
+              gridColumn: '1 / -1',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '10px 16px',
+              borderRadius: 8,
+              background: 'rgba(2, 132, 199, 0.12)',
+              border: '1px solid rgba(56, 189, 248, 0.35)',
+              color: '#f8fafc',
+              flexWrap: 'wrap',
+              gap: 10,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 16 }}>✏️</span>
+                <div>
+                  <span style={{ fontSize: 12, color: '#38bdf8', fontWeight: 700 }}>EDITING SAVED CODE: </span>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: '#fff' }}>"{qrName}"</span>
+                  <span style={{ fontSize: 11, color: '#94a3b8', marginLeft: 8 }}>({category})</span>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => saveToLibrary(true)}
+                  style={{
+                    padding: '5px 12px',
+                    borderRadius: 6,
+                    background: 'rgba(245, 158, 11, 0.2)',
+                    border: '1px solid rgba(245, 158, 11, 0.4)',
+                    color: '#fbbf24',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                  title="Create an additional new QR code copy without changing this original"
+                >
+                  📑 Save as New Copy
+                </button>
+                <button
+                  type="button"
+                  onClick={resetToNewQr}
+                  style={{
+                    padding: '5px 12px',
+                    borderRadius: 6,
+                    background: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    color: '#fff',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  ➕ Start Blank New QR
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div style={{
+              gridColumn: '1 / -1',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '10px 16px',
+              borderRadius: 8,
+              background: 'rgba(34, 197, 94, 0.1)',
+              border: '1px solid rgba(34, 197, 94, 0.25)',
+              color: '#4ade80',
+              flexWrap: 'wrap',
+              gap: 10,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 16 }}>✨</span>
+                <span style={{ fontSize: 12, fontWeight: 700 }}>
+                  New QR Code Creation Mode — Once saved, this QR code will sync globally for all team members.
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* Controls Column */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             
@@ -1709,50 +1904,149 @@ export function QrCodeStudio({ titlePrefix = 'Admin' }: { titlePrefix?: string }
                   </button>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                  <button
-                    type="button"
-                    onClick={saveToLibrary}
-                    style={{
-                      padding: '10px 12px',
-                      borderRadius: 8,
-                      border: '1px solid rgba(245, 158, 11, 0.4)',
-                      background: 'rgba(245, 158, 11, 0.15)',
-                      color: '#f59e0b',
-                      fontWeight: 700,
-                      fontSize: 12,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 6,
-                    }}
-                  >
-                    <span>💾</span>
-                    <span>Save to Library</span>
-                  </button>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {activeWorkingId ? (
+                    <>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 8 }}>
+                        <button
+                          type="button"
+                          onClick={() => saveToLibrary(false)}
+                          style={{
+                            padding: '10px 12px',
+                            borderRadius: 8,
+                            border: '1px solid rgba(2, 132, 199, 0.4)',
+                            background: 'rgba(2, 132, 199, 0.2)',
+                            color: '#38bdf8',
+                            fontWeight: 700,
+                            fontSize: 12,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 6,
+                          }}
+                        >
+                          <span>💾</span>
+                          <span>Update "{qrName}"</span>
+                        </button>
 
-                  <button
-                    type="button"
-                    onClick={() => setShowPrintModal(true)}
-                    style={{
-                      padding: '10px 12px',
-                      borderRadius: 8,
-                      border: '1px solid rgba(255,255,255,0.15)',
-                      background: '#1e293b',
-                      color: '#e2e8f0',
-                      fontWeight: 600,
-                      fontSize: 12,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 6,
-                    }}
-                  >
-                    <span>🖨️</span>
-                    <span>Print Stand</span>
-                  </button>
+                        <button
+                          type="button"
+                          onClick={() => saveToLibrary(true)}
+                          style={{
+                            padding: '10px 12px',
+                            borderRadius: 8,
+                            border: '1px solid rgba(245, 158, 11, 0.4)',
+                            background: 'rgba(245, 158, 11, 0.15)',
+                            color: '#f59e0b',
+                            fontWeight: 700,
+                            fontSize: 12,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 6,
+                          }}
+                          title="Save as an additional new QR code copy in your library"
+                        >
+                          <span>📑</span>
+                          <span>Save as New Copy</span>
+                        </button>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 8 }}>
+                        <button
+                          type="button"
+                          onClick={resetToNewQr}
+                          style={{
+                            padding: '8px 12px',
+                            borderRadius: 8,
+                            border: '1px dashed rgba(56, 189, 248, 0.4)',
+                            background: 'rgba(56, 189, 248, 0.1)',
+                            color: '#38bdf8',
+                            fontWeight: 700,
+                            fontSize: 11,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 6,
+                          }}
+                        >
+                          <span>➕</span>
+                          <span>Create Another QR Code</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setShowPrintModal(true)}
+                          style={{
+                            padding: '8px 12px',
+                            borderRadius: 8,
+                            border: '1px solid rgba(255,255,255,0.15)',
+                            background: '#1e293b',
+                            color: '#e2e8f0',
+                            fontWeight: 600,
+                            fontSize: 11,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 6,
+                          }}
+                        >
+                          <span>🖨️</span>
+                          <span>Print Stand</span>
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 8 }}>
+                      <button
+                        type="button"
+                        onClick={() => saveToLibrary(false)}
+                        style={{
+                          padding: '10px 12px',
+                          borderRadius: 8,
+                          border: '1px solid rgba(34, 197, 94, 0.4)',
+                          background: 'rgba(34, 197, 94, 0.2)',
+                          color: '#4ade80',
+                          fontWeight: 700,
+                          fontSize: 12,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 6,
+                        }}
+                      >
+                        <span>💾</span>
+                        <span>Save to Library</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setShowPrintModal(true)}
+                        style={{
+                          padding: '10px 12px',
+                          borderRadius: 8,
+                          border: '1px solid rgba(255,255,255,0.15)',
+                          background: '#1e293b',
+                          color: '#e2e8f0',
+                          fontWeight: 600,
+                          fontSize: 12,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 6,
+                        }}
+                      >
+                        <span>🖨️</span>
+                        <span>Print Stand</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Download Resolution Selector */}
@@ -1809,6 +2103,27 @@ export function QrCodeStudio({ titlePrefix = 'Admin' }: { titlePrefix?: string }
                   fontSize: 13,
                 }}
               />
+              <button
+                type="button"
+                onClick={resetToNewQr}
+                style={{
+                  padding: '8px 14px',
+                  borderRadius: 6,
+                  border: 'none',
+                  background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                  color: '#fff',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                <span>➕</span>
+                <span>Create New</span>
+              </button>
             </div>
 
             {/* Category Filter Chips */}
@@ -1956,7 +2271,24 @@ export function QrCodeStudio({ titlePrefix = 'Admin' }: { titlePrefix?: string }
                         cursor: 'pointer',
                       }}
                     >
-                      Edit in Studio
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => duplicateItem(item)}
+                      style={{
+                        padding: '6px 10px',
+                        borderRadius: 6,
+                        border: '1px solid rgba(245, 158, 11, 0.3)',
+                        background: 'rgba(245, 158, 11, 0.15)',
+                        color: '#fbbf24',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                      title="Duplicate this QR code as a new design"
+                    >
+                      Duplicate
                     </button>
                     <button
                       type="button"

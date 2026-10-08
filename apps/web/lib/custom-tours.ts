@@ -233,7 +233,7 @@ export async function fetchServerCustomTours(): Promise<CustomTour[]> {
 /**
  * Synchronize custom tours globally to all users via backend PostgreSQL database.
  */
-export async function syncServerCustomTours(tours: CustomTour[]): Promise<void> {
+export async function syncServerCustomTours(tours: CustomTour[]): Promise<boolean> {
   const clean = tours.filter((t) => 
     !t.id?.startsWith('ct_sample_') &&
     !t.tourName?.includes('Smith Family') &&
@@ -245,8 +245,10 @@ export async function syncServerCustomTours(tours: CustomTour[]): Promise<void> 
   // Sync globally to server
   try {
     await api.put('/tours/custom-operations', { tours: clean });
+    return true;
   } catch (e) {
     console.warn('Failed to persist custom tours to server database:', e);
+    return false;
   }
 }
 
