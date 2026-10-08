@@ -303,6 +303,7 @@ export default function AutomationsPage() {
   // Telegram test state
   const [testingTelegram, setTestingTelegram] = useState(false);
   const [savingTelegram, setSavingTelegram] = useState(false);
+  const [sendingSampleAlert, setSendingSampleAlert] = useState(false);
   const [showBotToken, setShowBotToken] = useState(false);
   const [telegramResult, setTelegramResult] = useState<{ success: boolean; text: string } | null>(null);
 
@@ -457,6 +458,26 @@ export default function AutomationsPage() {
     }
   };
 
+  const handleSendSampleLeadAlert = async () => {
+    setSendingSampleAlert(true);
+    setTelegramResult(null);
+    try {
+      const res = await api.post<{ success: boolean; message?: string }>('/telegram/test-alert', {});
+      setTelegramResult({
+        success: true,
+        text: res.message || 'Sample lead alert posted to Telegram! Check your group chat.',
+      });
+      setNotice({ type: 'success', message: 'Sample lead alert posted to your Telegram channel!' });
+    } catch (err: any) {
+      setTelegramResult({
+        success: false,
+        text: err?.message || 'Failed to send sample alert. Make sure bot token and chat ID are valid.',
+      });
+    } finally {
+      setSendingSampleAlert(false);
+    }
+  };
+
   const handleRunSweep = async () => {
     setRunningSweep(true);
     setSweepResult(null);
@@ -579,15 +600,25 @@ export default function AutomationsPage() {
             padding: '20px',
             border: '1px solid #e2e8f0',
             boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
           }}
         >
-          <div style={{ fontSize: '13px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>
-            Watchdog Sweeps
+          <div>
+            <div style={{ fontSize: '13px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>
+              Watchdog Sweeps
+            </div>
+            <div style={{ fontSize: '28px', fontWeight: 800, color: '#0f172a', marginTop: '6px' }}>
+              Every 1 Hr
+            </div>
+            <div style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>Hourly background scheduler</div>
           </div>
-          <div style={{ fontSize: '28px', fontWeight: 800, color: '#0f172a', marginTop: '6px' }}>
-            Every 1 Hr
+          <div style={{ marginTop: '12px' }}>
+            <Button variant="secondary" onClick={handleRunSweep} disabled={runningSweep}>
+              {runningSweep ? <Spinner size={13} /> : '⚡'} Run Sweep Now
+            </Button>
           </div>
-          <div style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>Background scheduler running</div>
         </div>
       </div>
 
@@ -883,7 +914,10 @@ export default function AutomationsPage() {
 
         <div style={{ marginTop: '18px', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
           <Button variant="secondary" onClick={handleTestTelegram} disabled={testingTelegram}>
-            {testingTelegram ? <Spinner size={14} /> : '📡 Test Telegram Bot Ping'}
+            {testingTelegram ? <Spinner size={14} /> : '📡 Test Bot Ping'}
+          </Button>
+          <Button variant="secondary" onClick={handleSendSampleLeadAlert} disabled={sendingSampleAlert}>
+            {sendingSampleAlert ? <Spinner size={14} /> : '🧪 Send Sample Lead Alert'}
           </Button>
           <Button variant="primary" onClick={handleSaveTelegram} disabled={savingTelegram}>
             {savingTelegram ? <Spinner size={14} /> : '💾 Save Telegram Settings'}

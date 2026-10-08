@@ -48,9 +48,20 @@ export class TelegramService {
     const isConfigured = Boolean(botToken && chatId);
     return {
       enabled: enabled || isConfigured,
-      botToken,
-      chatId,
+      botToken: botToken.trim(),
+      chatId: chatId.trim(),
     };
+  }
+
+  /**
+   * Returns the base CRM web app URL for deep-links in Telegram messages.
+   */
+  public getBaseUrl(): string {
+    const configured = this.config.get<string>('app.frontendUrl' as any) || process.env.FRONTEND_URL || process.env.APP_URL;
+    if (configured && !configured.includes('localhost')) {
+      return configured.replace(/\/$/, '');
+    }
+    return 'https://sunseekers-crm-69-62-106-189.sslip.io';
   }
 
   /**
@@ -233,7 +244,7 @@ export class TelegramService {
       lead.source ? `🌐 <b>Source:</b> ${lead.source}` : null,
       lead.assignedStaffName ? `💼 <b>Assigned To:</b> <b>${lead.assignedStaffName}</b>` : `⚠️ <i>Unassigned</i>`,
       `━━━━━━━━━━━━━━━━━━━━━━`,
-      `👉 <a href="http://localhost:3001/leads">Open CRM Leads Board</a>`,
+      `👉 <a href="${this.getBaseUrl()}/leads">Open CRM Leads Board</a>`,
     ]
       .filter(Boolean)
       .join('\n');
@@ -258,7 +269,7 @@ export class TelegramService {
       deal.salespersonName ? `🌟 <b>Sales Rep:</b> ${deal.salespersonName}` : null,
       deal.invoiceNumber ? `📄 <b>Invoice Generated:</b> <code>${deal.invoiceNumber}</code>` : null,
       `━━━━━━━━━━━━━━━━━━━━━━`,
-      `👉 <a href="http://localhost:3001/deals">View in CRM</a>`,
+      `👉 <a href="${this.getBaseUrl()}/deals">View in CRM</a>`,
     ]
       .filter(Boolean)
       .join('\n');
@@ -284,7 +295,7 @@ export class TelegramService {
       payment.customerName ? `👤 <b>Customer:</b> ${payment.customerName}` : null,
       payment.invoiceNumber ? `📄 <b>Invoice:</b> ${payment.invoiceNumber}` : null,
       `━━━━━━━━━━━━━━━━━━━━━━`,
-      `👉 <a href="http://localhost:3001/payments">View Payments Board</a>`,
+      `👉 <a href="${this.getBaseUrl()}/payments">View Payments Board</a>`,
     ]
       .filter(Boolean)
       .join('\n');
@@ -297,8 +308,9 @@ export class TelegramService {
     title: string;
     assignedStaff: string;
     hoursInactive: number;
-    url: string;
+    url?: string;
   }): Promise<void> {
+    const link = alert.url || `${this.getBaseUrl()}/leads`;
     const msg = [
       `⏱️ <b>SALES INACTIVITY SLA ESCALATION</b>`,
       `━━━━━━━━━━━━━━━━━━━━━━`,
@@ -306,7 +318,7 @@ export class TelegramService {
       `👤 <b>Assigned To:</b> ${alert.assignedStaff}`,
       `⏳ <b>Inactivity Duration:</b> ${alert.hoursInactive} hours with zero updates`,
       `━━━━━━━━━━━━━━━━━━━━━━`,
-      `👉 <a href="${alert.url}">Take Action in CRM</a>`,
+      `👉 <a href="${link}">Take Action in CRM</a>`,
     ].join('\n');
 
     await this.sendAlert(msg);
@@ -327,7 +339,7 @@ export class TelegramService {
       `👤 <b>Customer:</b> ${alert.customerName}`,
       `📅 <b>Original Due Date:</b> ${alert.dueDate}`,
       `━━━━━━━━━━━━━━━━━━━━━━`,
-      `👉 <a href="http://localhost:3001/invoices">Review Invoices</a>`,
+      `👉 <a href="${this.getBaseUrl()}/invoices">Review Invoices</a>`,
     ].join('\n');
 
     await this.sendAlert(msg);

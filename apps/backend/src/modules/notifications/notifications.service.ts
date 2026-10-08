@@ -129,6 +129,59 @@ export class NotificationsService {
     });
   }
 
+  /**
+   * Broadcasts a notification to multiple active users (e.g. all managers, finance, or sales staff).
+   */
+  async broadcast(input: {
+    type: NotificationType;
+    title: string;
+    message: string;
+    roles?: string[];
+    excludeUserIds?: string[];
+    entity?: { type: string; id: string };
+    data?: Prisma.InputJsonValue;
+  }): Promise<number> {
+    let userIds: string[] = [];
+    if (input.roles && input.roles.length > 0) {
+      const users = await this.prisma.user.findMany({
+        where: {
+          status: 'ACTIVE',
+          roles: { some: { role: { name: { in: input.roles } } } },
+        },
+        select: { id: true },
+      });
+      userIds = users.map((u) => u.id);
+    } else {
+      const users = await this.prisma.user.findMany({
+        where: { status: 'ACTIVE' },
+        select: { id: true },
+      });
+      userIds = users.map((u) => u.id);
+    }
+
+    if (input.excludeUserIds?.length) {
+      userIds = userIds.filter((id) => !input.excludeUserIds!.includes(id));
+    }
+
+    let sent = 0;
+    for (const uid of userIds) {
+      try {
+        await this.dispatch({
+          userId: uid,
+          type: input.type,
+          title: input.title,
+          message: input.message,
+          entity: input.entity,
+          data: input.data,
+        });
+        sent++;
+      } catch (err: any) {
+        this.logger.debug(`Broadcast to user ${uid} skipped: ${err?.message}`);
+      }
+    }
+    return sent;
+  }
+
   /** True when a reminder for the same entity/type to the user already exists. */
   async hasOpenReminder(
     userId: string,

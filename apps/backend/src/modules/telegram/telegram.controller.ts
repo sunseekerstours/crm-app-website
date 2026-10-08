@@ -42,4 +42,22 @@ export class TelegramController {
   async testBot(@Body() dto: TestTelegramDto) {
     return this.telegramService.testConnection(dto.botToken, dto.chatId);
   }
+
+  @Post('test-alert')
+  @RequirePermissions(Permission.SETTINGS_UPDATE)
+  async sendSampleAlert() {
+    await this.telegramService.sendNewLeadAlert({
+      id: 'sample-test-lead',
+      firstName: 'Kwame',
+      lastName: 'Mensah',
+      email: 'kwame.mensah@example.com',
+      phone: '+233 24 123 4567',
+      source: 'Website - Direct Tour Inquiry',
+      destination: 'Ghana Heritage & Cape Coast',
+      interestedTour: '7-Day Culture & Canopy Walk Adventure',
+      assignedStaffName: 'Sales Team',
+      isDuplicate: false,
+    });
+    return { success: true, message: 'Sample lead alert posted to Telegram successfully!' };
+  }
 }

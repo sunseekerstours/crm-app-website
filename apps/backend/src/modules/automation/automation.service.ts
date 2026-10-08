@@ -14,6 +14,7 @@ import {
 
 import { SalesAutomationService } from './sales-automation.service';
 import { JetpackCrmService } from '@app/modules/jetpack-crm/jetpack-crm.service';
+import { TelegramService } from '@app/modules/telegram/telegram.service';
 
 const OPERATIONS_ROLES = ['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'OPERATIONS_STAFF'];
 const FINANCE_ROLES = ['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'FINANCE'];
@@ -39,6 +40,7 @@ export class AutomationService implements OnModuleInit, OnModuleDestroy {
     private readonly config: ConfigService,
     private readonly salesAutomation: SalesAutomationService,
     private readonly jetpackCrm: JetpackCrmService,
+    private readonly telegram: TelegramService,
   ) {}
 
   onModuleInit(): void {
@@ -54,6 +56,13 @@ export class AutomationService implements OnModuleInit, OnModuleDestroy {
     }, interval);
     this.timer.unref?.();
     this.logger.log(`Automation scheduler enabled (every ${interval}ms)`);
+
+    // Run an initial sweep 15s after startup so system does not wait 1 full hour
+    setTimeout(() => {
+      this.run().catch((err) =>
+        this.logger.warn(`Startup automation sweep failed: ${err?.message}`),
+      );
+    }, 15000).unref?.();
   }
 
   onModuleDestroy(): void {
@@ -125,6 +134,7 @@ export class AutomationService implements OnModuleInit, OnModuleDestroy {
           },
         ],
       },
+      include: { customer: true },
     });
     const recipients = await this.financeUsers();
     let count = 0;
@@ -144,6 +154,23 @@ export class AutomationService implements OnModuleInit, OnModuleDestroy {
           count++;
         }
       }
+
+      // Also trigger Telegram Overdue Alert
+      const daysOverdue = inv.dueDate
+        ? Math.max(1, Math.floor((now.getTime() - inv.dueDate.getTime()) / (24 * 60 * 60 * 1000)))
+        : 1;
+      const custName = inv.customer
+        ? `${inv.customer.firstName || ''} ${inv.customer.lastName || ''}`.trim()
+        : 'Client';
+      await this.telegram.sendOverdueInvoiceAlert({
+        invoiceNumber: inv.invoiceNumber,
+        amount: `${Number(inv.amount ?? 0).toFixed(2)} ${inv.currency}`,
+        dueDate: inv.dueDate ? inv.dueDate.toISOString().slice(0, 10) : 'Past Due',
+        customerName: custName || 'Client',
+        daysOverdue,
+      }).catch((err) => {
+        this.logger.debug(`Failed to send overdue invoice alert to Telegram: ${err?.message}`);
+      });
     }
     return count;
   }
@@ -258,6 +285,14 @@ export class AutomationService implements OnModuleInit, OnModuleDestroy {
       },
       select: { id: true },
     });
+    if (users.length === 0) {
+      const activeUsers = await this.prisma.user.findMany({
+        where: { status: UserStatus.ACTIVE },
+        select: { id: true },
+        take: 5,
+      });
+      return activeUsers.map((u) => u.id);
+    }
     return users.map((u) => u.id);
   }
 
