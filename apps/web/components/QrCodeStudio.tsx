@@ -8,12 +8,12 @@ import QRCodeStyling, {
 } from 'qr-code-styling';
 import { api } from '@/lib/api';
 
-// ── SVG Logo Presets (Data URLs) ─────────────────────────────────────────────
+// ── SVG Logo Presets (Data URLs with Base64 encoding for 100% browser compatibility) ──
 const SVG_PRESETS = {
-  sunseekers: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240"><defs><linearGradient id="sunGlow" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%23FFB300"/><stop offset="50%" stop-color="%23F57C00"/><stop offset="100%" stop-color="%23D84315"/></linearGradient></defs><circle cx="120" cy="120" r="114" fill="url(%23sunGlow)"/><circle cx="120" cy="120" r="85" fill="%23FFFFFF" opacity="0.15"/><path d="M120 40 L126 65 L151 55 L143 78 L168 83 L149 99 L168 116 L143 120 L151 143 L126 133 L120 158 L114 133 L89 143 L97 120 L72 116 L91 99 L72 83 L97 78 L89 55 L114 65 Z" fill="%23FFFFFF" opacity="0.9"/><circle cx="120" cy="100" r="30" fill="%23FFFFFF"/><circle cx="120" cy="100" r="22" fill="%23D84315"/><text x="120" y="195" font-family="Arial,sans-serif" font-weight="900" font-size="20" fill="%23FFFFFF" text-anchor="middle" letter-spacing="3">SUNSEEKERS</text></svg>`,
-  bus: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240"><defs><linearGradient id="busGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%230284C7"/><stop offset="100%" stop-color="%230369A1"/></linearGradient></defs><circle cx="120" cy="120" r="114" fill="url(%23busGrad)"/><rect x="60" y="55" width="120" height="105" rx="20" fill="%23FFFFFF"/><rect x="70" y="65" width="100" height="42" rx="8" fill="%230C4A6E"/><rect x="72" y="115" width="22" height="14" rx="4" fill="%23FFB300"/><rect x="146" y="115" width="22" height="14" rx="4" fill="%23FFB300"/><rect x="100" y="120" width="40" height="8" rx="2" fill="%2364748B"/><circle cx="85" cy="172" r="14" fill="%230F172A"/><circle cx="85" cy="172" r="6" fill="%23CBD5E1"/><circle cx="155" cy="172" r="14" fill="%230F172A"/><circle cx="155" cy="172" r="6" fill="%23CBD5E1"/><text x="120" y="210" font-family="Arial,sans-serif" font-weight="800" font-size="16" fill="%23FFFFFF" text-anchor="middle" letter-spacing="2">FLEET COACH</text></svg>`,
-  sun: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240"><defs><linearGradient id="badgeGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%23D97706"/><stop offset="100%" stop-color="%2378350F"/></linearGradient></defs><circle cx="120" cy="120" r="114" fill="url(%23badgeGrad)"/><circle cx="120" cy="120" r="65" fill="%23FEF3C7"/><circle cx="120" cy="120" r="48" fill="%23F59E0B"/><circle cx="120" cy="120" r="30" fill="%23B45309"/><text x="120" y="210" font-family="Arial,sans-serif" font-weight="800" font-size="16" fill="%23FFFFFF" text-anchor="middle" letter-spacing="2">SUN BADGE</text></svg>`,
-  ticket: `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240"><defs><linearGradient id="ticketGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%23059669"/><stop offset="100%" stop-color="%23064E3B"/></linearGradient></defs><circle cx="120" cy="120" r="114" fill="url(%23ticketGrad)"/><rect x="55" y="75" width="130" height="90" rx="12" fill="%23FFFFFF"/><circle cx="55" cy="120" r="14" fill="%23064E3B"/><circle cx="185" cy="120" r="14" fill="%23064E3B"/><line x1="120" y1="85" x2="120" y2="155" stroke="%23CBD5E1" stroke-width="3" stroke-dasharray="6 4"/><text x="88" y="125" font-family="Arial,sans-serif" font-weight="800" font-size="14" fill="%23059669" text-anchor="middle">PASS</text><text x="152" y="125" font-family="Arial,sans-serif" font-weight="800" font-size="14" fill="%23059669" text-anchor="middle">2026</text><text x="120" y="210" font-family="Arial,sans-serif" font-weight="800" font-size="16" fill="%23FFFFFF" text-anchor="middle" letter-spacing="2">TICKET PASS</text></svg>`,
+  sunseekers: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNDAgMjQwIiB3aWR0aD0iMjQwIiBoZWlnaHQ9IjI0MCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJzdW5HbG93IiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIxMDAlIj48c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjRkZCMzAwIi8+PHN0b3Agb2Zmc2V0PSI1MCUiIHN0b3AtY29sb3I9IiNGNTdDMDAiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiNEODQzMTUiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48Y2lyY2xlIGN4PSIxMjAiIGN5PSIxMjAiIHI9IjExNCIgZmlsbD0idXJsKCNzdW5HbG93KSIvPjxjaXJjbGUgY3g9IjEyMCIgY3k9IjEyMCIgcj0iODUiIGZpbGw9IiNGRkZGRkYiIG9wYWNpdHk9IjAuMTUiLz48cGF0aCBkPSJNMTIwIDQwIEwxMjYgNjUgTDE1MSA1NSBMMTQzIDc4IEwxNjggODMgTDE0OSA5OSBMMTY4IDExNiBMMTQzIDEyMCBMMTUxIDE0MyBMMTI2IDEzMyBMMTIwIDE1OCBMMTE0IDEzMyBMODkgMTQzIEw5NyAxMjAgTDcyIDExNiBMOTEgOTkgTDcyIDgzIEw5NyA3OCBMODkgNTUgTDExNCA2NSBaIiBmaWxsPSIjRkZGRkZGIiBvcGFjaXR5PSIwLjkiLz48Y2lyY2xlIGN4PSIxMjAiIGN5PSIxMDAiIHI9IjMwIiBmaWxsPSIjRkZGRkZGIi8+PGNpcmNsZSBjeD0iMTIwIiBjeT0iMTAwIiByPSIyMiIgZmlsbD0iI0Q4NDMxNSIvPjx0ZXh0IHg9IjEyMCIgeT0iMTk1IiBmb250LWZhbWlseT0iQXJpYWwsc2Fucy1zZXJpZiIgZm9udC13ZWlnaHQ9IjkwMCIgZm9udC1zaXplPSIyMCIgZmlsbD0iI0ZGRkZGRiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgbGV0dGVyLXNwYWNpbmc9IjMiPlNVTlNFRUtFUlM8L3RleHQ+PC9zdmc+',
+  bus: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNDAgMjQwIiB3aWR0aD0iMjQwIiBoZWlnaHQ9IjI0MCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJidXNHcmFkIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIxMDAlIj48c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjMDI4NEM3Ii8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdG9wLWNvbG9yPSIjMDM2OUExIi8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PGNpcmNsZSBjeD0iMTIwIiBjeT0iMTIwIiByPSIxMTQiIGZpbGw9InVybCgjYnVzR3JhZCkiLz48cmVjdCB4PSI2MCIgeT0iNTUiIHdpZHRoPSIxMjAiIGhlaWdodD0iMTA1IiByeD0iMjAiIGZpbGw9IiNGRkZGRkYiLz48cmVjdCB4PSI3MCIgeT0iNjUiIHdpZHRoPSIxMDAiIGhlaWdodD0iNDIiIHJ4PSI4IiBmaWxsPSIjMEM0QTZFIi8+PHJlY3QgeD0iNzIiIHk9IjExNSIgd2lkdGg9IjIyIiBoZWlnaHQ9IjE0IiByeD0iNCIgZmlsbD0iI0ZGQjMwMCIvPjxyZWN0IHg9IjE0NiIgeT0iMTE1IiB3aWR0aD0iMjIiIGhlaWdodD0iMTQiIHJ4PSI0IiBmaWxsPSIjRkZCMzAwIi8+PHJlY3QgeD0iMTAwIiB5PSIxMjAiIHdpZHRoPSI0MCIgaGVpZ2h0PSI4IiByeD0iMiIgZmlsbD0iIzY0NzQ4QiIvPjxjaXJjbGUgY3g9Ijg1IiBjeT0iMTcyIiByPSIxNCIgZmlsbD0iIzBGMTcyQSIvPjxjaXJjbGUgY3g9Ijg1IiBjeT0iMTcyIiByPSI2IiBmaWxsPSIjQ0JENUUxIi8+PGNpcmNsZSBjeD0iMTU1IiBjeT0iMTcyIiByPSIxNCIgZmlsbD0iIzBGMTcyQSIvPjxjaXJjbGUgY3g9IjE1NSIgY3k9IjE3MiIgcj0iNiIgZmlsbD0iI0NCRDVFMSIvPjx0ZXh0IHg9IjEyMCIgeT0iMjEwIiBmb250LWZhbWlseT0iQXJpYWwsc2Fucy1zZXJpZiIgZm9udC13ZWlnaHQ9IjgwMCIgZm9udC1zaXplPSIxNiIgZmlsbD0iI0ZGRkZGRiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgbGV0dGVyLXNwYWNpbmc9IjIiPkZMRUVUIENPQUNIPC90ZXh0Pjwvc3ZnPg==',
+  sun: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNDAgMjQwIiB3aWR0aD0iMjQwIiBoZWlnaHQ9IjI0MCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJiYWRnZUdyYWQiIHgxPSIwJSIgeTE9IjAlIiB4Mj0iMTAwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiNEOTc3MDYiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiM3ODM1MEYiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48Y2lyY2xlIGN4PSIxMjAiIGN5PSIxMjAiIHI9IjExNCIgZmlsbD0idXJsKCNiYWRnZUdyYWQpIi8+PGNpcmNsZSBjeD0iMTIwIiBjeT0iMTIwIiByPSI2NSIgZmlsbD0iI0ZFRjNDNyIvPjxjaXJjbGUgY3g9IjEyMCIgY3k9IjEyMCIgcj0iNDgiIGZpbGw9IiNGNTlFMEIiLz48Y2lyY2xlIGN4PSIxMjAiIGN5PSIxMjAiIHI9IjMwIiBmaWxsPSIjQjQ1MzA5Ii8+PHRleHQgeD0iMTIwIiB5PSIyMTAiIGZvbnQtZmFtaWx5PSJBcmlhbCxzYW5zLXNlcmlmIiBmb250LXdlaWdodD0iODAwIiBmb250LXNpemU9IjE2IiBmaWxsPSIjRkZGRkZGIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBsZXR0ZXItc3BhY2luZz0iMiI+U1VOIEJBREdFPC90ZXh0Pjwvc3ZnPg==',
+  ticket: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNDAgMjQwIiB3aWR0aD0iMjQwIiBoZWlnaHQ9IjI0MCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJ0aWNrZXRHcmFkIiB4MT0iMCUiIHkxPSIwJSIgeDI9IjEwMCUiIHkyPSIxMDAlIj48c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjMDU5NjY5Ii8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdG9wLWNvbG9yPSIjMDY0RTNCIi8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PGNpcmNsZSBjeD0iMTIwIiBjeT0iMTIwIiByPSIxMTQiIGZpbGw9InVybCgjdGlja2V0R3JhZCkiLz48cmVjdCB4PSI1NSIgeT0iNzUiIHdpZHRoPSIxMzAiIGhlaWdodD0iOTAiIHJ4PSIxMiIgZmlsbD0iI0ZGRkZGRiIvPjxjaXJjbGUgY3g9IjU1IiBjeT0iMTIwIiByPSIxNCIgZmlsbD0iIzA2NEUzQiIvPjxjaXJjbGUgY3g9IjE4NSIgY3k9IjEyMCIgcj0iMTQiIGZpbGw9IiMwNjRFM0IiLz48bGluZSB4MT0iMTIwIiB5MT0iODUiIHgyPSIxMjAiIHkyPSIxNTUiIHN0cm9rZT0iI0NCRDVFMSIgc3Ryb2tlLXdpZHRoPSIzIiBzdHJva2UtZGFzaGFycmF5PSI2IDQiLz48dGV4dCB4OCIgeT0iMTI1IiBmb250LWZhbWlseT0iQXJpYWwsc2Fucy1zZXJpZiIgZm9udC13ZWlnaHQ9IjgwMCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzA1OTY2OSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+UEFTUzwvdGV4dD48dGV4dCB4PSIxNTIiIHk9IjEyNSIgZm9udC1mYW1pbHk9IkFyaWFsLHNhbnMtc2VyaWYiIGZvbnQtd2VpZ2h0PSI4MDAiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiMwNTk2NjkiIHRleHQtYW5jaG9yPSJtaWRkbGUiPjIwMjY8L3RleHQ+PHRleHQgeD0iMTIwIiB5PSIyMTAiIGZvbnQtZmFtaWx5PSJBcmlhbCxzYW5zLXNlcmlmIiBmb250LXdlaWdodD0iODAwIiBmb250LXNpemU9IjE2IiBmaWxsPSIjRkZGRkZGIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBsZXR0ZXItc3BhY2luZz0iMiI+VElDS0VUIFBBU1M8L3RleHQ+PC9zdmc+',
 };
 
 // ── Theme Palettes ───────────────────────────────────────────────────────────
@@ -366,7 +366,8 @@ export function QrCodeStudio({ titlePrefix = 'Sunseekers' }: { titlePrefix?: str
         hideBackgroundDots: hideBackgroundDots,
         imageSize: logoSize,
         margin: logoMargin,
-        crossOrigin: 'anonymous',
+        crossOrigin: logo?.startsWith('data:') ? undefined : 'anonymous',
+        saveAsBlob: false,
       },
       dotsOptions,
       cornersSquareOptions,
@@ -379,18 +380,24 @@ export function QrCodeStudio({ titlePrefix = 'Sunseekers' }: { titlePrefix?: str
 
   // ── Re-render QR Code on changes ───────────────────────────────────────────
   useEffect(() => {
-    if (typeof window === 'undefined' || !previewCanvasRef.current) return;
+    if (typeof window === 'undefined' || !previewCanvasRef.current || activeTab !== 'studio') return;
 
-    const opts = buildOptions(260);
+    const container = previewCanvasRef.current;
+    try {
+      const opts = {
+        ...buildOptions(260),
+        type: 'svg' as const,
+      };
 
-    if (!qrCodeInstanceRef.current) {
-      qrCodeInstanceRef.current = new QRCodeStyling(opts);
-      previewCanvasRef.current.innerHTML = '';
-      qrCodeInstanceRef.current.append(previewCanvasRef.current);
-    } else {
-      qrCodeInstanceRef.current.update(opts);
+      container.innerHTML = '';
+      const qrCode = new QRCodeStyling(opts);
+      qrCodeInstanceRef.current = qrCode;
+      qrCode.append(container);
+    } catch (err) {
+      console.error('Failed to render QR Code preview:', err);
     }
   }, [
+    activeTab,
     dataType, rawUrl, wifiSsid, wifiPass, wifiEnc, waPhone, waMsg, vcardName, vcardPhone, vcardEmail, vcardOrg, plainText, phoneVal, emailVal, mapsVal,
     dotsType, cornersSquareType, cornersDotType,
     colorMode, gradientAngle, primaryColor, secondaryColor, bgColor, transparentBg,
@@ -438,7 +445,7 @@ export function QrCodeStudio({ titlePrefix = 'Sunseekers' }: { titlePrefix?: str
       const filename = `${qrName.replace(/[^a-zA-Z0-9_-]/g, '_') || 'Sunseekers_QR'}.png`;
 
       if (frameStyle === 'none') {
-        const qr = new QRCodeStyling(buildOptions(exportSize));
+        const qr = new QRCodeStyling({ ...buildOptions(exportSize), type: 'canvas' });
         await qr.download({ name: filename.replace('.png', ''), extension: 'png' });
         triggerToast(`Downloaded ${filename}!`, 'success');
         return;
@@ -485,7 +492,7 @@ export function QrCodeStudio({ titlePrefix = 'Sunseekers' }: { titlePrefix?: str
 
       // Draw QR Canvas
       const tempDiv = document.createElement('div');
-      const tempQr = new QRCodeStyling(buildOptions(qrInnerSize));
+      const tempQr = new QRCodeStyling({ ...buildOptions(qrInnerSize), type: 'canvas' });
       tempQr.append(tempDiv);
       await new Promise((res) => setTimeout(res, 200));
 
@@ -536,7 +543,7 @@ export function QrCodeStudio({ titlePrefix = 'Sunseekers' }: { titlePrefix?: str
   async function downloadSvg() {
     try {
       const filename = qrName.replace(/[^a-zA-Z0-9_-]/g, '_') || 'Sunseekers_QR';
-      const qr = new QRCodeStyling(buildOptions(800));
+      const qr = new QRCodeStyling({ ...buildOptions(800), type: 'svg' });
       await qr.download({ name: filename, extension: 'svg' });
       triggerToast(`Downloaded ${filename}.svg vector!`, 'success');
     } catch (e: any) {
