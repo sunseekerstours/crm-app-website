@@ -456,12 +456,14 @@ export function QrCodeStudio({ titlePrefix = 'Sunseekers' }: { titlePrefix?: str
       const scale = targetWidth / 300;
       const padding = 24 * scale;
       const bannerHeight = 44 * scale;
-      const footerHeight = 54 * scale;
+      const cleanSub = subtitle ? subtitle.trim() : '';
+      const footerHeight = cleanSub ? 28 * scale : 4 * scale;
       const qrInnerSize = targetWidth - padding * 2;
 
-      let totalHeight = padding + qrInnerSize + padding + footerHeight;
+      let totalHeight = padding + qrInnerSize + padding;
       if (frameStyle === 'top-badge' || frameStyle === 'full-card') totalHeight += bannerHeight + 10 * scale;
       if (frameStyle === 'bottom-banner' || frameStyle === 'full-card') totalHeight += bannerHeight + 10 * scale;
+      if (cleanSub) totalHeight += footerHeight;
 
       const canvas = document.createElement('canvas');
       canvas.width = targetWidth;
@@ -500,10 +502,11 @@ export function QrCodeStudio({ titlePrefix = 'Sunseekers' }: { titlePrefix?: str
       if (qrCanvas) {
         ctx.drawImage(qrCanvas, padding, curY, qrInnerSize, qrInnerSize);
       }
-      curY += qrInnerSize + 10 * scale;
+      curY += qrInnerSize;
 
       // Draw Bottom Banner
       if (frameStyle === 'bottom-banner' || frameStyle === 'full-card') {
+        curY += 10 * scale;
         ctx.fillStyle = frameBgColor;
         ctx.beginPath();
         ctx.roundRect(padding, curY, qrInnerSize, bannerHeight, 10 * scale);
@@ -514,18 +517,17 @@ export function QrCodeStudio({ titlePrefix = 'Sunseekers' }: { titlePrefix?: str
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(frameText.toUpperCase(), targetWidth / 2, curY + bannerHeight / 2);
-        curY += bannerHeight + 10 * scale;
+        curY += bannerHeight;
       }
 
-      // Draw Footer Info
-      ctx.fillStyle = '#0F172A';
-      ctx.font = `bold ${14 * scale}px sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.fillText(qrName, targetWidth / 2, curY + 16 * scale);
-
-      ctx.fillStyle = '#64748B';
-      ctx.font = `${11 * scale}px sans-serif`;
-      ctx.fillText(subtitle, targetWidth / 2, curY + 34 * scale);
+      // Draw Public Instruction Subtitle (Only if provided)
+      if (cleanSub) {
+        curY += 8 * scale;
+        ctx.fillStyle = '#64748B';
+        ctx.font = `${11 * scale}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.fillText(cleanSub, targetWidth / 2, curY + 12 * scale);
+      }
 
       // Trigger Download
       const link = document.createElement('a');
@@ -1005,7 +1007,7 @@ export function QrCodeStudio({ titlePrefix = 'Sunseekers' }: { titlePrefix?: str
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div>
                   <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#94a3b8', marginBottom: 4 }}>
-                    QR Code Name / Label *
+                    QR Code Internal Name / Reference * <span style={{ color: '#64748b', fontWeight: 400 }}>(CRM index only — not printed on QR)</span>
                   </label>
                   <input
                     type="text"
@@ -1841,23 +1843,10 @@ export function QrCodeStudio({ titlePrefix = 'Sunseekers' }: { titlePrefix?: str
                   </div>
                 )}
 
-                {/* Business Info Footer */}
-                {frameStyle !== 'none' && (
-                  <div style={{ width: '100%', textAlign: 'center', marginTop: 12, paddingTop: 10, borderTop: '1px solid #e2e8f0' }}>
-                    <div style={{ fontWeight: 800, fontSize: 14, color: '#0f172a' }}>{qrName}</div>
-                    <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>{subtitle}</div>
-                    <span style={{
-                      display: 'inline-block',
-                      marginTop: 6,
-                      padding: '2px 8px',
-                      borderRadius: 10,
-                      background: '#f1f5f9',
-                      color: '#475569',
-                      fontSize: 10,
-                      fontWeight: 700,
-                    }}>
-                      {category}
-                    </span>
+                {/* Public Instructions Subtitle (Only if provided - Name & Category remain internal to CRM) */}
+                {subtitle && subtitle.trim() && frameStyle !== 'none' && (
+                  <div style={{ width: '100%', textAlign: 'center', marginTop: 10, paddingTop: 8, borderTop: '1px solid #f1f5f9' }}>
+                    <div style={{ fontSize: 12, fontWeight: 500, color: '#64748b' }}>{subtitle}</div>
                   </div>
                 )}
               </div>
@@ -2550,9 +2539,10 @@ export function QrCodeStudio({ titlePrefix = 'Sunseekers' }: { titlePrefix?: str
                 </div>
 
                 <div style={{ marginTop: 14 }}>
-                  <div style={{ fontWeight: 800, fontSize: 15, color: '#0f172a' }}>{qrName}</div>
-                  <div style={{ fontSize: 11, color: '#64748b', marginTop: 3 }}>{subtitle}</div>
-                  <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 6, letterSpacing: 1 }}>SUNSEEKERS OPERATIONS © 2026</div>
+                  {subtitle && subtitle.trim() && (
+                    <div style={{ fontSize: 12, color: '#64748b', fontWeight: 500 }}>{subtitle}</div>
+                  )}
+                  <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 6, letterSpacing: 1 }}>SUNSEEKERS TOURS &amp; TRAVEL</div>
                 </div>
               </div>
             </div>
