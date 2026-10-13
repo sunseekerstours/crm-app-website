@@ -178,7 +178,7 @@ export default function DashboardPage() {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))',
               gap: 14,
             }}
           >
@@ -303,11 +303,11 @@ export default function DashboardPage() {
           {/* ═══════════════════════════════════════════════════════ */}
           {/* SECTION 2: EXECUTIVE INSIGHT PANELS                     */}
           {/* ═══════════════════════════════════════════════════════ */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 20 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: 20 }}>
             {/* Panel A: Financial & Billing Performance */}
             <Card title="Financial Performance & Cash Collection">
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 140px), 1fr))', gap: 14 }}>
                   <div style={{ background: '#f8fafc', padding: 14, borderRadius: 10, border: '1px solid #e2e8f0' }}>
                     <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>Total Invoiced Billing</div>
                     <div style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', marginTop: 4 }}>
@@ -348,7 +348,7 @@ export default function DashboardPage() {
             {/* Panel B: Fleet Operations & Dispatch Intelligence */}
             <Card title="Fleet Mobility & Live Dispatch Intelligence">
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 90px), 1fr))', gap: 10 }}>
                   <div style={{ background: '#f8fafc', padding: 12, borderRadius: 8, textAlign: 'center', border: '1px solid #e2e8f0' }}>
                     <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>Active Fleet</div>
                     <div style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', marginTop: 4 }}>
@@ -374,7 +374,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                <div style={{ background: '#ecfdf5', padding: '12px 16px', borderRadius: 8, border: '1px solid #a7f3d0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ background: '#ecfdf5', padding: '12px 16px', borderRadius: 8, border: '1px solid #a7f3d0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 700, color: '#065f46' }}>
                       Corporate Fleet Client Base: {fleetCustomerTotal.toLocaleString()} Companies
@@ -390,13 +390,13 @@ export default function DashboardPage() {
                   </Link>
                 </div>
 
-                <div style={{ display: 'flex', gap: 10 }}>
-                  <Link href="/crm/fleet" style={{ flex: 1 }}>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <Link href="/crm/fleet" style={{ flex: '1 1 140px' }}>
                     <Button variant="primary" style={{ width: '100%', fontSize: 13 }}>
                       📅 Open Gantt Scheduler
                     </Button>
                   </Link>
-                  <Link href="/crm/fleet" style={{ flex: 1 }}>
+                  <Link href="/crm/fleet" style={{ flex: '1 1 140px' }}>
                     <Button variant="secondary" style={{ width: '100%', fontSize: 13 }}>
                       🚌 Fleet &amp; Driver Roster
                     </Button>
@@ -409,11 +409,11 @@ export default function DashboardPage() {
           {/* ═══════════════════════════════════════════════════════ */}
           {/* SECTION 3: SALES PIPELINE & COMMERCIAL INTELLIGENCE     */}
           {/* ═══════════════════════════════════════════════════════ */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 20 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: 20 }}>
             {/* Commercial Pipeline Funnel */}
             <Card title="Sales Pipeline &amp; Deal Conversion">
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 85px), 1fr))', gap: 10 }}>
                   <div style={{ background: '#f8fafc', padding: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}>
                     <div style={{ fontSize: 11, color: '#64748b' }}>Active Leads</div>
                     <div style={{ fontSize: 20, fontWeight: 800, color: '#f59e0b', marginTop: 2 }}>{leadsTotal}</div>
@@ -438,13 +438,13 @@ export default function DashboardPage() {
                   </span>
                 </div>
 
-                <div style={{ display: 'flex', gap: 10 }}>
-                  <Link href="/crm/leads" style={{ flex: 1 }}>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <Link href="/crm/leads" style={{ flex: '1 1 120px' }}>
                     <Button variant="secondary" style={{ width: '100%', fontSize: 12 }}>
                       🎯 Review Leads ({leadsTotal})
                     </Button>
                   </Link>
-                  <Link href="/crm/deals" style={{ flex: 1 }}>
+                  <Link href="/crm/deals" style={{ flex: '1 1 120px' }}>
                     <Button variant="secondary" style={{ width: '100%', fontSize: 12 }}>
                       💼 Manage Deals ({dealsTotal})
                     </Button>
@@ -468,13 +468,13 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: 10 }}>
-                  <Link href="/crm/campaigns" style={{ flex: 1 }}>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <Link href="/crm/campaigns" style={{ flex: '1 1 120px' }}>
                     <Button variant="primary" style={{ width: '100%', fontSize: 13 }}>
                       ✉️ Launch Bulk Email
                     </Button>
                   </Link>
-                  <Link href="/crm/campaigns" style={{ flex: 1 }}>
+                  <Link href="/crm/campaigns" style={{ flex: '1 1 120px' }}>
                     <Button variant="secondary" style={{ width: '100%', fontSize: 13 }}>
                       📱 Launch Bulk SMS
                     </Button>
@@ -487,10 +487,10 @@ export default function DashboardPage() {
           {/* ═══════════════════════════════════════════════════════ */}
           {/* SECTION 4: ADVANCED ANALYTICS & TELEMETRY INSIGHTS      */}
           {/* ═══════════════════════════════════════════════════════ */}
-          <div style={{ marginTop: 24, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 20 }}>
+          <div style={{ marginTop: 24, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: 20 }}>
             {/* Commercial Metrics Deep-Dive */}
             <Card title="Unit Economics &amp; Conversion Efficiency">
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 140px), 1fr))', gap: 12 }}>
                 <div style={{ background: '#f8fafc', padding: 14, borderRadius: 10, border: '1px solid #e2e8f0' }}>
                   <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>Avg Revenue / Booking</div>
                   <div style={{ fontSize: 20, fontWeight: 800, color: '#0f172a', marginTop: 4 }}>

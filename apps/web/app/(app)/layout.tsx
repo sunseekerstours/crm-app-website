@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { ReactNode, useEffect } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth';
 import Logo from '@/components/Logo';
 import { useNotifications } from '@/lib/notifications-context';
@@ -24,6 +24,7 @@ const NAV = [
 export default function AppLayout({ children }: { children: ReactNode }) {
   const { user, loading, logout } = useAuth();
   const { unreadCount, triggerSoundTest } = useNotifications();
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -31,16 +32,62 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     if (!loading && !user) router.replace('/login');
   }, [loading, user, router]);
 
+  // Close mobile drawer when route changes
+  useEffect(() => {
+    setMobileSidebarOpen(false);
+  }, [pathname]);
+
   if (loading || !user) {
     return <div className="auth-wrap">Loading…</div>;
   }
 
   return (
     <div className="shell">
-      <aside className="sidebar" style={{ background: '#0a1612', borderRight: '1px solid rgba(22, 163, 74, 0.2)' }}>
-        {/* Official Brand Header */}
-        <div style={{ padding: '20px 16px 14px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-          <Logo height={44} />
+      {/* Mobile Drawer Overlay Backdrop */}
+      {mobileSidebarOpen && (
+        <div
+          className="sidebar-backdrop"
+          onClick={() => setMobileSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Sidebar Navigation */}
+      <aside
+        className={`sidebar${mobileSidebarOpen ? ' mobile-open' : ''}`}
+        style={{ background: '#0a1612', borderRight: '1px solid rgba(22, 163, 74, 0.2)' }}
+      >
+        {/* Brand Header with Mobile Close button */}
+        <div
+          style={{
+            padding: '16px 14px 14px',
+            borderBottom: '1px solid rgba(255,255,255,0.06)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          <Logo height={40} />
+          <button
+            className="sidebar-close-btn"
+            onClick={() => setMobileSidebarOpen(false)}
+            aria-label="Close menu"
+            style={{
+              background: 'rgba(255,255,255,0.08)',
+              border: '1px solid rgba(255,255,255,0.12)',
+              color: '#d1fae5',
+              borderRadius: '6px',
+              width: '32px',
+              height: '32px',
+              fontSize: '18px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            ✕
+          </button>
         </div>
 
         <div className="nav-label" style={{ color: '#86efac', fontWeight: 700, letterSpacing: '0.08em' }}>
@@ -63,7 +110,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                 margin: '2px 8px',
                 transition: 'all 0.2s ease',
                 color: active ? '#ffffff' : '#cbd5e1',
-                background: active ? 'linear-gradient(90deg, rgba(22, 163, 74, 0.3) 0%, rgba(22, 163, 74, 0.1) 100%)' : 'transparent',
+                background: active
+                  ? 'linear-gradient(90deg, rgba(22, 163, 74, 0.3) 0%, rgba(22, 163, 74, 0.1) 100%)'
+                  : 'transparent',
                 borderLeft: active ? '3px solid #22c55e' : '3px solid transparent',
               }}
             >
@@ -102,7 +151,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         <div className="nav-label" style={{ color: '#86efac', fontWeight: 700, letterSpacing: '0.08em', marginTop: '16px' }}>
           Alerts &amp; Audio
         </div>
-        
+
         <button
           onClick={triggerSoundTest}
           style={{
@@ -148,7 +197,100 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           Sign out
         </button>
       </aside>
-      <main className="main" style={{ background: '#f8fafc', minHeight: '100vh' }}>{children}</main>
+
+      {/* Main Content Pane with Mobile Topbar */}
+      <div className="content-pane" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+        {/* Mobile Top Navbar (Visible on screens ≤ 768px) */}
+        <header className="mobile-topbar">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <button
+              onClick={() => setMobileSidebarOpen(true)}
+              aria-label="Open navigation menu"
+              className="mobile-hamburger-btn"
+              style={{
+                background: 'rgba(255,255,255,0.08)',
+                border: '1px solid rgba(255,255,255,0.14)',
+                borderRadius: '8px',
+                color: '#fff',
+                padding: '7px 9px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '18px',
+                lineHeight: 1,
+              }}
+            >
+              ☰
+            </button>
+            <Logo height={28} />
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Link
+              href="/notifications"
+              style={{
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: 'rgba(255,255,255,0.08)',
+                border: '1px solid rgba(255,255,255,0.14)',
+                borderRadius: '8px',
+                padding: '6px 10px',
+                color: '#fff',
+                fontSize: '14px',
+                textDecoration: 'none',
+              }}
+              title="Notifications"
+            >
+              🔔
+              {unreadCount > 0 && (
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: '-5px',
+                    right: '-5px',
+                    background: '#ef4444',
+                    color: '#fff',
+                    borderRadius: '10px',
+                    fontSize: '10px',
+                    fontWeight: 800,
+                    minWidth: '16px',
+                    height: '16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '0 4px',
+                  }}
+                >
+                  {unreadCount}
+                </span>
+              )}
+            </Link>
+
+            <button
+              onClick={logout}
+              style={{
+                background: 'transparent',
+                border: '1px solid rgba(255,255,255,0.15)',
+                borderRadius: '8px',
+                color: '#cbd5e1',
+                padding: '6px 10px',
+                fontSize: '11px',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Sign out
+            </button>
+          </div>
+        </header>
+
+        <main className="main" style={{ background: '#f8fafc', minHeight: '100vh', flex: 1 }}>
+          {children}
+        </main>
+      </div>
     </div>
   );
 }

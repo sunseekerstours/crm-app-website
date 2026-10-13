@@ -3179,7 +3179,176 @@ img {
     width: 100%;
     text-align: center;
   }
+
+  /* Responsive Form & Booking Cards on Mobile */
+  .form-card-container {
+    padding: 22px 16px;
+    border-radius: 14px;
+  }
+
+  .quote-form-card {
+    padding: 20px 14px !important;
+    border-radius: 12px !important;
+  }
+
+  .form-card-container input,
+  .form-card-container select,
+  .form-card-container textarea,
+  .quote-form-card input,
+  .quote-form-card select,
+  .quote-form-card textarea {
+    font-size: 16px !important;
+  }
+
+  .table-wrap,
+  .table-container,
+  .table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .destinations-filter-pills,
+  .tours-filter-pills {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .destinations-filter-pills::-webkit-scrollbar,
+  .tours-filter-pills::-webkit-scrollbar {
+    display: none;
+  }
 }
 
+/* 5. Compact Mobile Screens (320px – 480px, iPhone SE, Galaxy Fold) */
+@media (max-width: 480px) {
+  .container {
+    padding: 0 12px;
+  }
 
+  .section {
+    padding: 36px 0;
+  }
 
+  .section-title {
+    font-size: 1.55rem;
+  }
+
+  .floating-navbar-container {
+    padding: 4px 8px;
+  }
+
+  .floating-island-navbar {
+    padding: 6px 10px;
+    border-radius: 12px;
+    gap: 8px;
+  }
+
+  .nav-logo-wrap img,
+  .nav-logo-wrap svg {
+    max-height: 28px;
+    width: auto;
+  }
+
+  .pill-book-btn {
+    padding: 6px 10px;
+    font-size: 11px;
+    gap: 4px;
+  }
+
+  .mobile-hamburger-btn {
+    padding: 2px;
+  }
+
+  .mobile-hamburger-btn svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .hero-slide {
+    padding: 36px 12px;
+    min-height: 400px;
+  }
+
+  .hero-slider-section {
+    min-height: 400px;
+  }
+
+  .hero-main-title {
+    font-size: 1.7rem;
+  }
+
+  .hero-main-sub {
+    font-size: 13px;
+  }
+
+  .page-hero-slider-wrap {
+    height: 280px !important;
+  }
+
+  .page-hero-heading {
+    font-size: 1.45rem;
+  }
+
+  .page-hero-subheading {
+    font-size: 12.5px;
+  }
+
+  .form-card-container {
+    padding: 16px 12px;
+    border-radius: 10px;
+  }
+
+  .quote-form-card {
+    padding: 16px 10px !important;
+  }
+
+  .plan-wizard-card {
+    padding: 16px 10px;
+    border-radius: 14px;
+  }
+
+  .wizard-tab-btn {
+    padding: 4px 6px;
+  }
+
+  .wizard-tab-btn .tab-label {
+    font-size: 11px;
+  }
+
+  .offer-poster-card {
+    height: 240px;
+  }
+
+  .modal-dialog,
+  .modal-content {
+    margin: 8px;
+    width: calc(100% - 16px) !important;
+    max-width: 100% !important;
+  }
+}
+
+/* 6. Ultra-Compact Mobile Screens (320px – 360px) */
+@media (max-width: 360px) {
+  .floating-island-navbar {
+    padding: 4px 8px;
+  }
+
+  .pill-book-btn {
+    padding: 5px 8px;
+    font-size: 10.5px;
+  }
+
+  .hero-main-title {
+    font-size: 1.5rem;
+  }
+
+  .page-hero-heading {
+    font-size: 1.3rem;
+  }
+
+  .form-card-container {
+    padding: 14px 8px;
+  }
+}

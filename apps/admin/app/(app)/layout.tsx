@@ -341,6 +341,15 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               </svg>
             )}
           </button>
+
+          {/* Mobile Close Button */}
+          <button
+            className="sidebar-close-mobile-btn"
+            onClick={() => setMobileSidebarOpen(false)}
+            aria-label="Close menu"
+          >
+            ✕
+          </button>
         </div>
 
         {!isAdmin ? (
