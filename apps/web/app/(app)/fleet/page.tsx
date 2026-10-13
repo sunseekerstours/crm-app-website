@@ -9,7 +9,13 @@ import {
   detectOutsideAccra,
   formatDriverPerDiemNote,
   parseDriverPerDiemNote,
+  INTERNAL_RATES,
+  FAM_TOUR_RATES,
+  getPaxTier,
   type DriverAllowanceCalculation,
+  type AllowanceType,
+  type ActivityType,
+  type PaxGroupTier,
 } from '@/lib/driver-allowance';
 
 interface Vehicle {
@@ -204,6 +210,9 @@ export default function FleetPage() {
     allowOverlap: false,
     isOutsideAccra: false,
     freeAccommodation: false,
+    allowanceType: 'INTERNAL' as AllowanceType,
+    activityType: 'FULL_DAY' as ActivityType,
+    includeGuide: false,
   };
   const [bookingForm, setBookingForm] = useState(blankBooking);
   const startDateInputRef = useRef<HTMLInputElement>(null);
@@ -559,12 +568,27 @@ export default function FleetPage() {
   }, [bookingForm.startDate, bookingForm.endDate]);
 
   const driverPerDiemCalc = useMemo(() => {
+    const pax = parseInt(bookingForm.paxCount, 10) || 1;
     return calculateDriverAllowance(
       bookingDays,
       bookingForm.isOutsideAccra,
-      bookingForm.freeAccommodation
+      bookingForm.freeAccommodation,
+      {
+        allowanceType: bookingForm.allowanceType || 'INTERNAL',
+        activityType: bookingForm.activityType || 'FULL_DAY',
+        paxCount: pax,
+        includeGuide: bookingForm.includeGuide || false,
+      }
     );
-  }, [bookingDays, bookingForm.isOutsideAccra, bookingForm.freeAccommodation]);
+  }, [
+    bookingDays,
+    bookingForm.isOutsideAccra,
+    bookingForm.freeAccommodation,
+    bookingForm.allowanceType,
+    bookingForm.activityType,
+    bookingForm.paxCount,
+    bookingForm.includeGuide,
+  ]);
 
   function handleAddDriverCostToTotal() {
     const cost = driverPerDiemCalc.totalDriverExpense;
@@ -618,6 +642,9 @@ export default function FleetPage() {
       color: COLOR_PRESETS[bookings.length % COLOR_PRESETS.length].value,
       isOutsideAccra: false,
       freeAccommodation: false,
+      allowanceType: 'INTERNAL',
+      activityType: 'FULL_DAY',
+      includeGuide: false,
     });
     setEditBookingId(null);
     setBookingFormError(null);
@@ -629,6 +656,8 @@ export default function FleetPage() {
     const parsedPerDiem = parseDriverPerDiemNote(b.notes);
     const bDays = calculateDays(b.startDate.split('T')[0], b.endDate.split('T')[0]);
     const isFreeAcc = parsedPerDiem ? (parsedPerDiem.lodging === 0 && bDays > 1 && isOutside) : false;
+    const allowanceType: AllowanceType = parsedPerDiem?.allowanceType || (b.driverId ? 'INTERNAL' : 'EXTERNAL');
+    const activityType: ActivityType = parsedPerDiem?.activityType || 'FULL_DAY';
 
     setSelectedBooking(b);
     setBookingForm({
@@ -653,6 +682,9 @@ export default function FleetPage() {
       allowOverlap: false,
       isOutsideAccra: isOutside,
       freeAccommodation: isFreeAcc,
+      allowanceType,
+      activityType,
+      includeGuide: false,
     });
     setEditBookingId(b.id);
     setBookingFormError(null);
@@ -684,7 +716,7 @@ export default function FleetPage() {
     setSubmittingBooking(true);
     try {
       let finalNotes = (bookingForm.notes || '').trim();
-      finalNotes = finalNotes.replace(/\[DRIVER PER DIEM:.*?\]\s*/gi, '').trim();
+      finalNotes = finalNotes.replace(/\[DRIVER PER DIEM(?:\s*\(.*?\))?:.*?\]\s*/gi, '').trim();
       if (bookingForm.driverId || bookingForm.driverName) {
         const perDiemTag = formatDriverPerDiemNote(driverPerDiemCalc, bookingForm.destination);
         finalNotes = finalNotes ? `${finalNotes}\n${perDiemTag}` : perDiemTag;
@@ -2088,18 +2120,18 @@ export default function FleetPage() {
                 <div style={{
                   gridColumn: 'span 2',
                   background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(30, 41, 59, 0.98))',
-                  border: '1px solid rgba(56, 189, 248, 0.4)',
+                  border: bookingForm.allowanceType === 'INTERNAL' ? '1px solid rgba(56, 189, 248, 0.4)' : '1px solid rgba(245, 158, 11, 0.4)',
                   borderRadius: 10,
                   padding: '14px 16px',
                   boxShadow: '0 4px 20px rgba(0, 0, 0, 0.35)',
                 }}>
-                  {/* Top Bar: Calculated Days & Scope Toggle */}
+                  {/* Top Bar: Calculated Days & System Switch */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 12, borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: 10 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <span style={{ fontSize: 22 }}>⚡</span>
                       <div>
                         <div style={{ fontSize: 11, textTransform: 'uppercase', color: '#94a3b8', fontWeight: 700, letterSpacing: '0.05em' }}>
-                          Live Calculated Trip Duration &amp; Allowances
+                          Live Trip Duration &amp; Allowances
                         </div>
                         <div style={{ fontSize: 17, fontWeight: 800, color: '#f8fafc', display: 'flex', alignItems: 'center', gap: 8, marginTop: 1 }}>
                           <span style={{ color: '#38bdf8' }}>{bookingDays} {bookingDays === 1 ? 'Day' : 'Days'}</span>
@@ -2110,67 +2142,288 @@ export default function FleetPage() {
                       </div>
                     </div>
 
-                    {/* Quick Location Scope Toggle */}
+                    {/* Prominent System Toggle: Internal Allowance vs External Allowance */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#0f172a', padding: 4, borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)' }}>
                       <button
                         type="button"
-                        onClick={() => setBookingForm(prev => ({ ...prev, isOutsideAccra: false }))}
+                        onClick={() => setBookingForm(prev => ({ ...prev, allowanceType: 'INTERNAL' }))}
                         style={{
-                          padding: '5px 12px',
+                          padding: '6px 14px',
                           borderRadius: 6,
                           fontSize: 12,
-                          fontWeight: 700,
+                          fontWeight: 800,
                           border: 'none',
                           cursor: 'pointer',
-                          background: !bookingForm.isOutsideAccra ? '#0284c7' : 'transparent',
-                          color: !bookingForm.isOutsideAccra ? '#ffffff' : '#94a3b8',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          background: bookingForm.allowanceType === 'INTERNAL' ? 'linear-gradient(135deg, #0284c7, #0369a1)' : 'transparent',
+                          color: bookingForm.allowanceType === 'INTERNAL' ? '#ffffff' : '#94a3b8',
+                          boxShadow: bookingForm.allowanceType === 'INTERNAL' ? '0 2px 8px rgba(2, 132, 199, 0.4)' : 'none',
                           transition: 'all 0.15s ease',
                         }}
                       >
-                        📍 Within Accra (GH₵100/day)
+                        <span>🏢 Internal Allowance</span>
+                        <span style={{ fontSize: 10, background: 'rgba(255,255,255,0.2)', padding: '1px 5px', borderRadius: 4 }}>Staff</span>
                       </button>
+
                       <button
                         type="button"
-                        onClick={() => setBookingForm(prev => ({ ...prev, isOutsideAccra: true }))}
+                        onClick={() => setBookingForm(prev => ({ ...prev, allowanceType: 'EXTERNAL' }))}
                         style={{
-                          padding: '5px 12px',
+                          padding: '6px 14px',
                           borderRadius: 6,
                           fontSize: 12,
-                          fontWeight: 700,
+                          fontWeight: 800,
                           border: 'none',
                           cursor: 'pointer',
-                          background: bookingForm.isOutsideAccra ? '#0d9488' : 'transparent',
-                          color: bookingForm.isOutsideAccra ? '#ffffff' : '#94a3b8',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          background: bookingForm.allowanceType === 'EXTERNAL' ? 'linear-gradient(135deg, #d97706, #b45309)' : 'transparent',
+                          color: bookingForm.allowanceType === 'EXTERNAL' ? '#ffffff' : '#94a3b8',
+                          boxShadow: bookingForm.allowanceType === 'EXTERNAL' ? '0 2px 8px rgba(217, 119, 6, 0.4)' : 'none',
                           transition: 'all 0.15s ease',
                         }}
                       >
-                        🚗 Outside Accra (GH₵100/d + GH₵200 ret + GH₵250 hotel)
+                        <span>🤝 External Allowance</span>
+                        <span style={{ fontSize: 10, background: 'rgba(255,255,255,0.2)', padding: '1px 5px', borderRadius: 4 }}>Outside Drivers</span>
                       </button>
                     </div>
                   </div>
 
-                  {/* Free Hostel Checkbox if Outside Accra & >1 Day */}
-                  {bookingForm.isOutsideAccra && bookingDays > 1 && (
-                    <div style={{ marginBottom: 12, background: 'rgba(251, 191, 36, 0.08)', padding: '7px 12px', borderRadius: 6, border: '1px solid rgba(251, 191, 36, 0.25)' }}>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#fde68a', cursor: 'pointer' }}>
-                        <input
-                          type="checkbox"
-                          checked={bookingForm.freeAccommodation}
-                          onChange={e => setBookingForm(prev => ({ ...prev, freeAccommodation: e.target.checked }))}
-                        />
-                        <span>
-                          🏨 Hotel / Hostel provided by client or lodge (Driver hostel cost: <b>GH₵ 0</b>)
-                        </span>
-                      </label>
+                  {/* SUB-CONTROLS ROW */}
+                  {bookingForm.allowanceType === 'INTERNAL' ? (
+                    /* ── INTERNAL ALLOWANCE CONFIGURATION (CIRCULAR SST/2025) ── */
+                    <div style={{ marginBottom: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {/* Top banner: Circular metadata & Activity type toggle */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, background: 'rgba(2, 132, 199, 0.08)', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(2, 132, 199, 0.25)' }}>
+                        <div style={{ fontSize: 11, color: '#38bdf8', fontWeight: 700 }}>
+                          📜 SST Circular SST/22/ADMIN/4/2025 • Tour Allowances (Meal Rate Included)
+                        </div>
+
+                        {/* Activity Type: Full Day, Half Day, Fam Tour */}
+                        <div style={{ display: 'flex', gap: 4, background: '#0f172a', padding: 3, borderRadius: 6 }}>
+                          {(['FULL_DAY', 'HALF_DAY', 'FAM_TOUR'] as ActivityType[]).map((act) => {
+                            const actLabels: Record<ActivityType, string> = {
+                              FULL_DAY: '☀️ Full Day',
+                              HALF_DAY: '⛅ Half Day',
+                              FAM_TOUR: '🧭 Fam Tour',
+                            };
+                            const isActive = (bookingForm.activityType || 'FULL_DAY') === act;
+                            return (
+                              <button
+                                key={act}
+                                type="button"
+                                onClick={() => setBookingForm(prev => ({ ...prev, activityType: act }))}
+                                style={{
+                                  padding: '4px 10px',
+                                  borderRadius: 4,
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  background: isActive ? '#0284c7' : 'transparent',
+                                  color: isActive ? '#ffffff' : '#94a3b8',
+                                  transition: 'all 0.15s ease',
+                                }}
+                              >
+                                {actLabels[act]}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Group Size / Pax Tier Selector with rates display */}
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                          <span style={{ fontSize: 11, color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.04em' }}>
+                            Group Pax Tier ({bookingForm.paxCount ? `${bookingForm.paxCount} Pax entered` : 'Auto-detected from Passengers'}):
+                          </span>
+                          <span style={{ fontSize: 11, color: '#38bdf8', fontWeight: 600 }}>
+                            Active: {driverPerDiemCalc.paxTierLabel}
+                          </span>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 8 }}>
+                          {(['OVER_20', '10_TO_19', '6_TO_9', 'LESS_THAN_5'] as PaxGroupTier[]).map((tierKey) => {
+                            const tier = INTERNAL_RATES[tierKey];
+                            const isSelected = driverPerDiemCalc.paxTier === tierKey && bookingForm.activityType !== 'FAM_TOUR';
+                            const tierDefaults: Record<PaxGroupTier, string> = {
+                              OVER_20: '25',
+                              '10_TO_19': '15',
+                              '6_TO_9': '8',
+                              LESS_THAN_5: '4',
+                            };
+
+                            const driverRate = bookingForm.activityType === 'HALF_DAY' ? tier.driverHalfDay : tier.driverFullDay;
+                            const guideRate = bookingForm.activityType === 'HALF_DAY' ? tier.guideHalfDay : tier.guideFullDay;
+
+                            return (
+                              <div
+                                key={tierKey}
+                                onClick={() => setBookingForm(prev => ({ ...prev, paxCount: tierDefaults[tierKey] }))}
+                                style={{
+                                  background: isSelected ? 'rgba(2, 132, 199, 0.25)' : '#0f172a',
+                                  border: isSelected ? '1.5px solid #38bdf8' : '1px solid rgba(255,255,255,0.08)',
+                                  borderRadius: 8,
+                                  padding: '8px 10px',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.15s ease',
+                                }}
+                              >
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <span style={{ fontSize: 11, fontWeight: 800, color: isSelected ? '#38bdf8' : '#cbd5e1' }}>
+                                    {tier.label}
+                                  </span>
+                                  {isSelected && <span style={{ fontSize: 10, color: '#38bdf8' }}>✓</span>}
+                                </div>
+                                <div style={{ fontSize: 13, fontWeight: 800, color: '#f8fafc', marginTop: 3 }}>
+                                  GH₵ {driverRate}<span style={{ fontSize: 10, color: '#94a3b8', fontWeight: 500 }}>/day</span>
+                                </div>
+                                <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 1 }}>
+                                  Guide: GH₵ {guideRate}/d
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Location scope & Guide options row */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, paddingTop: 4 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <button
+                            type="button"
+                            onClick={() => setBookingForm(prev => ({ ...prev, isOutsideAccra: false }))}
+                            style={{
+                              padding: '4px 10px',
+                              borderRadius: 6,
+                              fontSize: 11,
+                              fontWeight: 700,
+                              border: 'none',
+                              cursor: 'pointer',
+                              background: !bookingForm.isOutsideAccra ? '#0284c7' : 'rgba(255,255,255,0.06)',
+                              color: !bookingForm.isOutsideAccra ? '#ffffff' : '#94a3b8',
+                            }}
+                          >
+                            📍 Within Accra (0 Lodging)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setBookingForm(prev => ({ ...prev, isOutsideAccra: true }))}
+                            style={{
+                              padding: '4px 10px',
+                              borderRadius: 6,
+                              fontSize: 11,
+                              fontWeight: 700,
+                              border: 'none',
+                              cursor: 'pointer',
+                              background: bookingForm.isOutsideAccra ? '#0d9488' : 'rgba(255,255,255,0.06)',
+                              color: bookingForm.isOutsideAccra ? '#ffffff' : '#94a3b8',
+                            }}
+                          >
+                            🚗 Outside Accra (Outstation)
+                          </button>
+                        </div>
+
+                        {/* Optional Guide checkbox */}
+                        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#cbd5e1', cursor: 'pointer' }}>
+                          <input
+                            type="checkbox"
+                            checked={bookingForm.includeGuide || false}
+                            onChange={e => setBookingForm(prev => ({ ...prev, includeGuide: e.target.checked }))}
+                          />
+                          <span>Include Tour Guide (+GH₵ {driverPerDiemCalc.guideDailyRate}/day)</span>
+                        </label>
+                      </div>
+
+                      {/* Free Hostel Checkbox if Outside Accra & >1 Day */}
+                      {bookingForm.isOutsideAccra && bookingDays > 1 && (
+                        <div style={{ background: 'rgba(251, 191, 36, 0.08)', padding: '6px 10px', borderRadius: 6, border: '1px solid rgba(251, 191, 36, 0.25)' }}>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: '#fde68a', cursor: 'pointer' }}>
+                            <input
+                              type="checkbox"
+                              checked={bookingForm.freeAccommodation}
+                              onChange={e => setBookingForm(prev => ({ ...prev, freeAccommodation: e.target.checked }))}
+                            />
+                            <span>
+                              🏨 Hotel / Hostel provided by client or lodge (Driver hostel cost: <b>GH₵ 0</b>)
+                            </span>
+                          </label>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    /* ── EXTERNAL ALLOWANCE CONFIGURATION (PREVIOUS OUTSIDE DRIVER SCHEDULE) ── */
+                    <div style={{ marginBottom: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8, background: 'rgba(217, 119, 6, 0.08)', padding: '8px 12px', borderRadius: 8, border: '1px solid rgba(217, 119, 6, 0.25)' }}>
+                        <div style={{ fontSize: 11, color: '#fbbf24', fontWeight: 700 }}>
+                          🤝 External / Outside Rented Driver Schedule: Accra = GH₵100/d • Outstation = GH₵100/d + GH₵250 lodging + GH₵200 return
+                        </div>
+
+                        {/* Location scope buttons */}
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button
+                            type="button"
+                            onClick={() => setBookingForm(prev => ({ ...prev, isOutsideAccra: false }))}
+                            style={{
+                              padding: '5px 12px',
+                              borderRadius: 6,
+                              fontSize: 11,
+                              fontWeight: 700,
+                              border: 'none',
+                              cursor: 'pointer',
+                              background: !bookingForm.isOutsideAccra ? '#d97706' : 'rgba(255,255,255,0.06)',
+                              color: !bookingForm.isOutsideAccra ? '#ffffff' : '#94a3b8',
+                            }}
+                          >
+                            📍 Within Accra (GH₵100/day)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setBookingForm(prev => ({ ...prev, isOutsideAccra: true }))}
+                            style={{
+                              padding: '5px 12px',
+                              borderRadius: 6,
+                              fontSize: 11,
+                              fontWeight: 700,
+                              border: 'none',
+                              cursor: 'pointer',
+                              background: bookingForm.isOutsideAccra ? '#b45309' : 'rgba(255,255,255,0.06)',
+                              color: bookingForm.isOutsideAccra ? '#ffffff' : '#94a3b8',
+                            }}
+                          >
+                            🚗 Outside Accra (GH₵100/d + GH₵200 ret + GH₵250 hotel)
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Free Hostel Checkbox if Outside Accra & >1 Day */}
+                      {bookingForm.isOutsideAccra && bookingDays > 1 && (
+                        <div style={{ background: 'rgba(251, 191, 36, 0.08)', padding: '6px 10px', borderRadius: 6, border: '1px solid rgba(251, 191, 36, 0.25)' }}>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: '#fde68a', cursor: 'pointer' }}>
+                            <input
+                              type="checkbox"
+                              checked={bookingForm.freeAccommodation}
+                              onChange={e => setBookingForm(prev => ({ ...prev, freeAccommodation: e.target.checked }))}
+                            />
+                            <span>
+                              🏨 Hotel / Hostel provided by client or lodge (Driver hostel cost: <b>GH₵ 0</b>)
+                            </span>
+                          </label>
+                        </div>
+                      )}
                     </div>
                   )}
 
-                  {/* 4 Metric Cards */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(135px, 1fr))', gap: 10 }}>
+                  {/* 4 to 5 METRIC CARDS */}
+                  <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(${bookingForm.includeGuide ? '110px' : '130px'}, 1fr))`, gap: 8 }}>
                     {/* 1. Days */}
                     <div style={{ background: '#0f172a', padding: 10, borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)' }}>
                       <div style={{ fontSize: 10, color: '#94a3b8', textTransform: 'uppercase', fontWeight: 700 }}>Total Days</div>
-                      <div style={{ fontSize: 18, fontWeight: 800, color: '#f8fafc', marginTop: 2 }}>
+                      <div style={{ fontSize: 17, fontWeight: 800, color: '#f8fafc', marginTop: 2 }}>
                         {bookingDays} {bookingDays === 1 ? 'Day' : 'Days'}
                       </div>
                       <div style={{ fontSize: 11, color: '#64748b' }}>
@@ -2178,36 +2431,53 @@ export default function FleetPage() {
                       </div>
                     </div>
 
-                    {/* 2. Allowance */}
-                    <div style={{ background: '#0f172a', padding: 10, borderRadius: 8, border: '1px solid rgba(56, 189, 248, 0.25)' }}>
-                      <div style={{ fontSize: 10, color: '#38bdf8', textTransform: 'uppercase', fontWeight: 700 }}>Driver Allowance</div>
-                      <div style={{ fontSize: 18, fontWeight: 800, color: '#38bdf8', marginTop: 2 }}>
+                    {/* 2. Driver Allowance */}
+                    <div style={{ background: '#0f172a', padding: 10, borderRadius: 8, border: bookingForm.allowanceType === 'INTERNAL' ? '1px solid rgba(56, 189, 248, 0.35)' : '1px solid rgba(245, 158, 11, 0.35)' }}>
+                      <div style={{ fontSize: 10, color: bookingForm.allowanceType === 'INTERNAL' ? '#38bdf8' : '#fbbf24', textTransform: 'uppercase', fontWeight: 700 }}>
+                        {bookingForm.allowanceType === 'INTERNAL' ? 'Internal Allowance' : 'External Allowance'}
+                      </div>
+                      <div style={{ fontSize: 17, fontWeight: 800, color: bookingForm.allowanceType === 'INTERNAL' ? '#38bdf8' : '#fbbf24', marginTop: 2 }}>
                         GH₵ {driverPerDiemCalc.dailyAllowanceTotal}
                       </div>
-                      <div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.2, marginTop: 2 }}>
+                      <div style={{ fontSize: 10, color: '#94a3b8', lineHeight: 1.2, marginTop: 2 }}>
                         {driverPerDiemCalc.allowanceBreakdown}
                       </div>
                     </div>
 
-                    {/* 3. Hostel Money */}
+                    {/* 3. Hostel / Lodging */}
                     <div style={{ background: '#0f172a', padding: 10, borderRadius: 8, border: '1px solid rgba(251, 191, 36, 0.25)' }}>
-                      <div style={{ fontSize: 10, color: '#fbbf24', textTransform: 'uppercase', fontWeight: 700 }}>Hostel / Lodging</div>
-                      <div style={{ fontSize: 18, fontWeight: 800, color: driverPerDiemCalc.accommodationTotal > 0 ? '#fbbf24' : '#94a3b8', marginTop: 2 }}>
+                      <div style={{ fontSize: 10, color: '#fbbf24', textTransform: 'uppercase', fontWeight: 700 }}>Driver Lodging</div>
+                      <div style={{ fontSize: 17, fontWeight: 800, color: driverPerDiemCalc.accommodationTotal > 0 ? '#fbbf24' : '#94a3b8', marginTop: 2 }}>
                         GH₵ {driverPerDiemCalc.accommodationTotal}
                       </div>
-                      <div style={{ fontSize: 11, color: '#94a3b8', lineHeight: 1.2, marginTop: 2 }}>
+                      <div style={{ fontSize: 10, color: '#94a3b8', lineHeight: 1.2, marginTop: 2 }}>
                         {driverPerDiemCalc.accommodationBreakdown}
                       </div>
                     </div>
 
-                    {/* 4. Total Driver Payout */}
+                    {/* 4. Guide (if included) */}
+                    {bookingForm.includeGuide && (
+                      <div style={{ background: '#0f172a', padding: 10, borderRadius: 8, border: '1px solid rgba(168, 85, 247, 0.3)' }}>
+                        <div style={{ fontSize: 10, color: '#c084fc', textTransform: 'uppercase', fontWeight: 700 }}>Tour Guide</div>
+                        <div style={{ fontSize: 17, fontWeight: 800, color: '#c084fc', marginTop: 2 }}>
+                          GH₵ {driverPerDiemCalc.guideAllowanceTotal}
+                        </div>
+                        <div style={{ fontSize: 10, color: '#94a3b8', lineHeight: 1.2, marginTop: 2 }}>
+                          {driverPerDiemCalc.guideBreakdown}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 5. Total Driver Payout */}
                     <div style={{ background: 'rgba(52, 211, 153, 0.12)', padding: 10, borderRadius: 8, border: '1px solid rgba(52, 211, 153, 0.4)' }}>
-                      <div style={{ fontSize: 10, color: '#34d399', textTransform: 'uppercase', fontWeight: 800 }}>Total Driver Payout</div>
-                      <div style={{ fontSize: 20, fontWeight: 900, color: '#34d399', marginTop: 2 }}>
-                        GH₵ {driverPerDiemCalc.totalDriverExpense}
+                      <div style={{ fontSize: 10, color: '#34d399', textTransform: 'uppercase', fontWeight: 800 }}>
+                        {bookingForm.includeGuide ? 'Driver + Guide Total' : 'Total Driver Payout'}
+                      </div>
+                      <div style={{ fontSize: 19, fontWeight: 900, color: '#34d399', marginTop: 2 }}>
+                        GH₵ {bookingForm.includeGuide ? driverPerDiemCalc.grandTotalExpense : driverPerDiemCalc.totalDriverExpense}
                       </div>
                       <div style={{ fontSize: 10, color: '#a7f3d0' }}>
-                        Allowance + Hostel Money
+                        {bookingForm.allowanceType === 'INTERNAL' ? 'SST Circular 2025' : 'Contract driver'}
                       </div>
                     </div>
                   </div>
@@ -2215,11 +2485,14 @@ export default function FleetPage() {
                   {/* Formula explanation and Add Cost Button */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, flexWrap: 'wrap', gap: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                     <div style={{ fontSize: 11, color: '#cbd5e1' }}>
-                      <b style={{ color: '#f8fafc' }}>Formula:</b> {driverPerDiemCalc.isOutside 
-                        ? (bookingDays === 1 
-                            ? '1 day outside Accra = GH₵200 allowance + GH₵0 hotel' 
-                            : `${bookingDays - 1} ${bookingDays - 1 === 1 ? 'day' : 'days'} @ GH₵100 + return day @ GH₵200 (GH₵${driverPerDiemCalc.dailyAllowanceTotal}) + ${driverPerDiemCalc.nights} nights hostel @ GH₵250 (GH₵${driverPerDiemCalc.accommodationTotal})`)
-                        : `${bookingDays} ${bookingDays === 1 ? 'day' : 'days'} in Accra @ GH₵100/day = GH₵${driverPerDiemCalc.dailyAllowanceTotal} + GH₵0 hotel`}
+                      <b style={{ color: '#f8fafc' }}>Rate Formula:</b>{' '}
+                      {bookingForm.allowanceType === 'INTERNAL'
+                        ? `${bookingDays} days @ GH₵${driverPerDiemCalc.driverDailyRate}/day (${driverPerDiemCalc.paxTierLabel} • ${bookingForm.activityType || 'FULL_DAY'}) + GH₵${driverPerDiemCalc.accommodationTotal} lodging`
+                        : (driverPerDiemCalc.isOutside
+                            ? (bookingDays === 1
+                                ? '1 day outside Accra = GH₵200 allowance + GH₵0 hotel'
+                                : `${bookingDays - 1} ${bookingDays - 1 === 1 ? 'day' : 'days'} @ GH₵100 + return day @ GH₵200 (GH₵${driverPerDiemCalc.dailyAllowanceTotal}) + ${driverPerDiemCalc.nights} nights hostel @ GH₵250 (GH₵${driverPerDiemCalc.accommodationTotal})`)
+                            : `${bookingDays} ${bookingDays === 1 ? 'day' : 'days'} in Accra @ GH₵100/day = GH₵${driverPerDiemCalc.dailyAllowanceTotal} + GH₵0 hotel`)}
                     </div>
                     <button
                       type="button"
