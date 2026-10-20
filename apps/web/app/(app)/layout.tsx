@@ -12,6 +12,7 @@ const NAV = [
   { href: '/customers', label: 'Customers', icon: '👥' },
   { href: '/leads', label: 'Leads', icon: '🎯' },
   { href: '/deals', label: 'Sales Stages (Deals)', icon: '💼' },
+  { href: '/reports/weekly-sales', label: 'Weekly Sales Report', icon: '📈', roles: ['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'SALES_AGENT'] },
   { href: '/bookings', label: 'Bookings', icon: '✈️' },
   { href: '/tours', label: 'Customised Tours & Ops', icon: '🗺️' },
   { href: '/fleet', label: 'Fleet Management', icon: '🚌' },
@@ -94,7 +95,10 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           Workspace
         </div>
 
-        {NAV.map((item) => {
+        {NAV.filter((item: any) => {
+          if (!item.roles) return true;
+          return user?.roles?.some((r: string) => item.roles.includes(r.toUpperCase()));
+        }).map((item) => {
           const active = item.exact ? pathname === item.href : pathname.startsWith(item.href);
           return (
             <Link

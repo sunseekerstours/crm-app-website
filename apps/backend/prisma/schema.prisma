@@ -135,6 +135,10 @@ enum AuditableAction {
   FLEET_BOOKING_CREATED
   FLEET_BOOKING_UPDATED
   FLEET_BOOKING_DELETED
+  WEEKLY_REPORT_CREATED
+  WEEKLY_REPORT_UPDATED
+  WEEKLY_REPORT_SUBMITTED
+  WEEKLY_REPORT_REVIEWED
 }
 
 model User {
@@ -172,6 +176,7 @@ model User {
 
   notifications            Notification[]
   notificationPreferences NotificationPreference[]
+  weeklySalesReports      WeeklySalesReport[]      @relation("UserWeeklySalesReports")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1370,3 +1375,61 @@ model LeaveRequest {
   @@index([status])
   @@map("leave_requests")
 }
+
+// ============================================================================
+// WEEKLY SALES PERFORMANCE REPORTS
+// ============================================================================
+
+enum WeeklyReportStatus {
+  DRAFT
+  SUBMITTED
+  REVIEWED
+}
+
+model WeeklySalesReport {
+  id                  String             @id @default(uuid())
+  userId              String
+  user                User               @relation("UserWeeklySalesReports", fields: [userId], references: [id], onDelete: Cascade)
+  weekStartDate       DateTime
+  weekEndDate         DateTime
+  status              WeeklyReportStatus @default(DRAFT)
+  managerName         String?
+
+  // Section 1: Weekly Activity Summary
+  activitySummary     Json               @default("{}")
+
+  // Section 2: Weekly KPIs (Targets & Actuals)
+  kpis                Json               @default("[]")
+
+  // Section 3: Pipeline Update
+  pipelineDeals       Json               @default("[]")
+
+  // Section 4: Wins, Blockers & Learnings
+  wins                String[]           @default([])
+  blockers            String[]           @default([])
+  keyLearning         String?
+
+  // Section 5: Next Week's Commitments
+  commitments         Json               @default("[]")
+
+  // Section 6: Summary & Sign-Off
+  overallPerformance  String?
+  keyWinHighlight     String?
+  supportNeeded       String?
+  projectedRevenueGhc Decimal?           @db.Decimal(12, 2)
+  onTrackStatus       String?
+
+  repSignedAt         DateTime?
+  reviewedById        String?
+  reviewedAt          DateTime?
+  managerNotes        String?
+
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  @@index([userId])
+  @@index([weekStartDate, weekEndDate])
+  @@index([status])
+  @@map("weekly_sales_reports")
+}
+

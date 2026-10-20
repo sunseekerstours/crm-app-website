@@ -119,6 +119,9 @@ export const Permission = {
   CHECKLIST_DELETE: 'checklists.delete',
 
   REPORT_VIEW: 'reports.view',
+  REPORT_CREATE: 'reports.create',
+  REPORT_UPDATE: 'reports.update',
+  REPORT_REVIEW: 'reports.review',
 
   AUDIT_VIEW: 'audit.view',
 

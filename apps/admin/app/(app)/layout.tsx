@@ -28,6 +28,7 @@ const CRM_NAV = [
   { href: '/crm/campaigns', label: 'Bulk Email & SMS', permission: '' },
   { href: '/crm/leads', label: 'Leads', permission: 'leads.view' },
   { href: '/crm/deals', label: 'Sales Stages (Deals)', permission: 'deals.view' },
+  { href: '/crm/reports/weekly-sales', label: 'Weekly Sales Report', permission: 'reports.view' },
   { href: '/crm/bookings', label: 'Bookings', permission: 'bookings.view' },
   { href: '/crm/fleet', label: 'Fleet Management', permission: '' },
   { href: '/crm/qr-codes', label: 'QR Code Studio', permission: '' },

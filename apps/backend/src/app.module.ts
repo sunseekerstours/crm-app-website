@@ -41,6 +41,7 @@ import { ProductsModule } from '@app/modules/products/products.module';
 import { JetpackCrmModule } from '@app/modules/jetpack-crm/jetpack-crm.module';
 import { TelegramModule } from '@app/modules/telegram/telegram.module';
 import { MailModule } from '@app/modules/mail/mail.module';
+import { ReportsModule } from '@app/modules/reports/reports.module';
 import { JwtAuthGuard } from '@app/common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '@app/common/guards/permissions.guard';
 import { TransformInterceptor } from '@app/common/interceptors/transform.interceptor';
@@ -89,6 +90,7 @@ import { AllExceptionsFilter } from '@app/common/filters/all-exceptions.filter';
     JetpackCrmModule,
     TelegramModule,
     MailModule,
+    ReportsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },
