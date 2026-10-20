@@ -55,7 +55,10 @@ export class ReportsController {
     @Req() req?: Request,
     @CurrentUser('id') userId?: string,
   ) {
-    return this.reportsService.findAll({ userId: queryUserId, status, page, limit }, toRequestContext(req!, userId));
+    return this.reportsService.findAll(
+      { userId: queryUserId, status, page, limit },
+      toRequestContext(req!, userId),
+    );
   }
 
   /**

@@ -2,7 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@app/prisma/prisma.service';
 import { AuditService } from '@app/modules/audit/audit.service';
 import { slugify } from '@app/common/slugify';
-import { ApiNotFoundException, ApiConflictException, ApiBadRequestException, ErrorCode } from '@app/common/errors';
+import {
+  ApiNotFoundException,
+  ApiConflictException,
+  ApiBadRequestException,
+  ErrorCode,
+} from '@app/common/errors';
 import { RequestContext } from '@app/common/request-context';
 import { CreatePageDto } from './dto/create-page.dto';
 import { UpdatePageDto } from './dto/update-page.dto';
@@ -109,9 +114,10 @@ export class ContentService {
         metaTitle: dto.metaTitle,
         metaDescription: dto.metaDescription,
         status: dto.status,
-        publishedAt: dto.status === PageStatus.PUBLISHED && existing.status !== PageStatus.PUBLISHED
-          ? new Date()
-          : undefined,
+        publishedAt:
+          dto.status === PageStatus.PUBLISHED && existing.status !== PageStatus.PUBLISHED
+            ? new Date()
+            : undefined,
         updatedById: ctx.userId ?? null,
       },
     });
@@ -156,7 +162,13 @@ export class ContentService {
   }
 
   async updateSiteSetting(key: string, dto: UpdateSiteSettingDto, ctx: RequestContext) {
-    if (dto.value === undefined && dto.valueJson === undefined && dto.description === undefined && dto.isPublic === undefined && dto.group === undefined) {
+    if (
+      dto.value === undefined &&
+      dto.valueJson === undefined &&
+      dto.description === undefined &&
+      dto.isPublic === undefined &&
+      dto.group === undefined
+    ) {
       throw new ApiBadRequestException(ErrorCode.BAD_REQUEST, 'No update fields provided');
     }
 

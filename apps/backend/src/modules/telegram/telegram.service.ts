@@ -57,7 +57,10 @@ export class TelegramService {
    * Returns the base CRM web app URL for deep-links in Telegram messages.
    */
   public getBaseUrl(): string {
-    const configured = this.config.get<string>('app.frontendUrl' as any) || process.env.FRONTEND_URL || process.env.APP_URL;
+    const configured =
+      this.config.get<string>('app.frontendUrl' as any) ||
+      process.env.FRONTEND_URL ||
+      process.env.APP_URL;
     if (configured && !configured.includes('localhost')) {
       return configured.replace(/\/$/, '');
     }
@@ -131,13 +134,19 @@ export class TelegramService {
    * Tests Telegram bot connection by fetching bot information and sending a test ping.
    * Automatically persists valid credentials to SiteSetting upon successful ping.
    */
-  async testConnection(testToken?: string, testChatId?: string): Promise<{ success: boolean; botName?: string; workingChatId?: string; error?: string }> {
+  async testConnection(
+    testToken?: string,
+    testChatId?: string,
+  ): Promise<{ success: boolean; botName?: string; workingChatId?: string; error?: string }> {
     const config = await this.getConfig();
     const token = (testToken || config.botToken || '').trim();
     const chat = (testChatId || config.chatId || '').trim();
 
     if (!token) {
-      return { success: false, error: 'Bot token is missing. Please provide a valid Telegram bot token.' };
+      return {
+        success: false,
+        error: 'Bot token is missing. Please provide a valid Telegram bot token.',
+      };
     }
 
     try {
@@ -197,7 +206,12 @@ export class TelegramService {
         if (workingChatId) {
           await this.prisma.siteSetting.upsert({
             where: { key: 'telegram_chat_id' },
-            create: { key: 'telegram_chat_id', group: 'telegram', value: workingChatId, isPublic: false },
+            create: {
+              key: 'telegram_chat_id',
+              group: 'telegram',
+              value: workingChatId,
+              isPublic: false,
+            },
             update: { value: workingChatId },
           });
         }
@@ -242,7 +256,9 @@ export class TelegramService {
       lead.interestedTour ? `🎒 <b>Interested Tour:</b> ${lead.interestedTour}` : null,
       lead.destination ? `📍 <b>Destination:</b> ${lead.destination}` : null,
       lead.source ? `🌐 <b>Source:</b> ${lead.source}` : null,
-      lead.assignedStaffName ? `💼 <b>Assigned To:</b> <b>${lead.assignedStaffName}</b>` : `⚠️ <i>Unassigned</i>`,
+      lead.assignedStaffName
+        ? `💼 <b>Assigned To:</b> <b>${lead.assignedStaffName}</b>`
+        : `⚠️ <i>Unassigned</i>`,
       `━━━━━━━━━━━━━━━━━━━━━━`,
       `👉 <a href="${this.getBaseUrl()}/leads">Open CRM Leads Board</a>`,
     ]
@@ -260,7 +276,9 @@ export class TelegramService {
     salespersonName?: string | null;
     invoiceNumber?: string | null;
   }): Promise<void> {
-    const val = deal.value ? `${Number(deal.value).toLocaleString()} ${deal.currency || 'USD'}` : 'N/A';
+    const val = deal.value
+      ? `${Number(deal.value).toLocaleString()} ${deal.currency || 'USD'}`
+      : 'N/A';
     const msg = [
       `🎉 <b>DEAL WON! NEW BOOKING!</b>`,
       `━━━━━━━━━━━━━━━━━━━━━━`,

@@ -150,5 +150,4 @@ describe('Travel Core (e2e)', () => {
     const names = publicList.body.data.map((t: { name: string }) => t.name);
     expect(names).toContain(unique('Volta Highlands Trek'));
   });
-
 });

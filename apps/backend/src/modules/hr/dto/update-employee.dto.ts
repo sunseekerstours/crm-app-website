@@ -1,12 +1,5 @@
 import { Type } from 'class-transformer';
-import {
-  IsDateString,
-  IsEmail,
-  IsEnum,
-  IsNumber,
-  IsOptional,
-  IsString,
-} from 'class-validator';
+import { IsDateString, IsEmail, IsEnum, IsNumber, IsOptional, IsString } from 'class-validator';
 import { EmploymentStatus } from '@prisma/client';
 
 export class UpdateEmployeeDto {

@@ -36,18 +36,19 @@ export class FleetService {
     if (!vehicle) throw new ApiNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, 'Vehicle not found');
 
     const start = new Date(dto.startDate);
-    const end   = new Date(dto.endDate);
-    if (end < start) throw new ApiConflictException(ErrorCode.BAD_REQUEST, 'endDate must be on or after startDate');
+    const end = new Date(dto.endDate);
+    if (end < start)
+      throw new ApiConflictException(
+        ErrorCode.BAD_REQUEST,
+        'endDate must be on or after startDate',
+      );
 
     // ── Conflict Check: Vehicle Availability ─────────────────────
     if (!dto.allowOverlap) {
       const conflictVehicle = await this.fleetBooking.findFirst({
         where: {
           vehicleId: dto.vehicleId,
-          AND: [
-            { startDate: { lte: end } },
-            { endDate:   { gte: start } },
-          ],
+          AND: [{ startDate: { lte: end } }, { endDate: { gte: start } }],
         },
       });
 
@@ -70,10 +71,7 @@ export class FleetService {
       const conflictDriver = await this.fleetBooking.findFirst({
         where: {
           OR: driverConditions,
-          AND: [
-            { startDate: { lte: end } },
-            { endDate:   { gte: start } },
-          ],
+          AND: [{ startDate: { lte: end } }, { endDate: { gte: start } }],
         },
         include: { vehicle: { select: { name: true } } },
       });
@@ -89,7 +87,10 @@ export class FleetService {
     }
 
     // ── Calculate Financials & Duration ─────────────────────────
-    const diffDays = Math.max(1, Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+    const diffDays = Math.max(
+      1,
+      Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1,
+    );
     const calculatedTotal = dto.totalAmount ?? (dto.ratePerDay ? dto.ratePerDay * diffDays : 0);
 
     let invoiceId: string | undefined = dto.invoiceId;
@@ -100,22 +101,25 @@ export class FleetService {
     // ── Auto-generate Official Invoice if requested or amount provided ───
     if (dto.createInvoice !== false && calculatedTotal > 0 && !invoiceId) {
       try {
-        const inv = await this.invoicesService.create({
-          customerId: dto.customerId,
-          amount: calculatedTotal,
-          currency: dto.currency || 'GHS',
-          issueDate: start.toISOString(),
-          dueDate: end.toISOString(),
-          notes: `Charter Rental: ${vehicle.name} for ${dto.company}${dto.destination ? ` to ${dto.destination}` : ''} (${diffDays} days)`,
-          items: [
-            {
-              description: `${vehicle.name} Charter - ${dto.destination || 'Rental'} (${dto.company})`,
-              quantity: diffDays,
-              unitPrice: dto.ratePerDay || Math.round(calculatedTotal / diffDays),
-              total: calculatedTotal,
-            },
-          ],
-        } as any, ctx);
+        const inv = await this.invoicesService.create(
+          {
+            customerId: dto.customerId,
+            amount: calculatedTotal,
+            currency: dto.currency || 'GHS',
+            issueDate: start.toISOString(),
+            dueDate: end.toISOString(),
+            notes: `Charter Rental: ${vehicle.name} for ${dto.company}${dto.destination ? ` to ${dto.destination}` : ''} (${diffDays} days)`,
+            items: [
+              {
+                description: `${vehicle.name} Charter - ${dto.destination || 'Rental'} (${dto.company})`,
+                quantity: diffDays,
+                unitPrice: dto.ratePerDay || Math.round(calculatedTotal / diffDays),
+                total: calculatedTotal,
+              },
+            ],
+          } as any,
+          ctx,
+        );
 
         invoiceId = inv.id;
         invoiceNumber = inv.invoiceNumber;
@@ -148,22 +152,25 @@ export class FleetService {
     // ── Auto-generate Quotation if requested or amount provided ───
     if (dto.createQuote !== false && calculatedTotal > 0 && !quoteId) {
       try {
-        const qte = await this.quotesService.create({
-          customerId: dto.customerId,
-          tourName: `${vehicle.name} Charter - ${dto.destination || 'Rental'} (${dto.company})`,
-          totalPrice: calculatedTotal,
-          currency: dto.currency || 'GHS',
-          validUntil: end.toISOString(),
-          notes: `Charter Quotation: ${vehicle.name} for ${dto.company}${dto.destination ? ` to ${dto.destination}` : ''} (${diffDays} days)`,
-          items: [
-            {
-              description: `${vehicle.name} Charter - ${dto.destination || 'Rental'} (${dto.company})`,
-              quantity: diffDays,
-              unitPrice: dto.ratePerDay || Math.round(calculatedTotal / diffDays),
-              total: calculatedTotal,
-            },
-          ],
-        } as any, ctx);
+        const qte = await this.quotesService.create(
+          {
+            customerId: dto.customerId,
+            tourName: `${vehicle.name} Charter - ${dto.destination || 'Rental'} (${dto.company})`,
+            totalPrice: calculatedTotal,
+            currency: dto.currency || 'GHS',
+            validUntil: end.toISOString(),
+            notes: `Charter Quotation: ${vehicle.name} for ${dto.company}${dto.destination ? ` to ${dto.destination}` : ''} (${diffDays} days)`,
+            items: [
+              {
+                description: `${vehicle.name} Charter - ${dto.destination || 'Rental'} (${dto.company})`,
+                quantity: diffDays,
+                unitPrice: dto.ratePerDay || Math.round(calculatedTotal / diffDays),
+                total: calculatedTotal,
+              },
+            ],
+          } as any,
+          ctx,
+        );
 
         quoteId = qte.id;
         quoteNumber = qte.quoteNumber;
@@ -174,27 +181,27 @@ export class FleetService {
 
     const booking = await this.fleetBooking.create({
       data: {
-        company:       dto.company,
-        destination:   dto.destination,
-        startDate:     start,
-        endDate:       end,
-        vehicleId:     dto.vehicleId,
-        driverName:    dto.driverName,
-        driverId:      dto.driverId,
-        departTime:    dto.departTime,
-        paxCount:      dto.paxCount,
-        notes:         dto.notes,
-        color:         dto.color,
-        ratePerDay:    dto.ratePerDay,
-        totalAmount:   calculatedTotal > 0 ? calculatedTotal : undefined,
-        currency:      dto.currency || 'GHS',
-        invoiceId:     invoiceId,
+        company: dto.company,
+        destination: dto.destination,
+        startDate: start,
+        endDate: end,
+        vehicleId: dto.vehicleId,
+        driverName: dto.driverName,
+        driverId: dto.driverId,
+        departTime: dto.departTime,
+        paxCount: dto.paxCount,
+        notes: dto.notes,
+        color: dto.color,
+        ratePerDay: dto.ratePerDay,
+        totalAmount: calculatedTotal > 0 ? calculatedTotal : undefined,
+        currency: dto.currency || 'GHS',
+        invoiceId: invoiceId,
         invoiceNumber: invoiceNumber,
-        quoteId:       quoteId,
-        quoteNumber:   quoteNumber,
-        customerId:    dto.customerId,
+        quoteId: quoteId,
+        quoteNumber: quoteNumber,
+        customerId: dto.customerId,
         paymentStatus: dto.paymentStatus || 'UNPAID',
-        createdById:   ctx.userId,
+        createdById: ctx.userId,
       },
       include: { vehicle: { select: { id: true, name: true, registrationNo: true } } },
     });
@@ -206,8 +213,8 @@ export class FleetService {
       entityId: booking.id,
       after: { company: booking.company, vehicleId: booking.vehicleId, invoiceNumber, quoteNumber },
       ipAddress: ctx.ipAddress,
-      userAgent:  ctx.userAgent,
-      requestId:  ctx.requestId,
+      userAgent: ctx.userAgent,
+      requestId: ctx.requestId,
     });
 
     return booking;
@@ -219,23 +226,30 @@ export class FleetService {
     if (params.customerId) where.customerId = params.customerId;
     if (params.from || params.to) {
       where.AND = [
-        ...(params.from ? [{ endDate:   { gte: new Date(params.from) } }] : []),
-        ...(params.to   ? [{ startDate: { lte: new Date(params.to)   } }] : []),
+        ...(params.from ? [{ endDate: { gte: new Date(params.from) } }] : []),
+        ...(params.to ? [{ startDate: { lte: new Date(params.to) } }] : []),
       ];
     }
 
     const [items, total] = await Promise.all([
       this.fleetBooking.findMany({
         where,
-        skip:     (params.page - 1) * params.limit,
-        take:     params.limit,
-        orderBy:  { startDate: 'asc' },
-        include:  { vehicle: { select: { id: true, name: true, registrationNo: true } } },
+        skip: (params.page - 1) * params.limit,
+        take: params.limit,
+        orderBy: { startDate: 'asc' },
+        include: { vehicle: { select: { id: true, name: true, registrationNo: true } } },
       }),
       this.fleetBooking.count({ where }),
     ]);
 
-    return { items, total, page: params.page, limit: params.limit, totalPages: Math.ceil(total / params.limit), paginated: true as const };
+    return {
+      items,
+      total,
+      page: params.page,
+      limit: params.limit,
+      totalPages: Math.ceil(total / params.limit),
+      paginated: true as const,
+    };
   }
 
   async findById(id: string) {
@@ -249,41 +263,52 @@ export class FleetService {
 
   async update(id: string, dto: UpdateFleetBookingDto, ctx: RequestContext) {
     const existing = await this.fleetBooking.findUnique({ where: { id } });
-    if (!existing) throw new ApiNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, 'Fleet booking not found');
+    if (!existing)
+      throw new ApiNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, 'Fleet booking not found');
 
     const start = dto.startDate ? new Date(dto.startDate) : existing.startDate;
-    const end   = dto.endDate   ? new Date(dto.endDate)   : existing.endDate;
-    if (end < start) throw new ApiConflictException(ErrorCode.BAD_REQUEST, 'endDate must be on or after startDate');
+    const end = dto.endDate ? new Date(dto.endDate) : existing.endDate;
+    if (end < start)
+      throw new ApiConflictException(
+        ErrorCode.BAD_REQUEST,
+        'endDate must be on or after startDate',
+      );
 
-    const diffDays = Math.max(1, Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+    const diffDays = Math.max(
+      1,
+      Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1,
+    );
     const updatedRate = dto.ratePerDay !== undefined ? dto.ratePerDay : existing.ratePerDay;
-    const calculatedTotal = dto.totalAmount !== undefined
-      ? dto.totalAmount
-      : (updatedRate ? updatedRate * diffDays : existing.totalAmount);
+    const calculatedTotal =
+      dto.totalAmount !== undefined
+        ? dto.totalAmount
+        : updatedRate
+          ? updatedRate * diffDays
+          : existing.totalAmount;
 
     const updated = await this.fleetBooking.update({
       where: { id },
       data: {
-        company:       dto.company,
-        destination:   dto.destination,
-        startDate:     dto.startDate ? start : undefined,
-        endDate:       dto.endDate   ? end   : undefined,
-        vehicleId:     dto.vehicleId,
-        driverName:    dto.driverName,
-        driverId:      dto.driverId,
-        departTime:    dto.departTime,
-        paxCount:      dto.paxCount,
-        notes:         dto.notes,
-        color:         dto.color !== undefined ? dto.color : existing.color,
-        ratePerDay:    updatedRate,
-        totalAmount:   calculatedTotal,
-        currency:      dto.currency !== undefined ? dto.currency : existing.currency,
+        company: dto.company,
+        destination: dto.destination,
+        startDate: dto.startDate ? start : undefined,
+        endDate: dto.endDate ? end : undefined,
+        vehicleId: dto.vehicleId,
+        driverName: dto.driverName,
+        driverId: dto.driverId,
+        departTime: dto.departTime,
+        paxCount: dto.paxCount,
+        notes: dto.notes,
+        color: dto.color !== undefined ? dto.color : existing.color,
+        ratePerDay: updatedRate,
+        totalAmount: calculatedTotal,
+        currency: dto.currency !== undefined ? dto.currency : existing.currency,
         paymentStatus: dto.paymentStatus !== undefined ? dto.paymentStatus : existing.paymentStatus,
-        quoteId:       dto.quoteId !== undefined ? dto.quoteId : existing.quoteId,
-        quoteNumber:   dto.quoteNumber !== undefined ? dto.quoteNumber : existing.quoteNumber,
-        invoiceId:     dto.invoiceId !== undefined ? dto.invoiceId : existing.invoiceId,
+        quoteId: dto.quoteId !== undefined ? dto.quoteId : existing.quoteId,
+        quoteNumber: dto.quoteNumber !== undefined ? dto.quoteNumber : existing.quoteNumber,
+        invoiceId: dto.invoiceId !== undefined ? dto.invoiceId : existing.invoiceId,
         invoiceNumber: dto.invoiceNumber !== undefined ? dto.invoiceNumber : existing.invoiceNumber,
-        customerId:    dto.customerId !== undefined ? dto.customerId : existing.customerId,
+        customerId: dto.customerId !== undefined ? dto.customerId : existing.customerId,
       },
       include: { vehicle: { select: { id: true, name: true, registrationNo: true } } },
     });
@@ -294,10 +319,10 @@ export class FleetService {
       entityType: 'FleetBooking',
       entityId: id,
       before: { company: existing.company },
-      after:  { company: updated.company },
+      after: { company: updated.company },
       ipAddress: ctx.ipAddress,
-      userAgent:  ctx.userAgent,
-      requestId:  ctx.requestId,
+      userAgent: ctx.userAgent,
+      requestId: ctx.requestId,
     });
 
     return updated;
@@ -305,7 +330,8 @@ export class FleetService {
 
   async remove(id: string, ctx: RequestContext) {
     const existing = await this.fleetBooking.findUnique({ where: { id } });
-    if (!existing) throw new ApiNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, 'Fleet booking not found');
+    if (!existing)
+      throw new ApiNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, 'Fleet booking not found');
 
     await this.fleetBooking.delete({ where: { id } });
 
@@ -316,8 +342,8 @@ export class FleetService {
       entityId: id,
       before: { company: existing.company },
       ipAddress: ctx.ipAddress,
-      userAgent:  ctx.userAgent,
-      requestId:  ctx.requestId,
+      userAgent: ctx.userAgent,
+      requestId: ctx.requestId,
     });
 
     return { success: true };
@@ -333,10 +359,7 @@ export class FleetService {
       this.prisma.driver.count({ where: { isActive: true } }),
       this.fleetBooking.findMany({
         where: {
-          AND: [
-            { endDate:   { gte: from } },
-            { startDate: { lte: to } },
-          ],
+          AND: [{ endDate: { gte: from } }, { startDate: { lte: to } }],
         },
         select: {
           id: true,
@@ -349,19 +372,21 @@ export class FleetService {
       }),
       this.fleetBooking.findMany({
         where: {
-          AND: [
-            { startDate: { lte: today } },
-            { endDate:   { gte: today } },
-          ],
+          AND: [{ startDate: { lte: today } }, { endDate: { gte: today } }],
         },
         select: { vehicleId: true, driverName: true },
       }),
     ]);
 
     const activeBusesToday = new Set(todayActiveBookings.map((b: any) => b.vehicleId)).size;
-    const activeDriversToday = new Set(todayActiveBookings.map((b: any) => b.driverName).filter(Boolean)).size;
+    const activeDriversToday = new Set(
+      todayActiveBookings.map((b: any) => b.driverName).filter(Boolean),
+    ).size;
 
-    const totalRevenue = monthBookings.reduce((sum: number, b: any) => sum + (Number(b.totalAmount) || 0), 0);
+    const totalRevenue = monthBookings.reduce(
+      (sum: number, b: any) => sum + (Number(b.totalAmount) || 0),
+      0,
+    );
     const paidRevenue = monthBookings
       .filter((b: any) => b.paymentStatus === 'PAID')
       .reduce((sum: number, b: any) => sum + (Number(b.totalAmount) || 0), 0);

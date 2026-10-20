@@ -16,7 +16,11 @@ export class FleetController {
 
   @Post()
   @RequirePermissions(Permission.BOOKING_CREATE)
-  create(@Body() dto: CreateFleetBookingDto, @Req() req: Request, @CurrentUser('id') userId: string) {
+  create(
+    @Body() dto: CreateFleetBookingDto,
+    @Req() req: Request,
+    @CurrentUser('id') userId: string,
+  ) {
     return this.fleetService.create(dto, toRequestContext(req, userId));
   }
 
@@ -31,8 +35,8 @@ export class FleetController {
     @Query('to') to?: string,
   ) {
     return this.fleetService.findAll({
-      page:      parseInt(page, 10) || 1,
-      limit:     parseInt(limit, 10) || 200,
+      page: parseInt(page, 10) || 1,
+      limit: parseInt(limit, 10) || 200,
       vehicleId,
       customerId,
       from,
@@ -44,7 +48,7 @@ export class FleetController {
   @RequirePermissions(Permission.BOOKING_VIEW)
   getSummary(@Query('year') year?: string, @Query('month') month?: string) {
     const y = parseInt(year || '', 10) || new Date().getFullYear();
-    const m = parseInt(month || '', 10) || (new Date().getMonth() + 1);
+    const m = parseInt(month || '', 10) || new Date().getMonth() + 1;
     return this.fleetService.getSummary(y, m);
   }
 
@@ -56,7 +60,12 @@ export class FleetController {
 
   @Patch(':id')
   @RequirePermissions(Permission.BOOKING_UPDATE)
-  update(@Param('id') id: string, @Body() dto: UpdateFleetBookingDto, @Req() req: Request, @CurrentUser('id') userId: string) {
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateFleetBookingDto,
+    @Req() req: Request,
+    @CurrentUser('id') userId: string,
+  ) {
     return this.fleetService.update(id, dto, toRequestContext(req, userId));
   }
 

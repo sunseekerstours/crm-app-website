@@ -104,7 +104,18 @@ export class ToursService {
         orderBy: { createdAt: 'desc' },
         include: {
           destinations: {
-            select: { destination: { select: { id: true, name: true, slug: true, country: true, region: true, coverImage: true } } },
+            select: {
+              destination: {
+                select: {
+                  id: true,
+                  name: true,
+                  slug: true,
+                  country: true,
+                  region: true,
+                  coverImage: true,
+                },
+              },
+            },
           },
           pricing: { orderBy: { price: 'asc' } },
           _count: { select: { days: true } },
@@ -165,8 +176,14 @@ export class ToursService {
         videoUrl: dto.videoUrl,
         currency: dto.currency,
         basePrice: dto.basePrice,
-        startDate: dto.startDate !== undefined ? (dto.startDate ? new Date(dto.startDate) : null) : undefined,
-        endDate: dto.endDate !== undefined ? (dto.endDate ? new Date(dto.endDate) : null) : undefined,
+        startDate:
+          dto.startDate !== undefined
+            ? dto.startDate
+              ? new Date(dto.startDate)
+              : null
+            : undefined,
+        endDate:
+          dto.endDate !== undefined ? (dto.endDate ? new Date(dto.endDate) : null) : undefined,
         availabilityNote: dto.availabilityNote,
         status: dto.status,
         ...(dto.destinationIds !== undefined
@@ -306,14 +323,19 @@ export class ToursService {
   }
 }
 
-function toPricingData(p: CreateTourPricingDto, defaultCurrency?: string): Prisma.TourPricingCreateWithoutTourInput {
+function toPricingData(
+  p: CreateTourPricingDto,
+  defaultCurrency?: string,
+): Prisma.TourPricingCreateWithoutTourInput {
   return {
     name: p.name,
     persons: p.persons ?? 1,
     price: p.price,
     currency: p.currency || defaultCurrency || 'USD',
-    discountPercent: p.discountPercent !== undefined && p.discountPercent !== null ? p.discountPercent : undefined,
-    discountPrice: p.discountPrice !== undefined && p.discountPrice !== null ? p.discountPrice : undefined,
+    discountPercent:
+      p.discountPercent !== undefined && p.discountPercent !== null ? p.discountPercent : undefined,
+    discountPrice:
+      p.discountPrice !== undefined && p.discountPrice !== null ? p.discountPrice : undefined,
     isCustom: p.isCustom ?? false,
     note: p.note,
   };

@@ -270,11 +270,7 @@ export const SYSTEM_ROLES: RolePreset[] = [
     name: 'TOUR_GUIDE',
     description: 'Limited mobile access',
     isSystem: true,
-    permissions: [
-      Permission.CUSTOMER_VIEW,
-      Permission.BOOKING_VIEW,
-      Permission.NOTIFICATION_VIEW,
-    ],
+    permissions: [Permission.CUSTOMER_VIEW, Permission.BOOKING_VIEW, Permission.NOTIFICATION_VIEW],
   },
   {
     name: 'DRIVER',

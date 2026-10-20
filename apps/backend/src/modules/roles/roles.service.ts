@@ -281,7 +281,10 @@ export class RolesService {
   }
 
   private normalizeName(raw: string): string {
-    const name = raw.trim().toUpperCase().replace(/[\s-]+/g, '_');
+    const name = raw
+      .trim()
+      .toUpperCase()
+      .replace(/[\s-]+/g, '_');
     if (!NAME_PATTERN.test(name)) {
       throw new ApiBadRequestException(
         ErrorCode.VALIDATION_ERROR,

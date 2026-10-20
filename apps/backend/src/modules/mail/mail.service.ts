@@ -243,7 +243,10 @@ export class MailService implements OnModuleInit {
    */
   async sendBookingConfirmation(data: BookingEmailData): Promise<boolean> {
     const subject = `Booking Confirmation - Ref: ${data.bookingReference}`;
-    const amountStr = data.totalAmount != null ? `${data.currency || 'USD'} ${data.totalAmount.toLocaleString()}` : '';
+    const amountStr =
+      data.totalAmount != null
+        ? `${data.currency || 'USD'} ${data.totalAmount.toLocaleString()}`
+        : '';
 
     const contentHtml = `
       <p style="font-size: 15px; color: #334155; line-height: 1.6;">
@@ -258,21 +261,33 @@ export class MailService implements OnModuleInit {
             <td style="padding: 8px 0; color: #64748b;">Booking Reference:</td>
             <td style="padding: 8px 0; color: #0f172a; font-weight: 600; text-align: right;">${this.escapeHtml(data.bookingReference)}</td>
           </tr>
-          ${data.tourTitle ? `
+          ${
+            data.tourTitle
+              ? `
           <tr>
             <td style="padding: 8px 0; color: #64748b;">Tour / Package:</td>
             <td style="padding: 8px 0; color: #0f172a; font-weight: 600; text-align: right;">${this.escapeHtml(data.tourTitle)}</td>
-          </tr>` : ''}
-          ${data.startDate ? `
+          </tr>`
+              : ''
+          }
+          ${
+            data.startDate
+              ? `
           <tr>
             <td style="padding: 8px 0; color: #64748b;">Departure Date:</td>
             <td style="padding: 8px 0; color: #0f172a; font-weight: 600; text-align: right;">${this.escapeHtml(data.startDate)}</td>
-          </tr>` : ''}
-          ${amountStr ? `
+          </tr>`
+              : ''
+          }
+          ${
+            amountStr
+              ? `
           <tr style="border-top: 1px solid #cbd5e1;">
             <td style="padding: 12px 0 4px; color: #0f172a; font-weight: 600;">Total Amount:</td>
             <td style="padding: 12px 0 4px; color: #ea580c; font-weight: 700; font-size: 16px; text-align: right;">${amountStr}</td>
-          </tr>` : ''}
+          </tr>`
+              : ''
+          }
         </table>
       </div>
       <p style="font-size: 14px; color: #64748b; line-height: 1.6;">
@@ -318,11 +333,15 @@ export class MailService implements OnModuleInit {
             <td style="padding: 8px 0; color: #64748b;">Status:</td>
             <td style="padding: 8px 0; color: #0f172a; font-weight: 600; text-align: right;">${this.escapeHtml(data.status)}</td>
           </tr>
-          ${data.dueDate ? `
+          ${
+            data.dueDate
+              ? `
           <tr>
             <td style="padding: 8px 0; color: #64748b;">Due Date:</td>
             <td style="padding: 8px 0; color: #0f172a; font-weight: 600; text-align: right;">${this.escapeHtml(data.dueDate)}</td>
-          </tr>` : ''}
+          </tr>`
+              : ''
+          }
           <tr style="border-top: 1px solid #cbd5e1;">
             <td style="padding: 12px 0 4px; color: #0f172a; font-weight: 600;">Amount:</td>
             <td style="padding: 12px 0 4px; color: #0f172a; font-weight: 700; font-size: 16px; text-align: right;">${amountStr}</td>

@@ -69,7 +69,10 @@ export class JetpackCrmService {
   ) {
     const jetpack = this.config.get<AppConfig['jetpackCrm']>('jetpackCrm');
     this.enabled = jetpack?.enabled ?? false;
-    this.endpoint = (jetpack?.endpoint ?? 'https://sunseekerstours.com/zbs_api/').replace(/\/?$/, '/');
+    this.endpoint = (jetpack?.endpoint ?? 'https://sunseekerstours.com/zbs_api/').replace(
+      /\/?$/,
+      '/',
+    );
     this.apiKey = jetpack?.apiKey ?? '';
     this.apiSecret = jetpack?.apiSecret ?? '';
     this.syncLimit = jetpack?.syncLimit ?? 5000;
@@ -101,7 +104,10 @@ export class JetpackCrmService {
     return require('crypto').timingSafeEqual(a, b);
   }
 
-  private buildUrl(path: string, extraParams: Record<string, string | number | boolean | undefined> = {}): string {
+  private buildUrl(
+    path: string,
+    extraParams: Record<string, string | number | boolean | undefined> = {},
+  ): string {
     const cleanPath = path.replace(/^\//, '');
     const url = new URL(cleanPath, this.endpoint);
     url.searchParams.set('api_key', this.apiKey);
@@ -227,7 +233,9 @@ export class JetpackCrmService {
   /**
    * List raw customers from Jetpack CRM
    */
-  async getCustomers(params: { page?: number; perpage?: number; order?: 'ASC' | 'DESC' } = {}): Promise<any> {
+  async getCustomers(
+    params: { page?: number; perpage?: number; order?: 'ASC' | 'DESC' } = {},
+  ): Promise<any> {
     return this.request('customers/', 'GET', undefined, params);
   }
 
@@ -251,7 +259,9 @@ export class JetpackCrmService {
     }
 
     try {
-      this.logger.debug(`Syncing contact to Jetpack CRM: ${contact.email} (${contact.fname} ${contact.lname})`);
+      this.logger.debug(
+        `Syncing contact to Jetpack CRM: ${contact.email} (${contact.fname} ${contact.lname})`,
+      );
       const {
         email,
         fname = '',
@@ -287,7 +297,9 @@ export class JetpackCrmService {
       });
 
       const contactId = res?.id || res?.data?.id;
-      this.logger.log(`Successfully synced contact ${contact.email} to Jetpack CRM (ID: ${contactId ?? 'updated'})`);
+      this.logger.log(
+        `Successfully synced contact ${contact.email} to Jetpack CRM (ID: ${contactId ?? 'updated'})`,
+      );
 
       return {
         success: true,
@@ -329,7 +341,9 @@ export class JetpackCrmService {
       };
     }
 
-    this.logger.log(`[Jetpack Sync] Starting import of contacts from Jetpack CRM (limit: ${limit})...`);
+    this.logger.log(
+      `[Jetpack Sync] Starting import of contacts from Jetpack CRM (limit: ${limit})...`,
+    );
 
     // The customers endpoint is paginated; walk pages until the source is
     // exhausted or the run limit is reached, otherwise a large CRM silently
@@ -377,7 +391,9 @@ export class JetpackCrmService {
       }
       truncated = truncated || rawList.length >= limit;
     } catch (err: any) {
-      this.logger.warn(`[Jetpack Sync] Remote API unreachable or returned error: ${err.message}. Checking snapshot CSV...`);
+      this.logger.warn(
+        `[Jetpack Sync] Remote API unreachable or returned error: ${err.message}. Checking snapshot CSV...`,
+      );
     }
 
     // If remote list was empty or unreachable, fall back to snapshot CSV
@@ -402,7 +418,11 @@ export class JetpackCrmService {
       try {
         const rawEmail = (c.email || '').trim().toLowerCase();
         const fname = (c.fname || c.fullname?.split(' ')[0] || 'Valued').trim();
-        const lname = (c.lname || c.fullname?.split(' ').slice(1).join(' ') || (rawEmail ? rawEmail.split('@')[0] : 'Client')).trim();
+        const lname = (
+          c.lname ||
+          c.fullname?.split(' ').slice(1).join(' ') ||
+          (rawEmail ? rawEmail.split('@')[0] : 'Client')
+        ).trim();
         const phone = (c.mobtel || c.worktel || c.hometel || '').trim();
 
         // Contacts without an email address cannot be matched on subsequent runs
@@ -428,10 +448,7 @@ export class JetpackCrmService {
         // 1. Check if customer already exists in our DB
         let customer = await this.prisma.customer.findFirst({
           where: {
-            OR: [
-              ...(rawEmail ? [{ email: rawEmail }] : []),
-              ...(phone ? [{ phone }] : []),
-            ],
+            OR: [...(rawEmail ? [{ email: rawEmail }] : []), ...(phone ? [{ phone }] : [])],
           },
         });
 
@@ -441,7 +458,12 @@ export class JetpackCrmService {
             ? (c.tags as string).split(/[,|;]/)
             : [];
         const cleanContactTags = contactTags
-          .map((t: string) => String(t).replace(/\s+/g, ' ').trim().replace(/^["']|["']$/g, ''))
+          .map((t: string) =>
+            String(t)
+              .replace(/\s+/g, ' ')
+              .trim()
+              .replace(/^["']|["']$/g, ''),
+          )
           .filter((t: string) => t && t.length > 1 && !/^\d{7,}$/.test(t) && !t.includes('@'));
 
         const mergedTags = Array.from(
@@ -477,7 +499,9 @@ export class JetpackCrmService {
             departure ? `📅 Departure Date: ${departure}` : null,
             passengers ? `👥 Passengers: ${passengers}` : null,
             contactNotes ? `💬 Notes: ${contactNotes}` : null,
-          ].filter(Boolean).join('\n');
+          ]
+            .filter(Boolean)
+            .join('\n');
 
           if (noteLines) {
             await this.prisma.note.create({
@@ -528,7 +552,8 @@ export class JetpackCrmService {
                 tags: mergedTags,
                 notes: {
                   create: {
-                    content: `Inbound WordPress Lead (WP ID #${c.id})\n` +
+                    content:
+                      `Inbound WordPress Lead (WP ID #${c.id})\n` +
                       (tour ? `• Tour: ${tour}\n` : '') +
                       (departure ? `• Departure: ${departure}\n` : '') +
                       (passengers ? `• Guests: ${passengers}\n` : '') +
@@ -573,7 +598,9 @@ export class JetpackCrmService {
    * Invoked in real time when any form on WordPress (Elementor, CF7, WPForms, Jetpack) is submitted.
    */
   async handleWordPressWebhook(payload: Record<string, any>): Promise<any> {
-    this.logger.log(`[WordPress Webhook] Received form submission: ${JSON.stringify(payload).slice(0, 300)}`);
+    this.logger.log(
+      `[WordPress Webhook] Received form submission: ${JSON.stringify(payload).slice(0, 300)}`,
+    );
 
     // Flexible extraction from various WordPress form plugins
     const email = (
@@ -585,7 +612,9 @@ export class JetpackCrmService {
       payload.fields?.email ||
       payload.data?.email ||
       ''
-    ).trim().toLowerCase();
+    )
+      .trim()
+      .toLowerCase();
 
     if (!email) {
       return { success: false, message: 'No valid email address found in form submission' };
@@ -686,7 +715,8 @@ export class JetpackCrmService {
     // 1. Run Duplicate Detection
     const dup = await this.salesAutomation.detectDuplicate({ email, phone });
 
-    const rawPayloadTags = payload.tags || payload.tag || payload['data-tags'] || payload.data_tags || [];
+    const rawPayloadTags =
+      payload.tags || payload.tag || payload['data-tags'] || payload.data_tags || [];
     const payloadTagsList = Array.isArray(rawPayloadTags)
       ? rawPayloadTags
       : typeof rawPayloadTags === 'string'
@@ -703,7 +733,12 @@ export class JetpackCrmService {
     ).trim();
 
     const cleanPayloadTags = payloadTagsList
-      .map((t: any) => String(t).replace(/\s+/g, ' ').trim().replace(/^["']|["']$/g, ''))
+      .map((t: any) =>
+        String(t)
+          .replace(/\s+/g, ' ')
+          .trim()
+          .replace(/^["']|["']$/g, ''),
+      )
       .filter((t: string) => t && t.length > 1 && !/^\d{7,}$/.test(t) && !t.includes('@'));
 
     const inboundTags = Array.from(
@@ -758,8 +793,12 @@ export class JetpackCrmService {
       departure ? `• Travel Date: ${departure}` : null,
       guests ? `• Guests / Passengers: ${guests}` : null,
       message ? `• Message: ${message}` : null,
-      dup.isDuplicate ? `⚠️ Match found with existing customer profile (${dup.existingCustomerName})` : null,
-    ].filter(Boolean).join('\n');
+      dup.isDuplicate
+        ? `⚠️ Match found with existing customer profile (${dup.existingCustomerName})`
+        : null,
+    ]
+      .filter(Boolean)
+      .join('\n');
 
     const lead = await this.prisma.lead.create({
       data: {
@@ -789,16 +828,18 @@ export class JetpackCrmService {
     });
 
     // 5. Send Telegram alert with custom header
-    await this.telegram.sendAlert(
-      `📥 <b>NEW WORDPRESS FORM SUBMISSION</b>\n` +
-      `━━━━━━━━━━━━━━━━━━━━━━\n` +
-      `👤 <b>Name:</b> ${fname} ${lname}\n` +
-      `📧 <b>Email:</b> ${email}\n` +
-      `📞 <b>Phone:</b> ${phone || 'Not provided'}\n` +
-      `🎒 <b>Tour/Interest:</b> ${tour || 'General Inquiry'}\n` +
-      (message ? `💬 <b>Message:</b> <i>"${message.slice(0, 150)}"</i>\n` : '') +
-      `👉 <a href="http://localhost:3001/leads">View in Staff CRM</a>`
-    ).catch(() => {});
+    await this.telegram
+      .sendAlert(
+        `📥 <b>NEW WORDPRESS FORM SUBMISSION</b>\n` +
+          `━━━━━━━━━━━━━━━━━━━━━━\n` +
+          `👤 <b>Name:</b> ${fname} ${lname}\n` +
+          `📧 <b>Email:</b> ${email}\n` +
+          `📞 <b>Phone:</b> ${phone || 'Not provided'}\n` +
+          `🎒 <b>Tour/Interest:</b> ${tour || 'General Inquiry'}\n` +
+          (message ? `💬 <b>Message:</b> <i>"${message.slice(0, 150)}"</i>\n` : '') +
+          `👉 <a href="http://localhost:3001/leads">View in Staff CRM</a>`,
+      )
+      .catch(() => {});
 
     // 6. Asynchronously push contact back to Jetpack CRM if not already from there
     void this.syncContact({
@@ -909,12 +950,13 @@ export class JetpackCrmService {
           (col.homeTel !== -1 ? r[col.homeTel] : ''),
         to: (col.to !== -1 ? r[col.to] : '') || (col.from !== -1 ? r[col.from] : ''),
         departure: col.departure !== -1 ? r[col.departure] : '',
-        tags: col.tags !== -1 && r[col.tags]
-          ? r[col.tags]
-              .split(/[,|;]/)
-              .map((t: string) => t.trim().replace(/^["']|["']$/g, ''))
-              .filter((t: string) => t && t.length > 1 && !/^\d{7,}$/.test(t) && !t.includes('@'))
-          : [],
+        tags:
+          col.tags !== -1 && r[col.tags]
+            ? r[col.tags]
+                .split(/[,|;]/)
+                .map((t: string) => t.trim().replace(/^["']|["']$/g, ''))
+                .filter((t: string) => t && t.length > 1 && !/^\d{7,}$/.test(t) && !t.includes('@'))
+            : [],
       }));
     } catch (err: any) {
       this.logger.warn(`Failed to read snapshot CSV: ${err.message}`);
@@ -938,4 +980,3 @@ export class JetpackCrmService {
     return cleanMadeUpFinancials(this.prisma as any);
   }
 }
-

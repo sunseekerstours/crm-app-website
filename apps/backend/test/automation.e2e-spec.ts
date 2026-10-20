@@ -29,8 +29,7 @@ describe('Automation & Notifications Task 9 (e2e)', () => {
     return r.set('Authorization', 'Bearer ' + token);
   }
 
-  const daysFromNow = (days: number) =>
-    new Date(Date.now() + days * 86400000).toISOString();
+  const daysFromNow = (days: number) => new Date(Date.now() + days * 86400000).toISOString();
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -146,7 +145,9 @@ describe('Automation & Notifications Task 9 (e2e)', () => {
     const first = list.body.data.items[0];
     expect(first.readAt).toBeNull();
 
-    const read = await auth(agent().patch(path('/notifications/' + first.id + '/read'))).expect(200);
+    const read = await auth(agent().patch(path('/notifications/' + first.id + '/read'))).expect(
+      200,
+    );
     expect(read.body.data.readAt).toBeTruthy();
 
     const all = await auth(agent().post(path('/notifications/read-all'))).expect(201);

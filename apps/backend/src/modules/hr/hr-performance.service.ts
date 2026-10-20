@@ -51,11 +51,7 @@ export class HrPerformanceService {
     return performance;
   }
 
-  async findAll(params: {
-    page: number;
-    limit: number;
-    employeeId?: string;
-  }) {
+  async findAll(params: { page: number; limit: number; employeeId?: string }) {
     const where: Prisma.PerformanceReviewWhereInput = {};
     if (params.employeeId) where.employeeId = params.employeeId;
 
@@ -86,20 +82,14 @@ export class HrPerformanceService {
       include: { employee: { select: { id: true, firstName: true, lastName: true } } },
     });
     if (!performance)
-      throw new ApiNotFoundException(
-        ErrorCode.RESOURCE_NOT_FOUND,
-        'Performance review not found',
-      );
+      throw new ApiNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, 'Performance review not found');
     return performance;
   }
 
   async update(id: string, dto: UpdatePerformanceDto, ctx: RequestContext) {
     const existing = await this.prisma.performanceReview.findUnique({ where: { id } });
     if (!existing)
-      throw new ApiNotFoundException(
-        ErrorCode.RESOURCE_NOT_FOUND,
-        'Performance review not found',
-      );
+      throw new ApiNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, 'Performance review not found');
 
     if (dto.employeeId && dto.employeeId !== existing.employeeId) {
       await this.assertEmployeeExists(dto.employeeId);
@@ -140,10 +130,7 @@ export class HrPerformanceService {
   async remove(id: string, ctx: RequestContext) {
     const existing = await this.prisma.performanceReview.findUnique({ where: { id } });
     if (!existing)
-      throw new ApiNotFoundException(
-        ErrorCode.RESOURCE_NOT_FOUND,
-        'Performance review not found',
-      );
+      throw new ApiNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, 'Performance review not found');
 
     await this.prisma.performanceReview.delete({ where: { id } });
 
@@ -164,10 +151,7 @@ export class HrPerformanceService {
   private async assertEmployeeExists(employeeId: string) {
     const employee = await this.prisma.employee.findUnique({ where: { id: employeeId } });
     if (!employee) {
-      throw new ApiBadRequestException(
-        ErrorCode.BAD_REQUEST,
-        'Associated employee not found',
-      );
+      throw new ApiBadRequestException(ErrorCode.BAD_REQUEST, 'Associated employee not found');
     }
   }
 }

@@ -99,7 +99,9 @@ describe('Public API + Website Task 11 (e2e)', () => {
   });
 
   it('returns a single published tour by slug including pricing', async () => {
-    const res = await agent().get(path('/public/tours/heritage-trails-' + stamp)).expect(200);
+    const res = await agent()
+      .get(path('/public/tours/heritage-trails-' + stamp))
+      .expect(200);
     expect(res.body.data.name).toBe('Heritage Trails ' + stamp);
     expect(res.body.data.basePrice).toBe(2000);
     expect(Array.isArray(res.body.data.pricing)).toBe(true);
@@ -107,7 +109,9 @@ describe('Public API + Website Task 11 (e2e)', () => {
   });
 
   it('404s for a tour that is not ACTIVE or does not exist', async () => {
-    await agent().get(path('/public/tours/does-not-exist-' + stamp)).expect(404);
+    await agent()
+      .get(path('/public/tours/does-not-exist-' + stamp))
+      .expect(404);
   });
 
   it('lists active destinations without authentication', async () => {

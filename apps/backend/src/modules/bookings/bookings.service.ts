@@ -114,7 +114,9 @@ export class BookingsService {
         take: params.limit,
         orderBy: { createdAt: 'desc' },
         include: {
-          customer: { select: { id: true, firstName: true, lastName: true, email: true, phone: true } },
+          customer: {
+            select: { id: true, firstName: true, lastName: true, email: true, phone: true },
+          },
           travelers: { include: { traveler: true } },
         },
       }),
@@ -135,7 +137,9 @@ export class BookingsService {
     const booking = await this.prisma.booking.findUnique({
       where: { id },
       include: {
-        customer: { select: { id: true, firstName: true, lastName: true, email: true, phone: true } },
+        customer: {
+          select: { id: true, firstName: true, lastName: true, email: true, phone: true },
+        },
         travelers: { include: { traveler: true } },
         invoices: true,
         payments: true,

@@ -33,7 +33,10 @@ export class InvoicesService {
 
     let calculatedAmount = dto.amount;
     if (calculatedAmount == null && Array.isArray(dto.items) && dto.items.length > 0) {
-      const subtotal = dto.items.reduce((sum, it) => sum + (Number(it.total) || (Number(it.quantity) * Number(it.unitPrice)) || 0), 0);
+      const subtotal = dto.items.reduce(
+        (sum, it) => sum + (Number(it.total) || Number(it.quantity) * Number(it.unitPrice) || 0),
+        0,
+      );
       const tax = Number(dto.tax) || 0;
       const discount = Number(dto.discount) || 0;
       calculatedAmount = Math.max(0, subtotal + tax - discount);
@@ -144,7 +147,10 @@ export class InvoicesService {
 
     let calculatedAmount = dto.amount;
     if (calculatedAmount == null && Array.isArray(dto.items) && dto.items.length > 0) {
-      const subtotal = dto.items.reduce((sum, it) => sum + (Number(it.total) || (Number(it.quantity) * Number(it.unitPrice)) || 0), 0);
+      const subtotal = dto.items.reduce(
+        (sum, it) => sum + (Number(it.total) || Number(it.quantity) * Number(it.unitPrice) || 0),
+        0,
+      );
       const tax = Number(dto.tax ?? existing.tax) || 0;
       const discount = Number(dto.discount ?? existing.discount) || 0;
       calculatedAmount = Math.max(0, subtotal + tax - discount);
@@ -298,6 +304,4 @@ export class InvoicesService {
     const seqStr = nextSeq.toString().padStart(3, '0');
     return `${prefix}${seqStr}${month}`;
   }
-  
-  
 }

@@ -75,7 +75,14 @@ export class DestinationsService {
           tours: {
             select: {
               tour: {
-                select: { id: true, name: true, slug: true, durationDays: true, status: true, coverImage: true },
+                select: {
+                  id: true,
+                  name: true,
+                  slug: true,
+                  durationDays: true,
+                  status: true,
+                  coverImage: true,
+                },
               },
             },
           },
@@ -102,7 +109,16 @@ export class DestinationsService {
         tours: {
           select: {
             tour: {
-              select: { id: true, name: true, slug: true, durationDays: true, status: true, coverImage: true, basePrice: true, currency: true },
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                durationDays: true,
+                status: true,
+                coverImage: true,
+                basePrice: true,
+                currency: true,
+              },
             },
           },
         },

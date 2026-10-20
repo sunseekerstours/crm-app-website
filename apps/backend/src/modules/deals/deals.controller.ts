@@ -47,7 +47,11 @@ export class DealsController {
 
   @Put('stages')
   @RequirePermissions(Permission.SETTINGS_UPDATE)
-  updateStages(@Body() body: { stages: any[] }, @Req() req: Request, @CurrentUser('id') userId: string) {
+  updateStages(
+    @Body() body: { stages: any[] },
+    @Req() req: Request,
+    @CurrentUser('id') userId: string,
+  ) {
     return this.dealsService.updateStages(body.stages || [], toRequestContext(req, userId));
   }
 

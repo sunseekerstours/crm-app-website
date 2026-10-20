@@ -1,11 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@app/prisma/prisma.service';
 import { AuditService } from '@app/modules/audit/audit.service';
-import {
-  ApiNotFoundException,
-  ApiBadRequestException,
-  ErrorCode,
-} from '@app/common/errors';
+import { ApiNotFoundException, ApiBadRequestException, ErrorCode } from '@app/common/errors';
 import { RequestContext } from '@app/common/request-context';
 import { CreateLeaveDto } from './dto/create-leave.dto';
 import { UpdateLeaveDto } from './dto/update-leave.dto';
@@ -53,12 +49,7 @@ export class HrLeaveService {
     return leave;
   }
 
-  async findAll(params: {
-    page: number;
-    limit: number;
-    employeeId?: string;
-    status?: string;
-  }) {
+  async findAll(params: { page: number; limit: number; employeeId?: string; status?: string }) {
     const where: Prisma.LeaveRequestWhereInput = {};
     if (params.employeeId) where.employeeId = params.employeeId;
     if (params.status) where.status = params.status as LeaveStatus;
@@ -142,8 +133,7 @@ export class HrLeaveService {
     if (!existing)
       throw new ApiNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, 'Leave request not found');
 
-    const approved =
-      dto.status === LeaveStatus.APPROVED || dto.status === LeaveStatus.REJECTED;
+    const approved = dto.status === LeaveStatus.APPROVED || dto.status === LeaveStatus.REJECTED;
 
     const updated = await this.prisma.leaveRequest.update({
       where: { id },

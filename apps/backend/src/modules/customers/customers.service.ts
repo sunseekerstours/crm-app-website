@@ -106,16 +106,22 @@ export class CustomersService {
     if (dto.followUpReminderDate) {
       const dueDate = new Date(dto.followUpReminderDate);
       if (!isNaN(dueDate.getTime())) {
-        const priority = dto.followUpReminderPriority && ['LOW', 'NORMAL', 'HIGH', 'URGENT'].includes(dto.followUpReminderPriority)
-          ? (dto.followUpReminderPriority as TaskPriority)
-          : TaskPriority.HIGH;
+        const priority =
+          dto.followUpReminderPriority &&
+          ['LOW', 'NORMAL', 'HIGH', 'URGENT'].includes(dto.followUpReminderPriority)
+            ? (dto.followUpReminderPriority as TaskPriority)
+            : TaskPriority.HIGH;
 
-        const reminderTitle = dto.followUpReminderTitle?.trim() || `Follow-up with ${customer.firstName} ${customer.lastName}`;
+        const reminderTitle =
+          dto.followUpReminderTitle?.trim() ||
+          `Follow-up with ${customer.firstName} ${customer.lastName}`;
 
         await this.prisma.task.create({
           data: {
             title: reminderTitle,
-            description: dto.notes ? `Customer Note: ${dto.notes.trim()}` : `Scheduled follow-up reminder for customer ${customer.firstName} ${customer.lastName}.`,
+            description: dto.notes
+              ? `Customer Note: ${dto.notes.trim()}`
+              : `Scheduled follow-up reminder for customer ${customer.firstName} ${customer.lastName}.`,
             dueDate,
             priority,
             status: TaskStatus.PENDING,

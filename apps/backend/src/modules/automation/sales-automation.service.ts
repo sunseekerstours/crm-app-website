@@ -60,10 +60,13 @@ export class SalesAutomationService {
   // ==========================================================================
   // AUTOMATION 11: Duplicate Customer/Lead Detection
   // ==========================================================================
-  async detectDuplicate(input: {
-    email?: string | null;
-    phone?: string | null;
-  }): Promise<{ isDuplicate: boolean; existingCustomerId?: string; existingCustomerName?: string; existingLeadId?: string; assignedStaffId?: string }> {
+  async detectDuplicate(input: { email?: string | null; phone?: string | null }): Promise<{
+    isDuplicate: boolean;
+    existingCustomerId?: string;
+    existingCustomerName?: string;
+    existingLeadId?: string;
+    assignedStaffId?: string;
+  }> {
     const email = input.email?.trim().toLowerCase();
     const cleanPhone = (input.phone || '').replace(/[\s\-\(\)\+]/g, '');
 
@@ -155,7 +158,8 @@ export class SalesAutomationService {
         activeSalesReps.sort((a, b) => a.assignedLeads.length - b.assignedLeads.length);
         const chosen = activeSalesReps[0];
         assignedUserId = chosen.id;
-        assignedUserName = `${chosen.firstName || ''} ${chosen.lastName || ''}`.trim() || chosen.email;
+        assignedUserName =
+          `${chosen.firstName || ''} ${chosen.lastName || ''}`.trim() || chosen.email;
 
         // Update the lead
         await this.prisma.lead.update({
@@ -163,7 +167,9 @@ export class SalesAutomationService {
           data: { assignedUserId },
         });
 
-        this.logger.log(`[Auto-Assignment] Lead ${lead.id} assigned to ${assignedUserName} (${chosen.id})`);
+        this.logger.log(
+          `[Auto-Assignment] Lead ${lead.id} assigned to ${assignedUserName} (${chosen.id})`,
+        );
       }
     } else if (assignedUserId) {
       const user = await this.prisma.user.findUnique({
@@ -202,23 +208,27 @@ export class SalesAutomationService {
     const sourceLabel = lead.source || 'Website Inquiry';
 
     if (assignedUserId) {
-      await this.notifications.dispatch({
-        userId: assignedUserId,
-        type: NotificationType.SYSTEM,
-        title: 'New Lead Assigned to You',
-        message: `${leadName} (${tourOrDest}) has been assigned to you.`,
-        entity: { type: 'LEAD', id: lead.id },
-      }).catch(() => {});
+      await this.notifications
+        .dispatch({
+          userId: assignedUserId,
+          type: NotificationType.SYSTEM,
+          title: 'New Lead Assigned to You',
+          message: `${leadName} (${tourOrDest}) has been assigned to you.`,
+          entity: { type: 'LEAD', id: lead.id },
+        })
+        .catch(() => {});
     }
 
     // Broadcast new inquiry to all other team members / managers so everyone has visibility
-    await this.notifications.broadcast({
-      type: NotificationType.SYSTEM,
-      title: '🚨 New Lead Received',
-      message: `${leadName} (${tourOrDest}) from ${sourceLabel}. ${assignedUserName ? `Assigned to ${assignedUserName}.` : 'Currently unassigned.'}`,
-      excludeUserIds: assignedUserId ? [assignedUserId] : [],
-      entity: { type: 'LEAD', id: lead.id },
-    }).catch(() => {});
+    await this.notifications
+      .broadcast({
+        type: NotificationType.SYSTEM,
+        title: '🚨 New Lead Received',
+        message: `${leadName} (${tourOrDest}) from ${sourceLabel}. ${assignedUserName ? `Assigned to ${assignedUserName}.` : 'Currently unassigned.'}`,
+        excludeUserIds: assignedUserId ? [assignedUserId] : [],
+        entity: { type: 'LEAD', id: lead.id },
+      })
+      .catch(() => {});
 
     // 4. Telegram Alert to Operations/Sales Team
     await this.telegram.sendNewLeadAlert({
@@ -317,11 +327,11 @@ export class SalesAutomationService {
 
     await this.telegram.sendAlert(
       `🎯 <b>LEAD QUALIFIED ➔ NEW OPPORTUNITY CREATED</b>\n` +
-      `━━━━━━━━━━━━━━━━━━━━━━\n` +
-      `💼 <b>Opportunity:</b> ${dealName}\n` +
-      `💰 <b>Estimated Value:</b> ${dealValue.toLocaleString()} ${currency}\n` +
-      `👤 <b>Rep:</b> ${lead.assignedUser?.firstName || 'Assigned Agent'}\n` +
-      `👉 <a href="http://localhost:3001/deals">View in CRM Pipeline</a>`
+        `━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `💼 <b>Opportunity:</b> ${dealName}\n` +
+        `💰 <b>Estimated Value:</b> ${dealValue.toLocaleString()} ${currency}\n` +
+        `👤 <b>Rep:</b> ${lead.assignedUser?.firstName || 'Assigned Agent'}\n` +
+        `👉 <a href="http://localhost:3001/deals">View in CRM Pipeline</a>`,
     );
 
     this.logger.log(`[Auto-Opportunity] Created deal ${deal.id} for qualified lead ${lead.id}`);
@@ -396,23 +406,27 @@ export class SalesAutomationService {
 
     // In-App Notification to salesperson
     if (deal.salespersonId) {
-      await this.notifications.dispatch({
-        userId: deal.salespersonId,
-        type: NotificationType.SYSTEM,
-        title: '🎉 Congratulations! Deal Won',
-        message: `Deal "${deal.name}" closed for ${Number(amount).toLocaleString()} ${currency}! Invoice ${invoice.invoiceNumber} created.`,
-        entity: { type: 'DEAL', id: deal.id },
-      }).catch(() => {});
+      await this.notifications
+        .dispatch({
+          userId: deal.salespersonId,
+          type: NotificationType.SYSTEM,
+          title: '🎉 Congratulations! Deal Won',
+          message: `Deal "${deal.name}" closed for ${Number(amount).toLocaleString()} ${currency}! Invoice ${invoice.invoiceNumber} created.`,
+          entity: { type: 'DEAL', id: deal.id },
+        })
+        .catch(() => {});
     }
 
     // Broadcast Deal Won celebration to all team members
-    await this.notifications.broadcast({
-      type: NotificationType.SYSTEM,
-      title: `🎉 Deal Won: ${deal.name}`,
-      message: `Closed by ${repName || 'Sales Team'} for ${Number(amount).toLocaleString()} ${currency}. Invoice ${invoice.invoiceNumber} generated.`,
-      excludeUserIds: deal.salespersonId ? [deal.salespersonId] : [],
-      entity: { type: 'DEAL', id: deal.id },
-    }).catch(() => {});
+    await this.notifications
+      .broadcast({
+        type: NotificationType.SYSTEM,
+        title: `🎉 Deal Won: ${deal.name}`,
+        message: `Closed by ${repName || 'Sales Team'} for ${Number(amount).toLocaleString()} ${currency}. Invoice ${invoice.invoiceNumber} generated.`,
+        excludeUserIds: deal.salespersonId ? [deal.salespersonId] : [],
+        entity: { type: 'DEAL', id: deal.id },
+      })
+      .catch(() => {});
 
     await this.telegram.sendDealWonAlert({
       id: deal.id,
@@ -502,12 +516,14 @@ export class SalesAutomationService {
     }
 
     // 4. In-App Notification Broadcast to Team & Management
-    await this.notifications.broadcast({
-      type: NotificationType.SYSTEM,
-      title: '💰 Payment Confirmed',
-      message: `Payment of ${Number(payment.amount).toLocaleString()} ${payment.currency} confirmed for ${customerName} (Receipt: ${receiptNumber}).`,
-      entity: { type: 'PAYMENT', id: payment.id },
-    }).catch(() => {});
+    await this.notifications
+      .broadcast({
+        type: NotificationType.SYSTEM,
+        title: '💰 Payment Confirmed',
+        message: `Payment of ${Number(payment.amount).toLocaleString()} ${payment.currency} confirmed for ${customerName} (Receipt: ${receiptNumber}).`,
+        entity: { type: 'PAYMENT', id: payment.id },
+      })
+      .catch(() => {});
 
     // 5. Send Telegram Alert
     await this.telegram.sendPaymentReceivedAlert({
@@ -530,9 +546,15 @@ export class SalesAutomationService {
     let quoteCount = 0;
 
     // 1. Sales Inactivity Watchdog (Automation #12)
-    const isWatchdogEnabled = await this.isRuleEnabled('automation_sales_inactivity_escalation', true);
+    const isWatchdogEnabled = await this.isRuleEnabled(
+      'automation_sales_inactivity_escalation',
+      true,
+    );
     if (isWatchdogEnabled) {
-      const escalateHours = await this.getNumericSetting('automation_inactivity_escalate_hours', 48);
+      const escalateHours = await this.getNumericSetting(
+        'automation_inactivity_escalate_hours',
+        48,
+      );
       const cutoffEscalate = new Date(Date.now() - escalateHours * 60 * 60 * 1000);
 
       // Find active leads in NEW or CONTACTED with no update past cutoff (both assigned & unassigned)
@@ -560,21 +582,25 @@ export class SalesAutomationService {
         });
 
         if (lead.assignedUserId) {
-          await this.notifications.dispatch({
-            userId: lead.assignedUserId,
-            type: NotificationType.SYSTEM,
-            title: '⚠️ Inactivity SLA Alert',
-            message: `Lead ${leadName} has had no activity for over ${escalateHours} hours. Please update the status.`,
-            entity: { type: 'LEAD', id: lead.id },
-          }).catch(() => {});
+          await this.notifications
+            .dispatch({
+              userId: lead.assignedUserId,
+              type: NotificationType.SYSTEM,
+              title: '⚠️ Inactivity SLA Alert',
+              message: `Lead ${leadName} has had no activity for over ${escalateHours} hours. Please update the status.`,
+              entity: { type: 'LEAD', id: lead.id },
+            })
+            .catch(() => {});
         } else {
-          await this.notifications.broadcast({
-            type: NotificationType.SYSTEM,
-            title: '⚠️ Unassigned Inactive Lead',
-            message: `Lead ${leadName} has been pending for over ${escalateHours} hours without staff assignment.`,
-            roles: ['SUPER_ADMIN', 'ADMIN', 'MANAGER'],
-            entity: { type: 'LEAD', id: lead.id },
-          }).catch(() => {});
+          await this.notifications
+            .broadcast({
+              type: NotificationType.SYSTEM,
+              title: '⚠️ Unassigned Inactive Lead',
+              message: `Lead ${leadName} has been pending for over ${escalateHours} hours without staff assignment.`,
+              roles: ['SUPER_ADMIN', 'ADMIN', 'MANAGER'],
+              entity: { type: 'LEAD', id: lead.id },
+            })
+            .catch(() => {});
         }
         inactivityCount++;
       }

@@ -101,7 +101,12 @@ describe('Bookings & Payments (e2e)', () => {
     const customerId = await makeCustomer();
 
     const bookingRes = await auth(agent().post(path('/bookings')))
-      .send({ customerId, tourName: unique('Rainforest Expedition'), paxCount: 2, notes: 'Window seats' })
+      .send({
+        customerId,
+        tourName: unique('Rainforest Expedition'),
+        paxCount: 2,
+        notes: 'Window seats',
+      })
       .expect(201);
     const bookingId = bookingRes.body.data.id;
     createdIds.push(bookingId);

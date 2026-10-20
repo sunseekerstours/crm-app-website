@@ -136,7 +136,9 @@ export async function executeFinancialSync(prisma: PrismaClient): Promise<{
     const wb = xlsx.readFile(filePath);
 
     // Read Sheet1 (12-month summary)
-    const sheet1Data = xlsx.utils.sheet_to_json<any>(wb.Sheets[wb.SheetNames[0]] || wb.Sheets['Sheet1']);
+    const sheet1Data = xlsx.utils.sheet_to_json<any>(
+      wb.Sheets[wb.SheetNames[0]] || wb.Sheets['Sheet1'],
+    );
     const monthlyData: MonthlyFinancial[] = sheet1Data.map((row) => ({
       month: String(row['Month'] || '').trim(),
       seasonType: String(row['Season Type'] || 'Standard').trim(),
@@ -150,7 +152,9 @@ export async function executeFinancialSync(prisma: PrismaClient): Promise<{
     }));
 
     totalRevenue = monthlyData.reduce((acc, curr) => acc + curr.revenue, 0);
-    console.log(`[Financial Import] Verified ${monthlyData.length} monthly financial summary rows (Total Revenue: $${totalRevenue.toLocaleString()}).`);
+    console.log(
+      `[Financial Import] Verified ${monthlyData.length} monthly financial summary rows (Total Revenue: $${totalRevenue.toLocaleString()}).`,
+    );
   }
 
   return {

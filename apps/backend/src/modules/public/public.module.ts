@@ -10,4 +10,3 @@ import { PublicService } from './public.service';
   exports: [PublicService],
 })
 export class PublicModule {}
-

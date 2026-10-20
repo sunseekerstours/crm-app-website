@@ -3,7 +3,13 @@ import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '@app/prisma/prisma.service';
 import { AuditService } from '@app/modules/audit/audit.service';
-import { ApiBadRequestException, ApiConflictException, ApiForbiddenException, ApiNotFoundException, ErrorCode } from '@app/common/errors';
+import {
+  ApiBadRequestException,
+  ApiConflictException,
+  ApiForbiddenException,
+  ApiNotFoundException,
+  ErrorCode,
+} from '@app/common/errors';
 import { SUPER_ADMIN_ROLE, isSubsetOf, resolvePermissions } from '@app/common/rbac';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -151,7 +157,11 @@ export class UsersService {
     });
     if (!role) throw new ApiNotFoundException(ErrorCode.ROLE_NOT_FOUND, 'Role not found');
 
-    await this.assertCanAssign(meta, role.name, role.permissions.map((p) => p.permission.key));
+    await this.assertCanAssign(
+      meta,
+      role.name,
+      role.permissions.map((p) => p.permission.key),
+    );
 
     await this.prisma.userRole.upsert({
       where: { userId_roleId: { userId, roleId: dto.roleId } },

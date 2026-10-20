@@ -1,11 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@app/prisma/prisma.service';
 import { AuditService } from '@app/modules/audit/audit.service';
-import {
-  ApiNotFoundException,
-  ApiConflictException,
-  ErrorCode,
-} from '@app/common/errors';
+import { ApiNotFoundException, ApiConflictException, ErrorCode } from '@app/common/errors';
 import { RequestContext } from '@app/common/request-context';
 import { BookingsService } from '@app/modules/bookings/bookings.service';
 import { CreateQuoteDto } from './dto/create-quote.dto';
@@ -38,7 +34,10 @@ export class QuotesService {
 
     let calculatedTotal = dto.totalPrice;
     if (calculatedTotal == null && Array.isArray(dto.items) && dto.items.length > 0) {
-      const subtotal = dto.items.reduce((sum, it) => sum + (Number(it.total) || (Number(it.quantity) * Number(it.unitPrice)) || 0), 0);
+      const subtotal = dto.items.reduce(
+        (sum, it) => sum + (Number(it.total) || Number(it.quantity) * Number(it.unitPrice) || 0),
+        0,
+      );
       const tax = Number(dto.tax) || 0;
       const discount = Number(dto.discount) || 0;
       calculatedTotal = Math.max(0, subtotal + tax - discount);
@@ -150,7 +149,10 @@ export class QuotesService {
 
     let calculatedTotal = dto.totalPrice;
     if (calculatedTotal == null && Array.isArray(dto.items) && dto.items.length > 0) {
-      const subtotal = dto.items.reduce((sum, it) => sum + (Number(it.total) || (Number(it.quantity) * Number(it.unitPrice)) || 0), 0);
+      const subtotal = dto.items.reduce(
+        (sum, it) => sum + (Number(it.total) || Number(it.quantity) * Number(it.unitPrice) || 0),
+        0,
+      );
       const tax = Number(dto.tax ?? existing.tax) || 0;
       const discount = Number(dto.discount ?? existing.discount) || 0;
       calculatedTotal = Math.max(0, subtotal + tax - discount);

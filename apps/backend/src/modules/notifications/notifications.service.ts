@@ -111,7 +111,9 @@ export class NotificationsService {
           if (user?.email) {
             await this.mailService.sendNotificationEmail(user.email, input.title, input.message);
           } else {
-            this.logger.warn(`Could not send email notification: user ${input.userId} has no email`);
+            this.logger.warn(
+              `Could not send email notification: user ${input.userId} has no email`,
+            );
           }
         } catch (err: any) {
           this.logger.error(`Error sending notification email: ${err?.message}`);

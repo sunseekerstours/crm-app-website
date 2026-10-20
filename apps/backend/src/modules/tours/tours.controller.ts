@@ -41,8 +41,15 @@ export class ToursController {
 
   @Put('custom-operations')
   @RequirePermissions(Permission.TOUR_VIEW)
-  updateCustomOperations(@Body() body: { tours: any[] }, @Req() req: Request, @CurrentUser('id') userId: string) {
-    return this.toursService.updateCustomOperations(body.tours || [], toRequestContext(req, userId));
+  updateCustomOperations(
+    @Body() body: { tours: any[] },
+    @Req() req: Request,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.toursService.updateCustomOperations(
+      body.tours || [],
+      toRequestContext(req, userId),
+    );
   }
 
   @Post(':id/publish')

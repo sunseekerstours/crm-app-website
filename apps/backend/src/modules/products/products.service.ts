@@ -39,7 +39,10 @@ export class ProductsService {
     const slug = dto.slug ? slugify(dto.slug) : await this.uniqueSlug(dto.name);
     const taken = await this.prisma.product.findUnique({ where: { slug } });
     if (taken) {
-      throw new ApiConflictException(ErrorCode.BAD_REQUEST, 'A product with this slug already exists');
+      throw new ApiConflictException(
+        ErrorCode.BAD_REQUEST,
+        'A product with this slug already exists',
+      );
     }
 
     const product = await this.prisma.product.create({
@@ -103,7 +106,11 @@ export class ProductsService {
     const product = await this.prisma.product.findUnique({
       where: { id },
       include: {
-        customers: { include: { customer: { select: { id: true, firstName: true, lastName: true, email: true } } } },
+        customers: {
+          include: {
+            customer: { select: { id: true, firstName: true, lastName: true, email: true } },
+          },
+        },
       },
     });
     if (!product) {
@@ -123,7 +130,10 @@ export class ProductsService {
       slug = slugify(dto.slug);
       const taken = await this.prisma.product.findUnique({ where: { slug } });
       if (taken && taken.id !== id) {
-        throw new ApiConflictException(ErrorCode.BAD_REQUEST, 'A product with this slug already exists');
+        throw new ApiConflictException(
+          ErrorCode.BAD_REQUEST,
+          'A product with this slug already exists',
+        );
       }
     }
 

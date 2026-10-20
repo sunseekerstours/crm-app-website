@@ -19,14 +19,70 @@ export interface SalesStageConfig {
 }
 
 export const DEFAULT_SALES_STAGES: SalesStageConfig[] = [
-  { id: 'stage-1', key: 'NEW', name: 'Initial Inquiry', color: '#0284c7', order: 1, description: 'Fresh travel inquiry or tour request' },
-  { id: 'stage-2', key: 'CONTACTED', name: 'Contacted & Discovery', color: '#8b5cf6', order: 2, description: 'Spoke with traveler, gathering preferences & dates' },
-  { id: 'stage-3', key: 'QUALIFIED', name: 'Qualified & Itinerary', color: '#06b6d4', order: 3, description: 'Dates, passenger count, and route confirmed' },
-  { id: 'stage-4', key: 'PROPOSAL', name: 'Custom Quote Sent', color: '#f59e0b', order: 4, description: 'Official quote (QTE-...) or proposal delivered' },
-  { id: 'stage-5', key: 'NEGOTIATION', name: 'Negotiation & Fleet Selection', color: '#ec4899', order: 5, description: 'Adjusting itinerary, hotel, or car choices' },
-  { id: 'stage-6', key: 'DEPOSIT', name: 'Awaiting Deposit', color: '#d97706', order: 6, description: 'Itinerary accepted, awaiting payment' },
-  { id: 'stage-7', key: 'WON', name: 'Confirmed Booking (Won)', color: '#10b981', order: 7, description: 'Payment confirmed, tour booking locked in' },
-  { id: 'stage-8', key: 'LOST', name: 'Lost / Cancelled', color: '#ef4444', order: 8, description: 'Client cancelled or chose alternate option' },
+  {
+    id: 'stage-1',
+    key: 'NEW',
+    name: 'Initial Inquiry',
+    color: '#0284c7',
+    order: 1,
+    description: 'Fresh travel inquiry or tour request',
+  },
+  {
+    id: 'stage-2',
+    key: 'CONTACTED',
+    name: 'Contacted & Discovery',
+    color: '#8b5cf6',
+    order: 2,
+    description: 'Spoke with traveler, gathering preferences & dates',
+  },
+  {
+    id: 'stage-3',
+    key: 'QUALIFIED',
+    name: 'Qualified & Itinerary',
+    color: '#06b6d4',
+    order: 3,
+    description: 'Dates, passenger count, and route confirmed',
+  },
+  {
+    id: 'stage-4',
+    key: 'PROPOSAL',
+    name: 'Custom Quote Sent',
+    color: '#f59e0b',
+    order: 4,
+    description: 'Official quote (QTE-...) or proposal delivered',
+  },
+  {
+    id: 'stage-5',
+    key: 'NEGOTIATION',
+    name: 'Negotiation & Fleet Selection',
+    color: '#ec4899',
+    order: 5,
+    description: 'Adjusting itinerary, hotel, or car choices',
+  },
+  {
+    id: 'stage-6',
+    key: 'DEPOSIT',
+    name: 'Awaiting Deposit',
+    color: '#d97706',
+    order: 6,
+    description: 'Itinerary accepted, awaiting payment',
+  },
+  {
+    id: 'stage-7',
+    key: 'WON',
+    name: 'Confirmed Booking (Won)',
+    color: '#10b981',
+    order: 7,
+    description: 'Payment confirmed, tour booking locked in',
+  },
+  {
+    id: 'stage-8',
+    key: 'LOST',
+    name: 'Lost / Cancelled',
+    color: '#ef4444',
+    order: 8,
+    description: 'Client cancelled or chose alternate option',
+  },
 ];
 
 @Injectable()
@@ -58,7 +114,9 @@ export class DealsService {
         tags: dto.tags ?? [],
       },
       include: {
-        customer: { select: { id: true, firstName: true, lastName: true, email: true, phone: true } },
+        customer: {
+          select: { id: true, firstName: true, lastName: true, email: true, phone: true },
+        },
         salesperson: { select: { id: true, firstName: true, lastName: true, email: true } },
       },
     });
@@ -115,12 +173,19 @@ export class DealsService {
         take: params.limit,
         orderBy: { createdAt: 'desc' },
         include: {
-          customer: { select: { id: true, firstName: true, lastName: true, email: true, phone: true } },
+          customer: {
+            select: { id: true, firstName: true, lastName: true, email: true, phone: true },
+          },
           salesperson: { select: { id: true, firstName: true, lastName: true, email: true } },
           recordedNotes: {
             orderBy: { createdAt: 'desc' },
             take: 1,
-            select: { id: true, content: true, createdAt: true, createdBy: { select: { firstName: true, lastName: true } } },
+            select: {
+              id: true,
+              content: true,
+              createdAt: true,
+              createdBy: { select: { firstName: true, lastName: true } },
+            },
           },
         },
       }),
@@ -186,7 +251,9 @@ export class DealsService {
     const deal = await this.prisma.deal.findUnique({
       where: { id },
       include: {
-        customer: { select: { id: true, firstName: true, lastName: true, email: true, phone: true } },
+        customer: {
+          select: { id: true, firstName: true, lastName: true, email: true, phone: true },
+        },
         company: { select: { id: true, name: true } },
         lead: { select: { id: true, firstName: true, lastName: true } },
         salesperson: { select: { id: true, firstName: true, lastName: true, email: true } },
@@ -220,7 +287,9 @@ export class DealsService {
         tags: dto.tags,
       },
       include: {
-        customer: { select: { id: true, firstName: true, lastName: true, email: true, phone: true } },
+        customer: {
+          select: { id: true, firstName: true, lastName: true, email: true, phone: true },
+        },
         salesperson: { select: { id: true, firstName: true, lastName: true, email: true } },
       },
     });

@@ -36,7 +36,11 @@ export class ReportsService {
    * Helper to compute start & end of week for a given reference date
    * Defaults to Monday 00:00:00 to Sunday 23:59:59.999
    */
-  private getWeekBounds(referenceDate?: string | Date): { start: Date; end: Date; weekLabel: string } {
+  private getWeekBounds(referenceDate?: string | Date): {
+    start: Date;
+    end: Date;
+    weekLabel: string;
+  } {
     const d = referenceDate ? new Date(referenceDate) : new Date();
     // Monday as start of week (day 1), Sunday as end (day 7)
     const day = d.getDay();
@@ -79,7 +83,10 @@ export class ReportsService {
   /**
    * Update ongoing default targets
    */
-  async updateTargetSettings(dto: TargetSettingsDto, ctx: RequestContext): Promise<TargetSettingsDto> {
+  async updateTargetSettings(
+    dto: TargetSettingsDto,
+    ctx: RequestContext,
+  ): Promise<TargetSettingsDto> {
     await this.prisma.siteSetting.upsert({
       where: { key: TARGET_SETTINGS_KEY },
       update: {
@@ -154,7 +161,10 @@ export class ReportsService {
     const existingReport = await this.prisma.weeklySalesReport.findFirst({
       where: {
         userId: targetUserId,
-        weekStartDate: { gte: new Date(start.getTime() - 24 * 3600 * 1000), lte: new Date(start.getTime() + 24 * 3600 * 1000) },
+        weekStartDate: {
+          gte: new Date(start.getTime() - 24 * 3600 * 1000),
+          lte: new Date(start.getTime() + 24 * 3600 * 1000),
+        },
       },
     });
 
@@ -307,7 +317,9 @@ export class ReportsService {
     });
 
     const pipelineDeals = activeDeals.map((d) => {
-      const clientName = d.customer ? `${d.customer.firstName} ${d.customer.lastName}`.trim() : d.name;
+      const clientName = d.customer
+        ? `${d.customer.firstName} ${d.customer.lastName}`.trim()
+        : d.name;
       const nextTask = d.tasks[0]?.title || d.notes || 'Follow-up with client';
       const valGhc = d.currency === 'USD' ? (Number(d.value) || 0) * 15.5 : Number(d.value) || 0;
       return {
@@ -322,10 +334,13 @@ export class ReportsService {
 
     // 6. Section 4: Wins & Blockers
     const autoWins = closedDeals.map(
-      (d) => `Won deal: ${d.name} (${Number(d.value || 0).toLocaleString()} ${d.currency || 'GHS'})`,
+      (d) =>
+        `Won deal: ${d.name} (${Number(d.value || 0).toLocaleString()} ${d.currency || 'GHS'})`,
     );
     if (autoWins.length === 0 && revenueCollectedGhc > 0) {
-      autoWins.push(`Collected GHC ${Math.round(revenueCollectedGhc).toLocaleString()} in customer tour payments`);
+      autoWins.push(
+        `Collected GHC ${Math.round(revenueCollectedGhc).toLocaleString()} in customer tour payments`,
+      );
     }
 
     const autoBlockers: string[] = [];
@@ -361,23 +376,35 @@ export class ReportsService {
       weekEndDate: end.toISOString(),
       weekLabel,
       status: existingReport?.status || WeeklyReportStatus.DRAFT,
-      activitySummary: existingReport?.activitySummary && Object.keys(existingReport.activitySummary as any).length > 0
-        ? existingReport.activitySummary
-        : autoActivitySummary,
-      kpis: existingReport?.kpis && Array.isArray(existingReport.kpis) && existingReport.kpis.length > 0
-        ? existingReport.kpis
-        : autoKpis,
-      pipelineDeals: existingReport?.pipelineDeals && Array.isArray(existingReport.pipelineDeals) && existingReport.pipelineDeals.length > 0
-        ? existingReport.pipelineDeals
-        : pipelineDeals,
+      activitySummary:
+        existingReport?.activitySummary &&
+        Object.keys(existingReport.activitySummary as any).length > 0
+          ? existingReport.activitySummary
+          : autoActivitySummary,
+      kpis:
+        existingReport?.kpis && Array.isArray(existingReport.kpis) && existingReport.kpis.length > 0
+          ? existingReport.kpis
+          : autoKpis,
+      pipelineDeals:
+        existingReport?.pipelineDeals &&
+        Array.isArray(existingReport.pipelineDeals) &&
+        existingReport.pipelineDeals.length > 0
+          ? existingReport.pipelineDeals
+          : pipelineDeals,
       wins: existingReport?.wins && existingReport.wins.length > 0 ? existingReport.wins : autoWins,
-      blockers: existingReport?.blockers && existingReport.blockers.length > 0 ? existingReport.blockers : autoBlockers,
+      blockers:
+        existingReport?.blockers && existingReport.blockers.length > 0
+          ? existingReport.blockers
+          : autoBlockers,
       keyLearning: existingReport?.keyLearning || '',
-      commitments: existingReport?.commitments && Array.isArray(existingReport.commitments) && existingReport.commitments.length > 0
-        ? existingReport.commitments
-        : autoCommitments,
+      commitments:
+        existingReport?.commitments &&
+        Array.isArray(existingReport.commitments) &&
+        existingReport.commitments.length > 0
+          ? existingReport.commitments
+          : autoCommitments,
       overallPerformance: existingReport?.overallPerformance || 'On Track',
-      keyWinHighlight: existingReport?.keyWinHighlight || (autoWins[0] || ''),
+      keyWinHighlight: existingReport?.keyWinHighlight || autoWins[0] || '',
       supportNeeded: existingReport?.supportNeeded || '',
       projectedRevenueGhc: existingReport?.projectedRevenueGhc
         ? Number(existingReport.projectedRevenueGhc)
@@ -403,12 +430,15 @@ export class ReportsService {
     const weekEndDate = new Date(dto.weekEndDate);
 
     // Find existing by ID or user + week bounds
-    let existing = dto.id
+    const existing = dto.id
       ? await this.prisma.weeklySalesReport.findUnique({ where: { id: dto.id } })
       : await this.prisma.weeklySalesReport.findFirst({
           where: {
             userId: targetUserId,
-            weekStartDate: { gte: new Date(weekStartDate.getTime() - 24 * 3600 * 1000), lte: new Date(weekStartDate.getTime() + 24 * 3600 * 1000) },
+            weekStartDate: {
+              gte: new Date(weekStartDate.getTime() - 24 * 3600 * 1000),
+              lte: new Date(weekStartDate.getTime() + 24 * 3600 * 1000),
+            },
           },
         });
 
@@ -429,7 +459,10 @@ export class ReportsService {
           overallPerformance: dto.overallPerformance || existing.overallPerformance,
           keyWinHighlight: dto.keyWinHighlight || existing.keyWinHighlight,
           supportNeeded: dto.supportNeeded || existing.supportNeeded,
-          projectedRevenueGhc: dto.projectedRevenueGhc !== undefined ? dto.projectedRevenueGhc : existing.projectedRevenueGhc,
+          projectedRevenueGhc:
+            dto.projectedRevenueGhc !== undefined
+              ? dto.projectedRevenueGhc
+              : existing.projectedRevenueGhc,
           onTrackStatus: dto.onTrackStatus || existing.onTrackStatus,
           repSignedAt: dto.repSignedAt ? new Date(dto.repSignedAt) : existing.repSignedAt,
           managerNotes: dto.managerNotes || existing.managerNotes,
@@ -489,24 +522,29 @@ export class ReportsService {
         where: { id: targetUserId },
         select: { firstName: true, lastName: true, email: true },
       });
-      const repName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.email || 'Sales Rep';
+      const repName =
+        `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.email || 'Sales Rep';
 
-      await this.notifications.broadcast({
-        type: NotificationType.SYSTEM,
-        title: '📊 Weekly Sales Report Submitted',
-        message: `${repName} has submitted their Weekly Sales Performance Report for review.`,
-        entity: { type: 'WEEKLY_REPORT', id: report.id },
-      }).catch(() => {});
+      await this.notifications
+        .broadcast({
+          type: NotificationType.SYSTEM,
+          title: '📊 Weekly Sales Report Submitted',
+          message: `${repName} has submitted their Weekly Sales Performance Report for review.`,
+          entity: { type: 'WEEKLY_REPORT', id: report.id },
+        })
+        .catch(() => {});
 
-      await this.telegram.sendAlert(
-        `📊 <b>WEEKLY SALES REPORT SUBMITTED</b>\n` +
-        `━━━━━━━━━━━━━━━━━━━━━━\n` +
-        `👤 <b>Rep:</b> ${repName}\n` +
-        `📅 <b>Week:</b> ${new Date(report.weekStartDate).toLocaleDateString()} – ${new Date(report.weekEndDate).toLocaleDateString()}\n` +
-        `🎯 <b>Status:</b> ${report.onTrackStatus || 'Submitted'}\n` +
-        `💰 <b>Projected Next Week:</b> GHC ${Number(report.projectedRevenueGhc || 0).toLocaleString()}\n` +
-        `👉 <a href="http://localhost:3001/reports/weekly-sales">Review in CRM Hub</a>`
-      ).catch(() => {});
+      await this.telegram
+        .sendAlert(
+          `📊 <b>WEEKLY SALES REPORT SUBMITTED</b>\n` +
+            `━━━━━━━━━━━━━━━━━━━━━━\n` +
+            `👤 <b>Rep:</b> ${repName}\n` +
+            `📅 <b>Week:</b> ${new Date(report.weekStartDate).toLocaleDateString()} – ${new Date(report.weekEndDate).toLocaleDateString()}\n` +
+            `🎯 <b>Status:</b> ${report.onTrackStatus || 'Submitted'}\n` +
+            `💰 <b>Projected Next Week:</b> GHC ${Number(report.projectedRevenueGhc || 0).toLocaleString()}\n` +
+            `👉 <a href="http://localhost:3001/reports/weekly-sales">Review in CRM Hub</a>`,
+        )
+        .catch(() => {});
     }
 
     return report;
@@ -515,7 +553,10 @@ export class ReportsService {
   /**
    * List past weekly sales reports
    */
-  async findAll(params: { userId?: string; status?: WeeklyReportStatus; page?: number; limit?: number }, ctx: RequestContext) {
+  async findAll(
+    params: { userId?: string; status?: WeeklyReportStatus; page?: number; limit?: number },
+    ctx: RequestContext,
+  ) {
     const page = Math.max(1, params.page || 1);
     const limit = Math.min(50, Math.max(1, params.limit || 20));
     const skip = (page - 1) * limit;
@@ -592,13 +633,15 @@ export class ReportsService {
       requestId: ctx.requestId,
     });
 
-    await this.notifications.dispatch({
-      userId: report.userId,
-      type: NotificationType.SYSTEM,
-      title: '✅ Weekly Sales Report Reviewed',
-      message: `Your manager has reviewed and signed off on your Weekly Sales Performance Report.`,
-      entity: { type: 'WEEKLY_REPORT', id: report.id },
-    }).catch(() => {});
+    await this.notifications
+      .dispatch({
+        userId: report.userId,
+        type: NotificationType.SYSTEM,
+        title: '✅ Weekly Sales Report Reviewed',
+        message: `Your manager has reviewed and signed off on your Weekly Sales Performance Report.`,
+        entity: { type: 'WEEKLY_REPORT', id: report.id },
+      })
+      .catch(() => {});
 
     return updated;
   }

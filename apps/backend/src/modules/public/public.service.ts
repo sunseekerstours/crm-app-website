@@ -44,7 +44,18 @@ export class PublicService {
         endDate: true,
         availabilityNote: true,
         destinations: {
-          select: { destination: { select: { id: true, name: true, slug: true, country: true, region: true, coverImage: true } } },
+          select: {
+            destination: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                country: true,
+                region: true,
+                coverImage: true,
+              },
+            },
+          },
         },
         pricing: {
           orderBy: { price: 'asc' },
@@ -209,7 +220,9 @@ export class PublicService {
           create: {
             content: [
               `🌐 Service Requested: ${dto.serviceType}`,
-              dup.isDuplicate ? `⚠️ Note: Match found with existing customer record (${dup.existingCustomerName})` : null,
+              dup.isDuplicate
+                ? `⚠️ Note: Match found with existing customer record (${dup.existingCustomerName})`
+                : null,
               dto.destination ? `📍 Destination: ${dto.destination}` : null,
               dto.interestedTour ? `🎒 Tour: ${dto.interestedTour}` : null,
               dto.startDate ? `📅 Start / Check-in: ${dto.startDate}` : null,

@@ -67,7 +67,9 @@ describe('ContentService', () => {
   describe('createPage', () => {
     it('creates a page with a slugified slug and audits', async () => {
       prisma.page.findUnique.mockResolvedValue(null);
-      prisma.page.create.mockResolvedValue(mockPage({ status: PageStatus.DRAFT, publishedAt: null }));
+      prisma.page.create.mockResolvedValue(
+        mockPage({ status: PageStatus.DRAFT, publishedAt: null }),
+      );
 
       const result = await service.createPage({ title: 'About Us' }, ctx);
 
@@ -76,7 +78,9 @@ describe('ContentService', () => {
           data: expect.objectContaining({ title: 'About Us', slug: 'about-us' }),
         }),
       );
-      expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'PAGE_CREATED' }));
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'PAGE_CREATED' }),
+      );
       expect(result.slug).toBe('about-us');
     });
 
@@ -109,7 +113,9 @@ describe('ContentService', () => {
       const result = await service.updatePage('page-1', { title: 'Updated' }, ctx);
 
       expect(prisma.page.update).toHaveBeenCalled();
-      expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'PAGE_UPDATED' }));
+      expect(audit.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'PAGE_UPDATED' }),
+      );
       expect(result.title).toBe('Updated');
     });
   });

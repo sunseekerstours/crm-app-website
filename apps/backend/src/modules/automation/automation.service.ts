@@ -77,7 +77,10 @@ export class AutomationService implements OnModuleInit, OnModuleDestroy {
   private async syncJetpackContacts() {
     if (!this.jetpackCrm.isEnabled()) return null;
 
-    const enabled = await this.salesAutomation.isRuleEnabled('automation_jetpack_sync_enabled', true);
+    const enabled = await this.salesAutomation.isRuleEnabled(
+      'automation_jetpack_sync_enabled',
+      true,
+    );
     if (!enabled) {
       this.logger.log('Jetpack CRM auto-sync disabled by automation_jetpack_sync_enabled');
       return null;
@@ -162,15 +165,17 @@ export class AutomationService implements OnModuleInit, OnModuleDestroy {
       const custName = inv.customer
         ? `${inv.customer.firstName || ''} ${inv.customer.lastName || ''}`.trim()
         : 'Client';
-      await this.telegram.sendOverdueInvoiceAlert({
-        invoiceNumber: inv.invoiceNumber,
-        amount: `${Number(inv.amount ?? 0).toFixed(2)} ${inv.currency}`,
-        dueDate: inv.dueDate ? inv.dueDate.toISOString().slice(0, 10) : 'Past Due',
-        customerName: custName || 'Client',
-        daysOverdue,
-      }).catch((err) => {
-        this.logger.debug(`Failed to send overdue invoice alert to Telegram: ${err?.message}`);
-      });
+      await this.telegram
+        .sendOverdueInvoiceAlert({
+          invoiceNumber: inv.invoiceNumber,
+          amount: `${Number(inv.amount ?? 0).toFixed(2)} ${inv.currency}`,
+          dueDate: inv.dueDate ? inv.dueDate.toISOString().slice(0, 10) : 'Past Due',
+          customerName: custName || 'Client',
+          daysOverdue,
+        })
+        .catch((err) => {
+          this.logger.debug(`Failed to send overdue invoice alert to Telegram: ${err?.message}`);
+        });
     }
     return count;
   }

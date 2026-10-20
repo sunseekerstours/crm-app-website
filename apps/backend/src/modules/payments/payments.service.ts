@@ -132,7 +132,15 @@ export class PaymentsService {
           customer: true,
           deal: true,
           booking: { select: { id: true, bookingNumber: true, tourName: true, customer: true } },
-          invoice: { select: { id: true, invoiceNumber: true, amount: true, amountPaid: true, customer: true } },
+          invoice: {
+            select: {
+              id: true,
+              invoiceNumber: true,
+              amount: true,
+              amountPaid: true,
+              customer: true,
+            },
+          },
         },
       }),
       this.prisma.payment.count({ where }),
@@ -155,7 +163,9 @@ export class PaymentsService {
         customer: true,
         deal: true,
         booking: { select: { id: true, bookingNumber: true, tourName: true, customer: true } },
-        invoice: { select: { id: true, invoiceNumber: true, amount: true, amountPaid: true, customer: true } },
+        invoice: {
+          select: { id: true, invoiceNumber: true, amount: true, amountPaid: true, customer: true },
+        },
       },
     });
     if (!payment) throw new ApiNotFoundException(ErrorCode.RESOURCE_NOT_FOUND, 'Payment not found');
