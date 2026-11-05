@@ -128,10 +128,13 @@ interface QrItem {
   subtitle: string;
   createdAt: string;
   configSnapshot: any;
+  isDynamic?: boolean;
 }
 
 export function QrCodeStudio({ titlePrefix = 'Sunseekers' }: { titlePrefix?: string }) {
   const [activeTab, setActiveTab] = useState<'studio' | 'library'>('studio');
+  const [isDynamic, setIsDynamic] = useState<boolean>(true);
+  const [studioId, setStudioId] = useState<string>(() => `qr_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`);
 
   // ── Config State ──────────────────────────────────────────────────────────
   const [qrName, setQrName] = useState('Sunseekers Express Booking');
@@ -298,6 +301,20 @@ export function QrCodeStudio({ titlePrefix = 'Sunseekers' }: { titlePrefix?: str
     }
   }
 
+  // ── Dynamic QR Gateway Helpers ────────────────────────────────────────────
+  function getDynamicGatewayUrl(targetId?: string): string {
+    const id = targetId || activeWorkingId || studioId;
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://sunseekerstours.com';
+    return `${origin}/r/${id}`;
+  }
+
+  function getEffectiveQrPayload(targetId?: string): string {
+    if (isDynamic && dataType === 'url') {
+      return getDynamicGatewayUrl(targetId);
+    }
+    return getComputedData();
+  }
+
   function getEffectiveLogo(): string | undefined {
     if (customLogoUrl) return customLogoUrl;
     if (logoPreset && logoPreset !== 'none' && SVG_PRESETS[logoPreset as keyof typeof SVG_PRESETS]) {
@@ -307,8 +324,8 @@ export function QrCodeStudio({ titlePrefix = 'Sunseekers' }: { titlePrefix?: str
   }
 
   // ── Build QR Code Styling Options ──────────────────────────────────────────
-  function buildOptions(size: number = 280) {
-    const dataString = getComputedData();
+  function buildOptions(size: number = 280, overrideData?: string) {
+    const dataString = overrideData !== undefined ? overrideData : getEffectiveQrPayload();
     const logo = getEffectiveLogo();
 
     const dotsOptions: any = {
@@ -398,6 +415,7 @@ export function QrCodeStudio({ titlePrefix = 'Sunseekers' }: { titlePrefix?: str
     }
   }, [
     activeTab,
+    isDynamic, studioId, activeWorkingId,
     dataType, rawUrl, wifiSsid, wifiPass, wifiEnc, waPhone, waMsg, vcardName, vcardPhone, vcardEmail, vcardOrg, plainText, phoneVal, emailVal, mapsVal,
     dotsType, cornersSquareType, cornersDotType,
     colorMode, gradientAngle, primaryColor, secondaryColor, bgColor, transparentBg,
@@ -556,6 +574,8 @@ export function QrCodeStudio({ titlePrefix = 'Sunseekers' }: { titlePrefix?: str
   // ── Reset Studio to Create a Brand New QR Code ──────────────────────────────
   function resetToNewQr() {
     setActiveWorkingId(null);
+    setStudioId(`qr_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`);
+    setIsDynamic(true);
     setQrName('Sunseekers Express QR');
     setSubtitle('Point camera to scan & view details');
     setCategory(categories[0] || 'General');
@@ -604,7 +624,7 @@ export function QrCodeStudio({ titlePrefix = 'Sunseekers' }: { titlePrefix?: str
   function saveToLibrary(saveAsNewCopy = false) {
     const isCreatingNew = saveAsNewCopy || !activeWorkingId;
     const finalId = isCreatingNew
-      ? `qr_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`
+      ? (saveAsNewCopy ? `qr_${Date.now()}_${Math.random().toString(36).substring(2, 6)}` : studioId)
       : activeWorkingId!;
 
     let finalName = qrName.trim() || 'Sunseekers QR';
@@ -620,7 +640,9 @@ export function QrCodeStudio({ titlePrefix = 'Sunseekers' }: { titlePrefix?: str
       url: getComputedData(),
       subtitle,
       createdAt: new Date().toISOString(),
+      isDynamic: isDynamic && dataType === 'url',
       configSnapshot: {
+        isDynamic,
         dataType, rawUrl, wifiSsid, wifiPass, wifiEnc, waPhone, waMsg, vcardName, vcardPhone, vcardEmail, vcardOrg, plainText, phoneVal, emailVal, mapsVal,
         dotsType, cornersSquareType, cornersDotType,
         colorMode, gradientAngle, primaryColor, secondaryColor, bgColor, transparentBg,
@@ -652,6 +674,8 @@ export function QrCodeStudio({ titlePrefix = 'Sunseekers' }: { titlePrefix?: str
   // ── Load Item from Library ─────────────────────────────────────────────────
   function loadFromLibrary(item: QrItem) {
     setActiveWorkingId(item.id);
+    setStudioId(item.id);
+    setIsDynamic(item.isDynamic ?? (item.configSnapshot?.isDynamic ?? true));
     setQrName(item.name);
     setCategory(item.category);
     setSubtitle(item.subtitle || '');
@@ -1065,8 +1089,46 @@ export function QrCodeStudio({ titlePrefix = 'Sunseekers' }: { titlePrefix?: str
                 {/* Conditional Inputs */}
                 {dataType === 'url' && (
                   <div>
+                    {/* Dynamic QR Mode Toggle Banner */}
+                    <div style={{
+                      background: isDynamic ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255,255,255,0.03)',
+                      border: isDynamic ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(255,255,255,0.08)',
+                      borderRadius: 8,
+                      padding: '10px 12px',
+                      marginBottom: 12,
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <span style={{ fontSize: 12, fontWeight: 700, color: isDynamic ? '#34d399' : '#94a3b8', display: 'flex', alignItems: 'center', gap: 6 }}>
+                            {isDynamic ? '⚡ Dynamic QR Code (Enabled)' : '🔒 Static QR Code'}
+                          </span>
+                          <p style={{ margin: '2px 0 0 0', fontSize: 11, color: '#94a3b8' }}>
+                            {isDynamic
+                              ? 'Once printed, you can change the target URL anytime without reprinting the barcode!'
+                              : 'Destination is hardcoded into pixels. Cannot be modified after printing.'}
+                          </p>
+                        </div>
+                        <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', gap: 6 }}>
+                          <input
+                            type="checkbox"
+                            checked={isDynamic}
+                            onChange={(e) => setIsDynamic(e.target.checked)}
+                            style={{ width: 18, height: 18, accentColor: '#10b981', cursor: 'pointer' }}
+                          />
+                        </label>
+                      </div>
+                      {isDynamic && (
+                        <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 11, flexWrap: 'wrap', gap: 4 }}>
+                          <span style={{ color: '#64748b' }}>Permanent Gateway in QR:</span>
+                          <code style={{ color: '#a7f3d0', background: 'rgba(0,0,0,0.3)', padding: '2px 6px', borderRadius: 4 }}>
+                            {getDynamicGatewayUrl()}
+                          </code>
+                        </div>
+                      )}
+                    </div>
+
                     <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#94a3b8', marginBottom: 4 }}>
-                      Destination Web URL
+                      Destination Web URL (Where the QR Code redirects to)
                     </label>
                     <div style={{ display: 'flex', gap: 8 }}>
                       <input
@@ -2239,6 +2301,16 @@ export function QrCodeStudio({ titlePrefix = 'Sunseekers' }: { titlePrefix?: str
                     <h4 style={{ margin: '0 0 4px', fontSize: 14, fontWeight: 700, color: '#f8fafc' }}>
                       {item.name}
                     </h4>
+                    {item.isDynamic !== false && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                        <span style={{ fontSize: 10, background: 'rgba(16,185,129,0.15)', color: '#34d399', padding: '1px 6px', borderRadius: 4, fontWeight: 700 }}>
+                          ⚡ Dynamic QR
+                        </span>
+                        <code style={{ fontSize: 10, color: '#94a3b8' }}>
+                          /r/{item.id}
+                        </code>
+                      </div>
+                    )}
                     <p style={{
                       margin: '0 0 12px',
                       fontSize: 11,

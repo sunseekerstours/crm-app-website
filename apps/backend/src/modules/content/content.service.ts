@@ -268,4 +268,13 @@ export class ContentService {
 
     return dataToStore;
   }
+
+  async getQrRedirectUrl(id: string): Promise<string | null> {
+    const lib = await this.getQrLibrary();
+    const item = lib.items?.find((i: any) => i.id === id);
+    if (item?.url) {
+      return item.url;
+    }
+    return null;
+  }
 }

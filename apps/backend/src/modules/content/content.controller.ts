@@ -1,6 +1,6 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, Req } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, Req, Res } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { Request } from 'express';
+import { Request, Response } from 'express';
 import { RequirePermissions } from '@app/common/decorators/permissions.decorator';
 import { Public } from '@app/common/decorators/public.decorator';
 import { Permission } from '@app/common/permissions';
@@ -33,6 +33,18 @@ export class ContentController {
     @CurrentUser('id') userId: string,
   ) {
     return this.contentService.updateQrLibrary(body, toRequestContext(req, userId));
+  }
+
+  // ---- Dynamic QR Code Redirect Gateway ----
+
+  @Public()
+  @Get('r/:id')
+  async redirectDynamicQr(@Param('id') id: string, @Res() res: Response) {
+    const targetUrl = await this.contentService.getQrRedirectUrl(id);
+    if (targetUrl) {
+      return res.redirect(302, targetUrl);
+    }
+    return res.redirect(302, 'https://sunseekerstours.com');
   }
 
   // ---- Pages ----
