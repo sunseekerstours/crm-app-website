@@ -14,6 +14,7 @@ export interface InvoiceListParams {
   customerId?: string;
   bookingId?: string;
   status?: string;
+  month?: string;
 }
 
 @Injectable()
@@ -42,9 +43,11 @@ export class InvoicesService {
       calculatedAmount = Math.max(0, subtotal + tax - discount);
     }
 
+    const targetIssueDate = dto.issueDate ? new Date(dto.issueDate) : new Date();
+
     const invoice = await this.prisma.invoice.create({
       data: {
-        invoiceNumber: await this.nextNumber('SST'),
+        invoiceNumber: await this.nextNumber('SST', targetIssueDate),
         bookingId: dto.bookingId,
         customerId: dto.customerId,
         dealId: dto.dealId,
@@ -52,7 +55,8 @@ export class InvoicesService {
         currency: dto.currency ?? 'USD',
         amountPaid: 0,
         status: InvoiceStatus.DRAFT,
-        issueDate: dto.issueDate ? new Date(dto.issueDate) : new Date(),
+        issueDate: targetIssueDate,
+        createdAt: targetIssueDate,
         dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
         items: dto.items ?? [],
         tax: dto.tax,
@@ -91,6 +95,21 @@ export class InvoicesService {
     if (params.customerId) where.customerId = params.customerId;
     if (params.bookingId) where.bookingId = params.bookingId;
     if (params.status) where.status = params.status;
+    if (params.month) {
+      if (params.month.includes('-')) {
+        const [yearStr, monthStr] = params.month.split('-');
+        const year = parseInt(yearStr, 10);
+        const monthNum = parseInt(monthStr, 10);
+        if (!isNaN(year) && !isNaN(monthNum)) {
+          const start = new Date(Date.UTC(year, monthNum - 1, 1, 0, 0, 0));
+          const end = new Date(Date.UTC(year, monthNum, 1, 0, 0, 0));
+          where.createdAt = { gte: start, lt: end };
+        }
+      } else {
+        const m = params.month.padStart(2, '0');
+        where.invoiceNumber = { endsWith: m };
+      }
+    }
     if (params.search) {
       where.OR = [
         { invoiceNumber: { contains: params.search, mode: 'insensitive' } },
@@ -279,10 +298,9 @@ export class InvoicesService {
     });
   }
 
-  private async nextNumber(prefix: string): Promise<string> {
-    // Compute current month as two-digit string
-    const now = new Date();
-    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+  private async nextNumber(prefix: string, date: Date = new Date()): Promise<string> {
+    // Compute target month as two-digit string
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
     // Find latest invoice for this prefix and month
     const latest = await this.prisma.invoice.findFirst({
       where: {

@@ -147,6 +147,39 @@ export class UsersService {
     return this.sanitize(updated);
   }
 
+  async resetPassword(id: string, newPassword: string, meta: RequestContextMeta) {
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) {
+      throw new ApiNotFoundException(ErrorCode.USER_NOT_FOUND, 'User not found');
+    }
+
+    const saltRounds = this.config.get<number>('bcryptSaltRounds') ?? 10;
+    const passwordHash = await bcrypt.hash(newPassword, saltRounds);
+
+    await this.prisma.user.update({
+      where: { id },
+      data: { passwordHash },
+    });
+
+    // Invalidate refresh tokens for this user so old sessions must re-authenticate
+    await this.prisma.refreshToken.deleteMany({
+      where: { userId: id },
+    });
+
+    await this.audit.record({
+      userId: meta.userId,
+      action: AuditableAction.USER_UPDATED,
+      entityType: 'User',
+      entityId: id,
+      after: { passwordReset: true },
+      ipAddress: meta.ipAddress,
+      userAgent: meta.userAgent,
+      requestId: meta.requestId,
+    });
+
+    return { message: 'Password reset successfully', userId: id };
+  }
+
   async assignRole(userId: string, dto: AssignRoleDto, meta: RequestContextMeta) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new ApiNotFoundException(ErrorCode.USER_NOT_FOUND, 'User not found');

@@ -31,6 +31,7 @@ export class InvoicesController {
       customerId: query.customerId,
       bookingId: query.bookingId,
       status: query.status,
+      month: query.month,
     });
   }
 

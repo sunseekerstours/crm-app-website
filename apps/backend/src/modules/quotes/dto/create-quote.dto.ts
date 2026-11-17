@@ -29,6 +29,10 @@ export class CreateQuoteDto {
 
   @IsOptional()
   @IsDateString()
+  issueDate?: string;
+
+  @IsOptional()
+  @IsDateString()
   validUntil?: string;
 
   @IsOptional()

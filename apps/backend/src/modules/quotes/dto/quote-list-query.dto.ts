@@ -10,4 +10,8 @@ export class QuoteListQueryDto extends ListQueryDto {
   @IsOptional()
   @IsEnum(QuoteStatus)
   status?: QuoteStatus;
+
+  @IsOptional()
+  @IsString()
+  month?: string;
 }

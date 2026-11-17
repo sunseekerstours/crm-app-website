@@ -52,6 +52,39 @@ export default function UsersPage() {
     roleAssignee: '',
   });
 
+  // Super Admin Reset Password State
+  const [resetPasswordUser, setResetPasswordUser] = useState<UserItem | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [showPasswordText, setShowPasswordText] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
+
+  function generatePassword() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%&*';
+    let pass = '';
+    for (let i = 0; i < 12; i++) {
+      pass += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setNewPassword(pass);
+  }
+
+  async function handleResetPassword(e: React.FormEvent) {
+    e.preventDefault();
+    if (!resetPasswordUser || !newPassword) return;
+    setResetting(true);
+    setResetError(null);
+    try {
+      await api.post(`/users/${resetPasswordUser.id}/reset-password`, { password: newPassword });
+      alert(`Password successfully updated for ${resetPasswordUser.email}!`);
+      setResetPasswordUser(null);
+      setNewPassword('');
+    } catch (err) {
+      setResetError(err instanceof Error ? err.message : 'Failed to reset password');
+    } finally {
+      setResetting(false);
+    }
+  }
+
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -187,6 +220,23 @@ export default function UsersPage() {
                 label: 'Created',
                 render: (u) => new Date(u.createdAt).toLocaleDateString(),
               },
+              {
+                key: 'actions',
+                label: 'Actions',
+                render: (u) => (
+                  <Button
+                    variant="secondary"
+                    style={{ padding: '4px 8px', fontSize: 12 }}
+                    onClick={() => {
+                      setResetPasswordUser(u);
+                      setNewPassword('');
+                      setResetError(null);
+                    }}
+                  >
+                    🔑 Reset Password
+                  </Button>
+                ),
+              },
             ]}
           />
           <Pagination page={data.page} totalPages={data.totalPages} onChange={setPage} />
@@ -252,6 +302,80 @@ export default function UsersPage() {
                   {creating ? 'Creating…' : 'Create user'}
                 </Button>
                 <Button variant="secondary" onClick={() => setShowCreate(false)}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </form>
+        </div>
+      ) : null}
+
+      {resetPasswordUser ? (
+        <div className="modal-backdrop">
+          <form className="modal" onSubmit={handleResetPassword}>
+            <h3 className="modal-title">Reset User Password</h3>
+            <p style={{ margin: '0 0 16px', color: '#64748b', fontSize: 13 }}>
+              Setting a new password for{' '}
+              <strong style={{ color: '#0f172a' }}>
+                {`${resetPasswordUser.firstName ?? ''} ${resetPasswordUser.lastName ?? ''}`.trim() || resetPasswordUser.email}
+              </strong>{' '}
+              ({resetPasswordUser.email}).
+            </p>
+            {resetError ? <div className="auth-error" style={{ marginBottom: 12 }}>{resetError}</div> : null}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                  <label style={{ fontSize: 12, fontWeight: 700, color: '#334155' }}>
+                    New Password (min 8 chars) *
+                  </label>
+                  <button
+                    type="button"
+                    onClick={generatePassword}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#0284c7',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      textDecoration: 'underline',
+                    }}
+                  >
+                    🎲 Generate Strong Password
+                  </button>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <Input
+                    name="newPassword"
+                    type={showPasswordText ? 'text' : 'password'}
+                    value={newPassword}
+                    required
+                    placeholder="Enter new password (min 8 chars)"
+                    onChange={(e) => setNewPassword(e.target.value)}
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => setShowPasswordText(!showPasswordText)}
+                    style={{ flexShrink: 0 }}
+                  >
+                    {showPasswordText ? '🙈 Hide' : '👁️ Show'}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="form-actions" style={{ marginTop: 8 }}>
+                <Button type="submit" disabled={resetting || newPassword.length < 8}>
+                  {resetting ? 'Updating…' : 'Set New Password'}
+                </Button>
+                <Button
+                  variant="secondary"
+                  type="button"
+                  onClick={() => {
+                    setResetPasswordUser(null);
+                    setNewPassword('');
+                  }}
+                >
                   Cancel
                 </Button>
               </div>

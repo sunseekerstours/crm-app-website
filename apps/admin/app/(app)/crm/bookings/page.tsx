@@ -453,7 +453,7 @@ export default function CrmBookingsPage() {
                 onPriceChange={(newPrice) => {
                   setForm((f) => ({
                     ...f,
-                    unitPrice: Number(newPrice) || 0,
+                    unitPrice: newPrice === '' ? ('' as any) : Number(newPrice) || 0,
                   }));
                 }}
                 onCurrencyChange={(newCurr) => {
@@ -942,7 +942,7 @@ export default function CrmBookingsPage() {
                 onPriceChange={(newPrice) => {
                   setConfirmForm((f) => ({
                     ...f,
-                    unitPrice: Number(newPrice) || 0,
+                    unitPrice: newPrice === '' ? ('' as any) : Number(newPrice) || 0,
                   }));
                 }}
                 onCurrencyChange={(newCurr) => {

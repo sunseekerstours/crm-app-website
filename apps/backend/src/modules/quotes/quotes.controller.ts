@@ -30,6 +30,7 @@ export class QuotesController {
       search: query.search,
       customerId: query.customerId,
       status: query.status,
+      month: query.month,
     });
   }
 

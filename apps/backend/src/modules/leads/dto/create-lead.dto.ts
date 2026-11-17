@@ -1,13 +1,15 @@
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   IsArray,
   IsDateString,
   IsEmail,
   IsEnum,
   IsInt,
+  IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
+  ValidateIf,
 } from 'class-validator';
 import { LeadSource, LeadStage } from '@prisma/client';
 
@@ -25,12 +27,14 @@ export class CreateLeadDto {
   lastName?: string;
 
   @IsOptional()
-  @IsEmail()
+  @Transform(({ value }) => (typeof value === 'string' && value.trim() ? value.trim() : undefined))
+  @ValidateIf((o) => o.email !== undefined && o.email !== null && o.email !== '')
+  @IsEmail({}, { message: 'Email must be a valid email address' })
   email?: string;
 
-  @IsOptional()
+  @IsNotEmpty({ message: 'Phone number is required' })
   @IsString()
-  phone?: string;
+  phone!: string;
 
   @IsOptional()
   @IsString()

@@ -128,6 +128,7 @@ const CURRENCIES = [
 export default function CrmInvoicesQuotesPage() {
   const [activeTab, setActiveTab] = useState<'invoices' | 'quotes' | 'receipts'>('invoices');
   const [search, setSearch] = useState('');
+  const [selectedMonth, setSelectedMonth] = useState('');
   const [page, setPage] = useState(1);
 
   // Data lists
@@ -169,6 +170,7 @@ export default function CrmInvoicesQuotesPage() {
     dealId: '',
     tourName: '',
     currency: 'USD',
+    issueDate: new Date().toISOString().substring(0, 10),
     validUntil: '',
     status: 'DRAFT' as QuoteItem['status'],
     items: [
@@ -229,6 +231,7 @@ export default function CrmInvoicesQuotesPage() {
     try {
       const q = new URLSearchParams({ limit: '20', page: String(page) });
       if (search) q.set('search', search);
+      if (selectedMonth) q.set('month', selectedMonth);
 
       if (activeTab === 'invoices') {
         const res = await api.get<Paginated<InvoiceItem>>(`/invoices?${q.toString()}`);
@@ -245,7 +248,7 @@ export default function CrmInvoicesQuotesPage() {
     } finally {
       setLoading(false);
     }
-  }, [activeTab, page, search]);
+  }, [activeTab, page, search, selectedMonth]);
 
   useEffect(() => {
     void loadData();
@@ -363,6 +366,7 @@ export default function CrmInvoicesQuotesPage() {
         dealId: quoteForm.dealId || undefined,
         tourName: quoteForm.tourName || undefined,
         currency: quoteForm.currency,
+        issueDate: quoteForm.issueDate || undefined,
         validUntil: quoteForm.validUntil || undefined,
         status: quoteForm.status,
         items: quoteForm.items,
@@ -840,6 +844,15 @@ export default function CrmInvoicesQuotesPage() {
               />
 
               <Input
+                label="Quote Issue Date *"
+                name="issueDate"
+                type="date"
+                value={quoteForm.issueDate}
+                onChange={(e) => setQuoteForm({ ...quoteForm, issueDate: e.target.value })}
+                required
+              />
+
+              <Input
                 label="Proposal Valid Until"
                 name="validUntil"
                 type="date"
@@ -988,22 +1001,64 @@ export default function CrmInvoicesQuotesPage() {
         <Card
           title="All Invoices"
           action={
-            <input
-              type="search"
-              placeholder="Search by invoice # or customer..."
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-              style={{
-                padding: '6px 12px',
-                borderRadius: '6px',
-                border: '1px solid #cbd5e1',
-                fontSize: '13px',
-                outline: 'none',
-              }}
-            />
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#f8fafc', padding: '3px 8px', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: '#475569' }}>📅 Month:</span>
+                <input
+                  type="month"
+                  value={selectedMonth}
+                  onChange={(e) => {
+                    setSelectedMonth(e.target.value);
+                    setPage(1);
+                  }}
+                  style={{
+                    border: 'none',
+                    background: 'transparent',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    color: '#0f172a',
+                    outline: 'none',
+                  }}
+                />
+                {selectedMonth && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedMonth('');
+                      setPage(1);
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: '#ef4444',
+                      fontWeight: 'bold',
+                      fontSize: '12px',
+                      padding: '0 4px',
+                    }}
+                    title="Clear month filter"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+              <input
+                type="search"
+                placeholder="Search by invoice # or customer..."
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid #cbd5e1',
+                  fontSize: '13px',
+                  outline: 'none',
+                }}
+              />
+            </div>
           }
         >
           {error && <ErrorState message={error} />}
@@ -1150,22 +1205,64 @@ export default function CrmInvoicesQuotesPage() {
         <Card
           title="All Quotations & Price Proposals"
           action={
-            <input
-              type="search"
-              placeholder="Search by quote # or customer..."
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-              style={{
-                padding: '6px 12px',
-                borderRadius: '6px',
-                border: '1px solid #cbd5e1',
-                fontSize: '13px',
-                outline: 'none',
-              }}
-            />
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#f8fafc', padding: '3px 8px', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: '#475569' }}>📅 Month:</span>
+                <input
+                  type="month"
+                  value={selectedMonth}
+                  onChange={(e) => {
+                    setSelectedMonth(e.target.value);
+                    setPage(1);
+                  }}
+                  style={{
+                    border: 'none',
+                    background: 'transparent',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    color: '#0f172a',
+                    outline: 'none',
+                  }}
+                />
+                {selectedMonth && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedMonth('');
+                      setPage(1);
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: '#ef4444',
+                      fontWeight: 'bold',
+                      fontSize: '12px',
+                      padding: '0 4px',
+                    }}
+                    title="Clear month filter"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+              <input
+                type="search"
+                placeholder="Search by quote # or customer..."
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid #cbd5e1',
+                  fontSize: '13px',
+                  outline: 'none',
+                }}
+              />
+            </div>
           }
         >
           {error && <ErrorState message={error} />}
@@ -1208,11 +1305,14 @@ export default function CrmInvoicesQuotesPage() {
                 ),
               },
               {
-                key: 'validity',
-                label: 'Validity',
+                key: 'dates',
+                label: 'Dates',
                 render: (r) => (
                   <div style={{ fontSize: '12px', color: '#475569' }}>
-                    Valid until: {r.validUntil ? new Date(r.validUntil).toLocaleDateString() : 'No expiry'}
+                    <div>Issued: {r.createdAt ? new Date(r.createdAt).toLocaleDateString() : '—'}</div>
+                    <div style={{ color: '#64748b' }}>
+                      Valid: {r.validUntil ? new Date(r.validUntil).toLocaleDateString() : 'No expiry'}
+                    </div>
                   </div>
                 ),
               },
@@ -1257,6 +1357,7 @@ export default function CrmInvoicesQuotesPage() {
                           dealId: r.dealId || '',
                           tourName: r.tourName || '',
                           currency: r.currency || 'USD',
+                          issueDate: r.createdAt ? r.createdAt.substring(0, 10) : new Date().toISOString().substring(0, 10),
                           validUntil: r.validUntil ? r.validUntil.substring(0, 10) : '',
                           status: r.status,
                           items: Array.isArray(r.items) && r.items.length > 0 ? r.items : [{ description: r.tourName || 'Tour Package', quantity: 1, unitPrice: Number(r.totalPrice) || 0, total: Number(r.totalPrice) || 0 }],

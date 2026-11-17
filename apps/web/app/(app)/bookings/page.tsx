@@ -193,7 +193,7 @@ export default function BookingsPage() {
               onPriceChange={(newPrice) => {
                 setForm((f) => ({
                   ...f,
-                  unitPrice: Number(newPrice) || 0,
+                  unitPrice: newPrice === '' ? ('' as any) : Number(newPrice) || 0,
                 }));
               }}
               onCurrencyChange={(newCurr) => {
@@ -611,7 +611,7 @@ export default function BookingsPage() {
                 onPriceChange={(newPrice) => {
                   setConfirmForm((f) => ({
                     ...f,
-                    unitPrice: Number(newPrice) || 0,
+                    unitPrice: newPrice === '' ? ('' as any) : Number(newPrice) || 0,
                   }));
                 }}
                 onCurrencyChange={(newCurr) => {

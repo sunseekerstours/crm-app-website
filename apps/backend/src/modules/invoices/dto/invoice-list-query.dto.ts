@@ -14,4 +14,8 @@ export class InvoiceListQueryDto extends ListQueryDto {
   @IsOptional()
   @IsEnum(InvoiceStatus)
   status?: InvoiceStatus;
+
+  @IsOptional()
+  @IsString()
+  month?: string;
 }

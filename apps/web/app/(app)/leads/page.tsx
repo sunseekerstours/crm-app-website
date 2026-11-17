@@ -150,8 +150,8 @@ export default function LeadsPage() {
         estimatedValue: editLeadForm.estimatedValue ? Number(editLeadForm.estimatedValue) : undefined,
         currency: editLeadForm.currency,
         stage: editLeadForm.stage,
-        phone: editLeadForm.phone || undefined,
-        email: editLeadForm.email || undefined,
+        phone: editLeadForm.phone?.trim() || undefined,
+        email: editLeadForm.email?.trim() || undefined,
       });
       alert('Lead details and financials updated successfully!');
       setEditModalLead(null);
@@ -167,6 +167,13 @@ export default function LeadsPage() {
     e.preventDefault();
     setSubmitting(true);
     setFormError(null);
+
+    if (!form.phone?.trim()) {
+      setFormError('Phone number is compulsory.');
+      setSubmitting(false);
+      return;
+    }
+
     try {
       const parsedTags = form.tagsInput
         .split(/[,|;]/)
@@ -177,8 +184,8 @@ export default function LeadsPage() {
         customerId: form.customerId || undefined,
         firstName: form.firstName,
         lastName: form.lastName,
-        email: form.email,
-        phone: form.phone || undefined,
+        phone: form.phone.trim(),
+        email: form.email?.trim() || undefined,
         source: form.source,
         destination: form.destination || undefined,
         interestedTour: form.destination || undefined,
@@ -340,8 +347,8 @@ export default function LeadsPage() {
           <div className="form-grid">
             <Input label="First name" name="firstName" value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} />
             <Input label="Last name" name="lastName" value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} />
-            <Input label="Email" name="email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-            <Input label="Phone" name="phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+            <Input label="Phone Number * (Required)" name="phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} required />
+            <Input label="Email (Optional)" name="email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
             <Input label="Destination / Tour / Product" name="destination" placeholder="e.g. Ghana Heritage Circuit" value={form.destination} onChange={(e) => setForm({ ...form, destination: e.target.value })} />
             <Input
               label="Data Tags (comma-separated)"
@@ -844,13 +851,14 @@ export default function LeadsPage() {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <Input
-                  label="Phone"
+                  label="Phone Number * (Required)"
                   name="phone"
                   value={editLeadForm.phone}
                   onChange={(e) => setEditLeadForm({ ...editLeadForm, phone: e.target.value })}
+                  required
                 />
                 <Input
-                  label="Email"
+                  label="Email (Optional)"
                   name="email"
                   type="email"
                   value={editLeadForm.email}

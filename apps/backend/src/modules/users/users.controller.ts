@@ -9,6 +9,7 @@ import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { AssignRoleDto } from './dto/assign-role.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 @ApiTags('users')
 @Controller('users')
@@ -54,6 +55,17 @@ export class UsersController {
     @CurrentUser('id') userId: string,
   ) {
     return this.usersService.update(id, dto, this.meta(req, userId));
+  }
+
+  @Post(':id/reset-password')
+  @RequirePermissions(Permission.USER_UPDATE)
+  resetPassword(
+    @Param('id') id: string,
+    @Body() dto: ResetPasswordDto,
+    @Req() req: Request,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.usersService.resetPassword(id, dto.password, this.meta(req, userId));
   }
 
   @Post(':id/roles')

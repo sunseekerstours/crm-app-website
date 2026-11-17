@@ -15,6 +15,7 @@ export interface QuoteListParams {
   search?: string;
   customerId?: string;
   status?: string;
+  month?: string;
 }
 
 @Injectable()
@@ -43,9 +44,11 @@ export class QuotesService {
       calculatedTotal = Math.max(0, subtotal + tax - discount);
     }
 
+    const issueDate = dto.issueDate ? new Date(dto.issueDate) : new Date();
+
     const quote = await this.prisma.quote.create({
       data: {
-        quoteNumber: await this.nextNumber('QTE'),
+        quoteNumber: await this.nextNumber('QTE', issueDate),
         customerId: dto.customerId,
         dealId: dto.dealId,
         bookingId: dto.bookingId,
@@ -59,6 +62,7 @@ export class QuotesService {
         notes: dto.notes,
         terms: dto.terms,
         createdById: ctx.userId,
+        createdAt: issueDate,
       },
       include: { customer: true, deal: true },
     });
@@ -85,6 +89,21 @@ export class QuotesService {
     const where: Record<string, unknown> = {};
     if (params.customerId) where.customerId = params.customerId;
     if (params.status) where.status = params.status;
+    if (params.month) {
+      if (params.month.includes('-')) {
+        const [yearStr, monthStr] = params.month.split('-');
+        const year = parseInt(yearStr, 10);
+        const monthNum = parseInt(monthStr, 10);
+        if (!isNaN(year) && !isNaN(monthNum)) {
+          const start = new Date(Date.UTC(year, monthNum - 1, 1, 0, 0, 0));
+          const end = new Date(Date.UTC(year, monthNum, 1, 0, 0, 0));
+          where.createdAt = { gte: start, lt: end };
+        }
+      } else {
+        const m = params.month.padStart(2, '0');
+        where.quoteNumber = { endsWith: m };
+      }
+    }
     if (params.search) {
       where.OR = [
         { quoteNumber: { contains: params.search, mode: 'insensitive' } },
@@ -166,6 +185,7 @@ export class QuotesService {
         customerId: dto.customerId,
         dealId: dto.dealId,
         tourName: dto.tourName,
+        createdAt: dto.issueDate ? new Date(dto.issueDate) : undefined,
         validUntil: dto.validUntil ? new Date(dto.validUntil) : undefined,
         status: dto.status,
         items: dto.items !== undefined ? dto.items : undefined,
@@ -300,11 +320,27 @@ export class QuotesService {
     });
   }
 
-  private async nextNumber(prefix: string): Promise<string> {
-    const ts = Date.now().toString(36).toUpperCase();
-    const rand = Math.floor(Math.random() * 46655)
-      .toString(36)
-      .toUpperCase();
-    return `${prefix}-${ts}${rand}`;
+  private async nextNumber(prefix: string, date: Date = new Date()): Promise<string> {
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    // Find latest quote for this prefix and month
+    const latest = await this.prisma.quote.findFirst({
+      where: {
+        AND: [
+          { quoteNumber: { startsWith: `${prefix}` } },
+          { quoteNumber: { endsWith: month } },
+        ],
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    let nextSeq = 1;
+    if (latest && latest.quoteNumber) {
+      const seqPart = latest.quoteNumber.slice(prefix.length, -month.length);
+      const seqNum = parseInt(seqPart, 10);
+      if (!isNaN(seqNum)) {
+        nextSeq = seqNum + 1;
+      }
+    }
+    const seqStr = nextSeq.toString().padStart(3, '0');
+    return `${prefix}${seqStr}${month}`;
   }
 }

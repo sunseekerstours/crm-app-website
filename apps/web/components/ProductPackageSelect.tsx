@@ -88,9 +88,29 @@ export default function ProductPackageSelect({
 
   // Sync selectedId when selectedProductName changes
   useEffect(() => {
+    // If the user is on Custom mode, do NOT collapse or vanish the text box when text is cleared!
+    if (selectedId === 'CUSTOM' || isCustom) {
+      if (!selectedProductName) {
+        setCustomName('');
+        return;
+      }
+      const match = products.find(
+        (p) => p.name.trim().toLowerCase() === selectedProductName.trim().toLowerCase(),
+      );
+      if (match) {
+        setSelectedId(match.id);
+        setIsCustom(false);
+        setCustomName('');
+        return;
+      }
+      setCustomName(selectedProductName);
+      return;
+    }
+
     if (!selectedProductName) {
       setSelectedId('');
       setIsCustom(false);
+      setCustomName('');
       return;
     }
     const match = products.find(
@@ -99,12 +119,13 @@ export default function ProductPackageSelect({
     if (match) {
       setSelectedId(match.id);
       setIsCustom(false);
+      setCustomName('');
     } else {
       setSelectedId('CUSTOM');
       setIsCustom(true);
       setCustomName(selectedProductName);
     }
-  }, [selectedProductName, products]);
+  }, [selectedProductName, products, selectedId, isCustom]);
 
   // Group products by category
   const groupedProducts = useMemo(() => {
