@@ -28,6 +28,10 @@ export interface CustomTour {
   tourType: TourType;
   clientName: string;
   customerId?: string;
+  bookingId?: string;
+  bookingNumber?: string;
+  invoiceId?: string;
+  invoiceNumber?: string;
   destinations: string;
   startDate: string;
   endDate: string;

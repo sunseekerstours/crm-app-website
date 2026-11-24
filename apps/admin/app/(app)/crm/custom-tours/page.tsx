@@ -36,12 +36,20 @@ export default function AdminCustomToursOperationsPage() {
   const [activeAddingTaskForTourId, setActiveAddingTaskForTourId] = useState<string | null>(null);
   const [selectedCustomerObj, setSelectedCustomerObj] = useState<CustomerSummary | null>(null);
 
+  // Quick Customer / Business Modal
+  const [showAddCustomer, setShowAddCustomer] = useState(false);
+  const [newCust, setNewCust] = useState({ firstName: '', lastName: '', email: '', phone: '', country: 'Ghana' });
+  const [creatingCust, setCreatingCust] = useState(false);
+  const [actionLoadingTourId, setActionLoadingTourId] = useState<string | null>(null);
+  const [submittingTour, setSubmittingTour] = useState(false);
+
   // Form State
   const initialForm = {
     tourName: '',
     tourType: 'INDIVIDUAL' as TourType,
     clientName: '',
     customerId: '',
+    createBookingRecord: true,
     destinations: '',
     startDate: new Date().toISOString().split('T')[0],
     endDate: new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0],
@@ -195,6 +203,7 @@ export default function AdminCustomToursOperationsPage() {
       tourType: t.tourType,
       clientName: t.clientName,
       customerId: t.customerId || '',
+      createBookingRecord: !t.bookingId,
       destinations: t.destinations,
       startDate: t.startDate,
       endDate: t.endDate,
@@ -221,14 +230,232 @@ export default function AdminCustomToursOperationsPage() {
     setShowCreateModal(true);
   }
 
-  // Submit Tour Form
-  function handleSubmitTour(e: React.FormEvent) {
+  // Quick Customer / Business Creation
+  async function submitNewCustomer(e: React.FormEvent) {
     e.preventDefault();
+    setCreatingCust(true);
+    try {
+      const created = await api.post<CustomerSummary>('/customers', newCust);
+      setSelectedCustomerObj(created);
+      setForm((f) => ({
+        ...f,
+        customerId: created.id,
+        clientName: `${created.firstName || ''} ${created.lastName || ''}`.trim(),
+        contactEmail: created.email || f.contactEmail,
+        contactPhone: created.phone || f.contactPhone,
+      }));
+      setShowAddCustomer(false);
+      setNewCust({ firstName: '', lastName: '', email: '', phone: '', country: 'Ghana' });
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to create business/customer');
+    } finally {
+      setCreatingCust(false);
+    }
+  }
+
+  // 1-Click Booking Creation & Linkage from Tour Card
+  async function handleCreateBookingForTour(t: CustomTour) {
+    setActionLoadingTourId(t.id);
+    let custId = t.customerId;
+    if (!custId) {
+      try {
+        const nameParts = t.clientName.trim().split(' ');
+        const firstName = nameParts[0] || 'Guest';
+        const lastName = nameParts.slice(1).join(' ') || '(Client)';
+        const newC = await api.post<CustomerSummary>('/customers', {
+          firstName,
+          lastName,
+          phone: t.contactPhone || undefined,
+          email: t.contactEmail || undefined,
+          country: 'Ghana',
+        });
+        custId = newC.id;
+      } catch (err) {
+        setActionLoadingTourId(null);
+        alert(err instanceof Error ? err.message : 'Failed to create customer for booking');
+        return;
+      }
+    }
+
+    try {
+      const b = await api.post<{ id: string; bookingNumber: string }>('/bookings', {
+        customerId: custId,
+        tourName: t.tourName,
+        startDate: t.startDate,
+        paxCount: t.paxCount || 1,
+        totalPrice: t.quotedPrice,
+        currency: t.currency || 'USD',
+        status: 'CONFIRMED',
+        notes: `Customised Tour: ${t.destinations}. Operations Lead: ${t.operationsLead}`,
+      });
+
+      const updated = tours.map((x) =>
+        x.id === t.id
+          ? {
+              ...x,
+              customerId: custId,
+              bookingId: b.id,
+              bookingNumber: b.bookingNumber,
+              updatedAt: new Date().toISOString(),
+            }
+          : x
+      );
+      persistTours(updated);
+      alert(`Official Booking ${b.bookingNumber} successfully created and linked to this customised tour!`);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to create booking');
+    } finally {
+      setActionLoadingTourId(null);
+    }
+  }
+
+  // 1-Click Invoice Generation from Tour Card
+  async function handleGenerateInvoiceForTour(t: CustomTour) {
+    if (!window.confirm(`Generate official Tax Invoice for "${t.tourName}" (${t.currency} ${t.quotedPrice.toLocaleString()})?`)) return;
+
+    setActionLoadingTourId(t.id);
+    let custId = t.customerId;
+    let bkgId = t.bookingId;
+    let bkgNum = t.bookingNumber;
+
+    if (!bkgId) {
+      if (!custId) {
+        try {
+          const nameParts = t.clientName.trim().split(' ');
+          const firstName = nameParts[0] || 'Guest';
+          const lastName = nameParts.slice(1).join(' ') || '(Client)';
+          const newC = await api.post<CustomerSummary>('/customers', {
+            firstName,
+            lastName,
+            phone: t.contactPhone || undefined,
+            email: t.contactEmail || undefined,
+            country: 'Ghana',
+          });
+          custId = newC.id;
+        } catch (err) {
+          setActionLoadingTourId(null);
+          alert(err instanceof Error ? err.message : 'Failed to create customer');
+          return;
+        }
+      }
+
+      try {
+        const b = await api.post<{ id: string; bookingNumber: string }>('/bookings', {
+          customerId: custId,
+          tourName: t.tourName,
+          startDate: t.startDate,
+          paxCount: t.paxCount || 1,
+          totalPrice: t.quotedPrice,
+          currency: t.currency || 'USD',
+          status: 'CONFIRMED',
+          notes: `Customised Tour: ${t.destinations}. Operations Lead: ${t.operationsLead}`,
+        });
+        bkgId = b.id;
+        bkgNum = b.bookingNumber;
+      } catch (err) {
+        setActionLoadingTourId(null);
+        alert(err instanceof Error ? err.message : 'Failed to create booking for invoice');
+        return;
+      }
+    }
+
+    try {
+      const due = new Date();
+      due.setDate(due.getDate() + 14);
+      const inv = await api.post<{ id: string; invoiceNumber: string }>('/invoices', {
+        bookingId: bkgId,
+        customerId: custId,
+        status: 'SENT',
+        currency: t.currency || 'USD',
+        dueDate: due.toISOString().split('T')[0],
+        notes: `Customised Tour: ${t.tourName} (${t.durationDays} Days, ${t.destinations})`,
+        items: [
+          {
+            description: `${t.tourName} [${bkgNum || 'Custom Tour'}] - ${t.paxCount} Guest(s) (${t.durationDays} Days: ${t.destinations})`,
+            quantity: t.paxCount || 1,
+            unitPrice: t.quotedPrice && t.paxCount ? Number(t.quotedPrice) / Number(t.paxCount) : Number(t.quotedPrice || 0),
+            totalPrice: Number(t.quotedPrice || 0),
+          },
+        ],
+      });
+
+      const updated = tours.map((x) =>
+        x.id === t.id
+          ? {
+              ...x,
+              customerId: custId,
+              bookingId: bkgId,
+              bookingNumber: bkgNum,
+              invoiceId: inv.id,
+              invoiceNumber: inv.invoiceNumber,
+              updatedAt: new Date().toISOString(),
+            }
+          : x
+      );
+      persistTours(updated);
+
+      alert(`Invoice ${inv.invoiceNumber} successfully generated for ${t.tourName}!`);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to generate invoice');
+    } finally {
+      setActionLoadingTourId(null);
+    }
+  }
+
+  // Submit Tour Form
+  async function handleSubmitTour(e: React.FormEvent) {
+    e.preventDefault();
+    setSubmittingTour(true);
     const start = new Date(form.startDate);
     const end = new Date(form.endDate);
     const durationDays = Math.max(1, Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1);
 
+    let resolvedCustomerId = form.customerId;
+
+    // If booking record is requested but no customer selected, auto-create customer from clientName & contacts
+    if (form.createBookingRecord && !resolvedCustomerId && form.clientName.trim()) {
+      try {
+        const nameParts = form.clientName.trim().split(' ');
+        const firstName = nameParts[0] || 'Guest';
+        const lastName = nameParts.slice(1).join(' ') || '(Client)';
+        const createdCust = await api.post<CustomerSummary>('/customers', {
+          firstName,
+          lastName,
+          phone: form.contactPhone || undefined,
+          email: form.contactEmail || undefined,
+          country: 'Ghana',
+        });
+        resolvedCustomerId = createdCust.id;
+      } catch (err) {
+        console.warn('Could not auto-create customer for booking:', err);
+      }
+    }
+
     if (editingTourId) {
+      const existingTour = tours.find(t => t.id === editingTourId);
+      let updatedBookingId = existingTour?.bookingId;
+      let updatedBookingNumber = existingTour?.bookingNumber;
+
+      // If user enabled createBookingRecord and tour didn't have one
+      if (form.createBookingRecord && !updatedBookingId && resolvedCustomerId) {
+        try {
+          const b = await api.post<{ id: string; bookingNumber: string }>('/bookings', {
+            customerId: resolvedCustomerId,
+            tourName: form.tourName.trim(),
+            startDate: form.startDate,
+            paxCount: parseInt(form.paxCount, 10) || 1,
+            totalPrice: parseFloat(form.quotedPrice) || undefined,
+            currency: form.currency || 'USD',
+            status: 'CONFIRMED',
+            notes: `Customised Tour: ${form.destinations}. Operations Lead: ${form.operationsLead}`,
+          });
+          updatedBookingId = b.id;
+          updatedBookingNumber = b.bookingNumber;
+        } catch (err) {
+          console.error('Failed to create booking for custom tour:', err);
+        }
+      }
+
       const updated = tours.map((t) => {
         if (t.id !== editingTourId) return t;
 
@@ -254,7 +481,9 @@ export default function AdminCustomToursOperationsPage() {
           tourName: form.tourName.trim(),
           tourType: form.tourType,
           clientName: form.clientName.trim(),
-          customerId: form.customerId || undefined,
+          customerId: resolvedCustomerId || undefined,
+          bookingId: updatedBookingId || t.bookingId,
+          bookingNumber: updatedBookingNumber || t.bookingNumber,
           destinations: form.destinations.trim(),
           startDate: form.startDate,
           endDate: form.endDate,
@@ -276,13 +505,37 @@ export default function AdminCustomToursOperationsPage() {
       });
       persistTours(updated);
     } else {
+      let createdBookingId: string | undefined;
+      let createdBookingNumber: string | undefined;
+
+      if (form.createBookingRecord && resolvedCustomerId) {
+        try {
+          const b = await api.post<{ id: string; bookingNumber: string }>('/bookings', {
+            customerId: resolvedCustomerId,
+            tourName: form.tourName.trim(),
+            startDate: form.startDate,
+            paxCount: parseInt(form.paxCount, 10) || 1,
+            totalPrice: parseFloat(form.quotedPrice) || undefined,
+            currency: form.currency || 'USD',
+            status: 'CONFIRMED',
+            notes: `Customised Tour: ${form.destinations}. Operations Lead: ${form.operationsLead}`,
+          });
+          createdBookingId = b.id;
+          createdBookingNumber = b.bookingNumber;
+        } catch (err) {
+          console.error('Failed to create booking for custom tour:', err);
+        }
+      }
+
       const defaultChecklist = createDefaultChecklist(form.assignedGuideName.trim());
       const newTour: CustomTour = {
         id: `ct_${Date.now()}`,
         tourName: form.tourName.trim(),
         tourType: form.tourType,
         clientName: form.clientName.trim(),
-        customerId: form.customerId || undefined,
+        customerId: resolvedCustomerId || undefined,
+        bookingId: createdBookingId,
+        bookingNumber: createdBookingNumber,
         destinations: form.destinations.trim(),
         startDate: form.startDate,
         endDate: form.endDate,
@@ -304,6 +557,7 @@ export default function AdminCustomToursOperationsPage() {
       };
       persistTours([newTour, ...tours]);
     }
+    setSubmittingTour(false);
     setShowCreateModal(false);
   }
 
@@ -610,7 +864,7 @@ export default function AdminCustomToursOperationsPage() {
                 {/* Tour Card Header */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
                   <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4, flexWrap: 'wrap' }}>
                       <span style={{
                         background: t.tourType === 'INDIVIDUAL' ? 'rgba(56, 189, 248, 0.15)' : 'rgba(168, 85, 247, 0.15)',
                         color: t.tourType === 'INDIVIDUAL' ? '#38bdf8' : '#c084fc',
@@ -623,6 +877,53 @@ export default function AdminCustomToursOperationsPage() {
                         {t.tourType === 'INDIVIDUAL' ? '👤 Individual (FIT)' : '👥 Group Tour'}
                       </span>
                       {renderStatusBadge(t.status)}
+
+                      {/* Linked CRM Booking Badge */}
+                      {t.bookingNumber ? (
+                        <Link
+                          href={`/crm/bookings?search=${encodeURIComponent(t.bookingNumber)}`}
+                          style={{
+                            background: 'rgba(16, 185, 129, 0.18)',
+                            color: '#34d399',
+                            border: '1px solid rgba(16, 185, 129, 0.45)',
+                            padding: '2px 8px',
+                            borderRadius: 6,
+                            fontSize: 11,
+                            fontWeight: 700,
+                            textDecoration: 'none',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4
+                          }}
+                          title="Click to view official CRM Booking record"
+                        >
+                          📑 {t.bookingNumber} ↗
+                        </Link>
+                      ) : null}
+
+                      {/* Linked CRM Invoice Badge */}
+                      {t.invoiceNumber ? (
+                        <Link
+                          href={`/crm/invoices?search=${encodeURIComponent(t.invoiceNumber)}`}
+                          style={{
+                            background: 'rgba(56, 189, 248, 0.18)',
+                            color: '#38bdf8',
+                            border: '1px solid rgba(56, 189, 248, 0.45)',
+                            padding: '2px 8px',
+                            borderRadius: 6,
+                            fontSize: 11,
+                            fontWeight: 700,
+                            textDecoration: 'none',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4
+                          }}
+                          title="Click to view official Tax Invoice"
+                        >
+                          📄 {t.invoiceNumber} ↗
+                        </Link>
+                      ) : null}
+
                       <span style={{ fontSize: 12, color: '#94a3b8' }}>
                         📅 {t.startDate} to {t.endDate} ({t.durationDays} {t.durationDays === 1 ? 'day' : 'days'})
                       </span>
@@ -661,9 +962,57 @@ export default function AdminCustomToursOperationsPage() {
                   </div>
 
                   {/* Quick Card Actions */}
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                    {/* Link Booking Button if not already linked */}
+                    {!t.bookingNumber && (
+                      <button
+                        type="button"
+                        disabled={actionLoadingTourId === t.id}
+                        onClick={() => handleCreateBookingForTour(t)}
+                        style={{
+                          background: 'rgba(16, 185, 129, 0.15)',
+                          color: '#34d399',
+                          border: '1px solid rgba(16, 185, 129, 0.4)',
+                          borderRadius: 6,
+                          padding: '6px 12px',
+                          fontSize: 12,
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6
+                        }}
+                        title="Create an official CRM Booking reference for this customised tour"
+                      >
+                        {actionLoadingTourId === t.id ? 'Saving…' : '📑 Link Booking'}
+                      </button>
+                    )}
+
+                    {/* 1-Click Generate or View Invoice */}
+                    <button
+                      type="button"
+                      disabled={actionLoadingTourId === t.id}
+                      onClick={() => handleGenerateInvoiceForTour(t)}
+                      style={{
+                        background: t.invoiceNumber ? 'rgba(56, 189, 248, 0.12)' : '#0f172a',
+                        color: '#38bdf8',
+                        border: '1px solid rgba(56, 189, 248, 0.35)',
+                        borderRadius: 6,
+                        padding: '6px 12px',
+                        fontSize: 12,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6
+                      }}
+                      title="Generate official Tax Invoice for this customised tour"
+                    >
+                      {actionLoadingTourId === t.id ? 'Working…' : (t.invoiceNumber ? '📄 Re-generate Invoice' : '📄 Generate Invoice')}
+                    </button>
+
                     <Link
-                      href={`/crm/fleet`}
+                      href={`/crm/fleet?tour=${encodeURIComponent(t.tourName)}&booking=${encodeURIComponent(t.bookingNumber || '')}&start=${t.startDate}&end=${t.endDate}&pax=${t.paxCount}`}
                       style={{
                         background: '#0f172a',
                         color: '#38bdf8',
@@ -970,10 +1319,34 @@ export default function AdminCustomToursOperationsPage() {
 
                 {/* Customer Search Picker with Live Server Search */}
                 <div style={{ gridColumn: 'span 2' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                    <label style={{ fontSize: 12, color: '#94a3b8', fontWeight: 600 }}>
+                      Customer / Corporate Client in CRM Database
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddCustomer(true)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#38bdf8',
+                        fontSize: 12,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        padding: 0,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4
+                      }}
+                    >
+                      ➕ Quick Add Business / Client
+                    </button>
+                  </div>
                   <CustomerSearchPicker
-                    label="Search & Select Customer from CRM Database"
+                    label="Search customer or company name, email, or phone…"
                     value={form.customerId}
                     selectedCustomer={selectedCustomerObj}
+                    onQuickAdd={() => setShowAddCustomer(true)}
                     onChange={(custId, cust) => {
                       setForm((f) => ({
                         ...f,
@@ -1242,6 +1615,39 @@ export default function AdminCustomToursOperationsPage() {
                     style={{ width: '100%', padding: '8px 10px', background: '#0f172a', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 6, color: '#fff', fontSize: 13 }}
                   />
                 </div>
+
+                {/* Automatic CRM Booking Linkage */}
+                <div
+                  style={{
+                    gridColumn: 'span 2',
+                    background: form.createBookingRecord ? 'rgba(16, 185, 129, 0.08)' : 'rgba(255, 255, 255, 0.02)',
+                    border: form.createBookingRecord ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(255, 255, 255, 0.1)',
+                    borderRadius: 8,
+                    padding: '12px 14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: 'pointer',
+                    marginTop: 4,
+                  }}
+                  onClick={() => setForm((f) => ({ ...f, createBookingRecord: !f.createBookingRecord }))}
+                >
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: form.createBookingRecord ? '#34d399' : '#cbd5e1', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span>📑 Automatically Link &amp; Create Official CRM Booking</span>
+                    </div>
+                    <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
+                      Generates an official Booking Reference (BKG-XXXX) in CRM, enabling 1-click customer invoices, deposits &amp; payment tracking.
+                    </div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={form.createBookingRecord}
+                    onChange={(e) => setForm((f) => ({ ...f, createBookingRecord: e.target.checked }))}
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ width: 18, height: 18, accentColor: '#10b981', cursor: 'pointer' }}
+                  />
+                </div>
               </div>
 
               {/* Modal Action Buttons */}
@@ -1253,8 +1659,118 @@ export default function AdminCustomToursOperationsPage() {
                 >
                   Cancel
                 </button>
-                <Button type="submit">
-                  {editingTourId ? 'Save Changes' : 'Create & Generate Checklist'}
+                <Button type="submit" disabled={submittingTour}>
+                  {submittingTour
+                    ? 'Linking Booking & Saving…'
+                    : (editingTourId ? 'Save Changes' : 'Create & Generate Checklist')}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Add Customer / Business Modal */}
+      {showAddCustomer && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.7)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000,
+            padding: '20px',
+          }}
+        >
+          <div style={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.15)', padding: '24px', borderRadius: '10px', maxWidth: '460px', width: '100%', color: '#f8fafc' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#f8fafc' }}>
+                ➕ Add New Business / Client to CRM
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowAddCustomer(false)}
+                style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: 18, cursor: 'pointer' }}
+              >
+                ✕
+              </button>
+            </div>
+            <form onSubmit={submitNewCustomer} style={{ display: 'grid', gap: '12px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>
+                  First Name / Contact Person *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newCust.firstName}
+                  onChange={(e) => setNewCust({ ...newCust, firstName: e.target.value })}
+                  placeholder="e.g. Amanda or Howard Alumni"
+                  style={{ width: '100%', padding: '9px 12px', background: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6, color: '#fff', fontSize: 13 }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>
+                  Last Name / Organization Suffix *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newCust.lastName}
+                  onChange={(e) => setNewCust({ ...newCust, lastName: e.target.value })}
+                  placeholder="e.g. Smith or Foundation / Inc"
+                  style={{ width: '100%', padding: '9px 12px', background: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6, color: '#fff', fontSize: 13 }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>
+                  Phone / WhatsApp *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newCust.phone}
+                  onChange={(e) => setNewCust({ ...newCust, phone: e.target.value })}
+                  placeholder="e.g. +233 24 123 4567"
+                  style={{ width: '100%', padding: '9px 12px', background: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6, color: '#fff', fontSize: 13 }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>
+                  Email Address (Optional)
+                </label>
+                <input
+                  type="email"
+                  value={newCust.email}
+                  onChange={(e) => setNewCust({ ...newCust, email: e.target.value })}
+                  placeholder="e.g. contact@domain.com"
+                  style={{ width: '100%', padding: '9px 12px', background: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6, color: '#fff', fontSize: 13 }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>
+                  Country
+                </label>
+                <input
+                  type="text"
+                  value={newCust.country}
+                  onChange={(e) => setNewCust({ ...newCust, country: e.target.value })}
+                  placeholder="e.g. Ghana, United States, UK"
+                  style={{ width: '100%', padding: '9px 12px', background: '#0f172a', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6, color: '#fff', fontSize: 13 }}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '12px' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowAddCustomer(false)}
+                  style={{ background: 'none', border: '1px solid rgba(255,255,255,0.15)', color: '#94a3b8', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', fontSize: 13 }}
+                >
+                  Cancel
+                </button>
+                <Button type="submit" disabled={creatingCust}>
+                  {creatingCust ? 'Saving…' : 'Save & Select Client'}
                 </Button>
               </div>
             </form>
