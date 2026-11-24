@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useAuth } from '@/lib/auth';
 import { api, Paginated } from '@/lib/api';
 import {
   Badge,
@@ -88,6 +89,12 @@ const initialForm = {
 };
 
 export default function PaymentsPage() {
+  const { user } = useAuth();
+  const isSuperAdmin = Boolean(
+    user?.roles?.some((r) => r.toUpperCase() === 'SUPER_ADMIN') ||
+    user?.email === 'admin@sunseeker.local' ||
+    user?.email === 'admin@sunseekerscrm.local'
+  );
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [data, setData] = useState<Paginated<PaymentItem> | null>(null);
@@ -241,20 +248,22 @@ export default function PaymentsPage() {
         title="💳 Payments &amp; Customer Receipts"
         subtitle="Record payments linked to customers and bookings, and issue official stamped receipts"
         action={
-          <Button
-            variant="secondary"
-            onClick={handleCleanMadeUpPayments}
-            disabled={cleaning}
-            style={{
-              borderColor: '#fca5a5',
-              color: '#b91c1c',
-              background: '#ffffff',
-              fontSize: '13px',
-              fontWeight: 700,
-            }}
-          >
-            {cleaning ? '⏳ Cleaning...' : '🧹 Clean Made-Up Records'}
-          </Button>
+          isSuperAdmin ? (
+            <Button
+              variant="secondary"
+              onClick={handleCleanMadeUpPayments}
+              disabled={cleaning}
+              style={{
+                borderColor: '#fca5a5',
+                color: '#b91c1c',
+                background: '#ffffff',
+                fontSize: '13px',
+                fontWeight: 700,
+              }}
+            >
+              {cleaning ? '⏳ Cleaning...' : '🧹 Clean Made-Up Records'}
+            </Button>
+          ) : undefined
         }
       />
 

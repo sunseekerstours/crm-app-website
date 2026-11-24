@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useAuth } from '@/lib/auth';
 import { api, Paginated } from '@/lib/api';
 import { exportToCSV, exportAllFromApi } from '@/lib/export';
 import {
@@ -81,6 +82,13 @@ const initialForm = {
 };
 
 export default function CrmPaymentsPage() {
+  const { user } = useAuth();
+  const isSuperAdmin = Boolean(
+    user?.roles?.some((r) => r.toUpperCase() === 'SUPER_ADMIN') ||
+    user?.email === 'admin@sunseeker.local' ||
+    user?.email === 'admin@sunseekerscrm.local'
+  );
+
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [data, setData] = useState<Paginated<PaymentItem> | null>(null);
@@ -269,19 +277,21 @@ export default function CrmPaymentsPage() {
                 Cancel Edit
               </Button>
             ) : null}
-            <Button
-              variant="secondary"
-              onClick={handleCleanMadeUpPayments}
-              disabled={cleaning}
-              style={{
-                borderColor: '#fca5a5',
-                color: '#b91c1c',
-                background: '#ffffff',
-                fontWeight: 700,
-              }}
-            >
-              {cleaning ? '⏳ Cleaning...' : '🧹 Clean Made-Up Records'}
-            </Button>
+            {isSuperAdmin && (
+              <Button
+                variant="secondary"
+                onClick={handleCleanMadeUpPayments}
+                disabled={cleaning}
+                style={{
+                  borderColor: '#fca5a5',
+                  color: '#b91c1c',
+                  background: '#ffffff',
+                  fontWeight: 700,
+                }}
+              >
+                {cleaning ? '⏳ Cleaning...' : '🧹 Clean Made-Up Records'}
+              </Button>
+            )}
             <Button
               onClick={() => {
                 reset();

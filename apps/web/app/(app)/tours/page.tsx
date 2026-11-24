@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
+import { useAuth } from '@/lib/auth';
 import { api, type Paginated } from '@/lib/api';
 import { PageHeader, Card, Button, Spinner } from '@/components/ui';
 import { CustomerSearchPicker, CustomerSummary } from '@/components/CustomerSearchPicker';
@@ -21,6 +22,13 @@ import {
 } from '@/lib/custom-tours';
 
 export default function CustomToursOperationsPage() {
+  const { user } = useAuth();
+  const isSuperAdmin = Boolean(
+    user?.roles?.some((r) => r.toUpperCase() === 'SUPER_ADMIN') ||
+    user?.email === 'admin@sunseeker.local' ||
+    user?.email === 'admin@sunseekerscrm.local'
+  );
+
   const [tours, setTours] = useState<CustomTour[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'ALL' | 'INDIVIDUAL' | 'GROUP' | 'ACTIVE' | 'COMPLETED'>('ALL');
@@ -362,50 +370,54 @@ export default function CustomToursOperationsPage() {
             >
               🚌 Fleet Timeline &amp; Drivers ↗
             </Link>
-            <button
-              type="button"
-              onClick={loadGlobalTours}
-              disabled={isSyncing}
-              style={{
-                background: 'rgba(56, 189, 248, 0.1)',
-                color: '#38bdf8',
-                border: '1px solid rgba(56, 189, 248, 0.3)',
-                borderRadius: 6,
-                padding: '8px 14px',
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: isSyncing ? 'not-allowed' : 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-              }}
-              title="Refresh global tour operations from the database"
-            >
-              {isSyncing ? '⏳ Syncing...' : '🔄 Sync with Team'}
-            </button>
-            {tours.length > 0 && (
-              <button
-                type="button"
-                onClick={async () => {
-                  if (window.confirm('Clear all operational custom tours and start 100% clean from scratch?')) {
-                    await clearAllCustomTours();
-                    persistTours([]);
-                  }
-                }}
-                style={{
-                  background: 'rgba(239, 68, 68, 0.1)',
-                  color: '#f87171',
-                  border: '1px solid rgba(239, 68, 68, 0.25)',
-                  borderRadius: 6,
-                  padding: '8px 14px',
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: 'pointer'
-                }}
-                title="Wipe mock/temporary tours and start completely clean"
-              >
-                🧹 Clear All &amp; Start Fresh
-              </button>
+            {isSuperAdmin && (
+              <>
+                <button
+                  type="button"
+                  onClick={loadGlobalTours}
+                  disabled={isSyncing}
+                  style={{
+                    background: 'rgba(56, 189, 248, 0.1)',
+                    color: '#38bdf8',
+                    border: '1px solid rgba(56, 189, 248, 0.3)',
+                    borderRadius: 6,
+                    padding: '8px 14px',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: isSyncing ? 'not-allowed' : 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                  title="Refresh global tour operations from the database"
+                >
+                  {isSyncing ? '⏳ Syncing...' : '🔄 Sync with Team'}
+                </button>
+                {tours.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (window.confirm('Clear all operational custom tours and start 100% clean from scratch?')) {
+                        await clearAllCustomTours();
+                        persistTours([]);
+                      }
+                    }}
+                    style={{
+                      background: 'rgba(239, 68, 68, 0.1)',
+                      color: '#f87171',
+                      border: '1px solid rgba(239, 68, 68, 0.25)',
+                      borderRadius: 6,
+                      padding: '8px 14px',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                    title="Wipe mock/temporary tours and start completely clean"
+                  >
+                    🧹 Clear All &amp; Start Fresh
+                  </button>
+                )}
+              </>
             )}
             <Button onClick={handleOpenCreate}>
               + Create Customised Tour
